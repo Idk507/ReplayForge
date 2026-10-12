@@ -1,0 +1,18 @@
+{
+  "observed_date": "2026-10-12",
+  "source_state": "local uncommitted ReplayForge directory in parent repository",
+  "parent_head": "25b9bdf7af6561f50603595cd0f5b13b9a124329",
+  "live_calls": 0,
+  "checks": [
+    {"command": "uv run pytest -q --junitxml=docs/evidence/m0-tavily-tests.xml", "exit_code": 0, "passed": 110, "seconds": 0.93},
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run ruff format --check .", "exit_code": 0, "files": 24},
+    {"command": "uv run mypy", "exit_code": 0, "source_files": 19},
+    {"command": "uv lock --check", "exit_code": 0, "packages": 22},
+    {"command": "uv build --wheel", "exit_code": 0},
+    {"command": "uv run python -I -c <insert absolute wheel path; import research contracts, Tavily provider and CLI; assert wheel origins>", "exit_code": 0},
+    {"command": "uv run python -m scripts.check_tavily", "observed_shell_exit_code": 1, "cli_function_exit_code_tested": 2, "status": "NOT_RUN", "policy_decision": "DENY_DISABLED"}
+  ],
+  "junit_sha256": "7f881dfa9a806a2ca9c8b2fe797f9b7fe401443e06b5ba3ecc9632a9d8568e62",
+  "wheel_sha256": "4df77d6a4e1af278962c49b83464e8a7a0afd50a20600ca8b9c499189f638e1e"
+}
