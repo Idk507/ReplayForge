@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "evidence_kind": "offline_implementation_checks",
+  "observed_date": "2026-10-12",
+  "live_operations_performed": false,
+  "changes_committed": false,
+  "checks": [
+    {
+      "name": "tests",
+      "command": "uv run pytest -q --junitxml=docs/evidence/m0-sandbox-tests.xml",
+      "exit_code": 0,
+      "output": "..................................................................       [100%]\r\n- generated xml file: C:\\Users\\dhanu\\Downloads\\ReplayForge\\docs\\evidence\\m0-sandbox-tests.xml -\r\n66 passed in 0.50s\r\n"
+    },
+    {
+      "name": "lint",
+      "command": "uv run ruff check .",
+      "exit_code": 0,
+      "output": "All checks passed!\n"
+    },
+    {
+      "name": "format",
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "output": "17 files already formatted\n"
+    },
+    {
+      "name": "types",
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "output": "Success: no issues found in 14 source files\r\n"
+    },
+    {
+      "name": "lock",
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "output": "Resolved 22 packages in 2ms\n"
+    },
+    {
+      "name": "build",
+      "command": "uv build --wheel",
+      "exit_code": 0,
+      "output": "Building wheel...\nSuccessfully built dist\\replayforge-0.1.0-py3-none-any.whl\n"
+    },
+    {
+      "name": "sandbox_offline",
+      "command": "uv run python -m scripts.check_sandbox",
+      "exit_code": 1,
+      "output": "{\"status\": \"NOT_VERIFIED\", \"error_class\": \"S_CONFIG_MISSING\"}\r\n"
+    }
+  ]
+}
