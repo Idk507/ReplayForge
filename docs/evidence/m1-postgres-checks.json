@@ -1,0 +1,20 @@
+{
+  "observed_date": "2026-10-12",
+  "parent_head": "25b9bdf7af6561f50603595cd0f5b13b9a124329",
+  "source_state": "local uncommitted files, not a build commit",
+  "database": "real local PostgreSQL 18.6; disposable test database; separate non-superuser migration/runtime roles",
+  "checks": [
+    {"command": "uv run python -m scripts.test_postgres", "exit_code": 0, "passed": 169, "seconds": 8.50, "warnings": 2},
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run ruff format --check .", "exit_code": 0, "files": 39},
+    {"command": "uv run mypy", "exit_code": 0, "source_files": 28},
+    {"command": "uv lock --check", "exit_code": 0, "packages": 36},
+    {"command": "uv build --wheel", "exit_code": 0},
+    {"command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/dependency-audit.json", "exit_code": 0, "known_vulnerabilities": 0, "scope": "locked production dependency graph on Windows"},
+    {"command": "uvx detect-secrets==1.5.0 scan --all-files packages services scripts tests migrations .env.example pyproject.toml alembic.ini", "exit_code": 0, "findings": 8, "review": "all eight are synthetic negative-test credentials/URLs or field labels; no live credential found in scanned scope"}
+  ],
+  "junit_sha256": "ed216e3b1ffdc50beeb979ea1d230ef7f59fc73b59e6ec4b233d359dce7eff9a",
+  "dependency_audit_sha256": "fb5469b80b5611b61f1f786289bc708288d399f67cd232a1c6b2ea3c5f4d45e6",
+  "live_cloud_calls": 0,
+  "remote_writes": 0
+}
