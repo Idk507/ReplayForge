@@ -1,0 +1,17 @@
+{
+  "observed_date": "2026-10-13",
+  "source_head": "e60e682128a1a7d10d1f5dc028ca9abb0adb76c7",
+  "source_state": "new changes uncommitted; prior work preserved",
+  "checks": [
+    {"command": "uv run python -m scripts.test_postgres", "exit_code": 0, "passed": 241, "seconds": 14.24, "warnings": 2},
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run ruff format --check .", "exit_code": 0, "files": 52},
+    {"command": "uv run mypy", "exit_code": 0, "source_files": 35},
+    {"command": "uv lock --check", "exit_code": 0, "packages": 36},
+    {"command": "uv build --wheel", "exit_code": 0},
+    {"command": "uvx detect-secrets==1.5.0 scan --all-files migrations/versions/0003_context_artifacts.py services/persistence/store.py services/api/app.py", "exit_code": 0, "findings": 0, "scope": "changed artifact/API storage source only"}
+  ],
+  "junit_sha256": "d7e154135053dcc02c715a0e3f1fb5d809ccead3a0a5c55cb4f2ce8adc939f7f",
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
