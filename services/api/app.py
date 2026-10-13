@@ -13,7 +13,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from packages.contracts.run import CommitSHA, RunState
+from packages.contracts.context import ContextBundle
+from packages.contracts.run import ArtifactID, CommitSHA, RunState
+from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
 from services.persistence.store import Store, StoreError
 
@@ -155,6 +157,14 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
     ) -> RunState:
         if payload.repository_id not in auth.approved_repositories:
             raise HTTPException(403, "REPOSITORY_DENIED")
+        try:
+            grant = store.repository(payload.repository_id, owner)
+        except StoreError as error:
+            if str(error) == "NOT_FOUND":
+                raise HTTPException(403, "REPOSITORY_DENIED") from None
+            raise
+        if not admit(grant, owner, payload.repository_id, payload.commit_sha).allowed:
+            raise HTTPException(403, "REPOSITORY_DENIED")
         canonical = json.dumps(
             payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
         )
@@ -172,6 +182,12 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
     @app.get("/api/v1/runs/{run_id}")
     def get(run_id: UUID, owner: Annotated[UUID, Depends(identity)]) -> RunState:
         return store.get(run_id, owner)
+
+    @app.get("/api/v1/runs/{run_id}/artifacts/{artifact_id}")
+    def artifact(
+        run_id: UUID, artifact_id: ArtifactID, owner: Annotated[UUID, Depends(identity)]
+    ) -> ContextBundle:
+        return store.context(run_id, owner, artifact_id)
 
     @app.post("/api/v1/runs/{run_id}/cancel")
     def cancel(
