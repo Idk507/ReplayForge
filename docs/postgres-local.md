@@ -77,3 +77,12 @@ role and grant runtime SELECT/INSERT/UPDATE on runs/job_leases, SELECT/INSERT on
 run_events and schema USAGE. Schema rollback is destructive and only tested in
 disposable databases. The source checkout contains migrations; the wheel alone
 does not package an operator migration environment.
+
+Migration 0002 adds repository_grants. Operator/migration role inserts trusted
+consent records; runtime needs SELECT only. API intake requires a persisted
+caller/commit grant in addition to the LocalAuth repository UUID list.
+
+Migration 0003 adds context_artifacts; runtime needs SELECT/INSERT only. Context
+storage atomically advances COLLECTING to TRIAGING with a hashed reference.
+Artifact reads enforce owner, expiry and checksum checks. Expiry is not deletion;
+see context-artifacts.md.
