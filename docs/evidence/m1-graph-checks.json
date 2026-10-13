@@ -1,0 +1,19 @@
+{
+  "observed_date": "2026-10-13",
+  "source_head": "e60e682128a1a7d10d1f5dc028ca9abb0adb76c7",
+  "source_state": "new graph changes uncommitted; prior work preserved",
+  "checks": [
+    {"command": "uv run python -m scripts.test_postgres", "exit_code": 0, "passed": 251, "seconds": 17.73, "warnings": 1},
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run ruff format --check .", "exit_code": 0, "files": 55},
+    {"command": "uv run mypy", "exit_code": 0, "source_files": 37},
+    {"command": "uv lock --check", "exit_code": 0, "packages": 63},
+    {"command": "uv build --wheel", "exit_code": 0},
+    {"command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-graph-dependency-audit.json", "exit_code": 0, "known_vulnerabilities": 0, "scope": "locked Windows production dependency graph"},
+    {"command": "uvx detect-secrets==1.5.0 scan --all-files services/orchestrator packages/contracts/run.py packages/policies/transitions.py services/persistence/store.py", "exit_code": 0, "findings": 0, "scope": "changed graph and state/storage source"}
+  ],
+  "junit_sha256": "e354630a49cccb0802a36ed41af5786b0e70493db471ff32a77002d58ba0e70a",
+  "audit_sha256": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2",
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
