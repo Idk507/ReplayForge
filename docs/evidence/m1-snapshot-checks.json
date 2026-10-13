@@ -1,0 +1,17 @@
+{
+  "observed_date": "2026-10-13",
+  "source_head": "e60e682128a1a7d10d1f5dc028ca9abb0adb76c7",
+  "source_state": "new changes uncommitted; prior scope work preserved",
+  "checks": [
+    {"command": "uv run python -m scripts.test_postgres", "exit_code": 0, "passed": 221, "seconds": 10.90, "warnings": 2},
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run ruff format --check .", "exit_code": 0, "files": 46},
+    {"command": "uv run mypy", "exit_code": 0, "source_files": 32},
+    {"command": "uv lock --check", "exit_code": 0, "packages": 36},
+    {"command": "uv build --wheel", "exit_code": 0},
+    {"command": "uvx detect-secrets==1.5.0 scan --all-files services/repository packages/policies/repository.py migrations/versions/0002_repository_grants.py", "exit_code": 0, "findings": 0, "scope": "new snapshot source and migration only"}
+  ],
+  "junit_sha256": "62450642de692e82630f2abf20526951b9fabb6fab4f53d979bbb16c83e4de1f",
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
