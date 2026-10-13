@@ -64,3 +64,6 @@ class RunState(BaseModel):
     evidence_manifest_ref: ArtifactID | None = None
     cancellation_requested: bool = Field(default=False, strict=True)
     remaining_budget: Budget = Field(default_factory=Budget)
+    failure_reason: (
+        Literal["SCOPE_DENIED", "SOURCE_MISMATCH", "CONTEXT_REJECTED"] | None
+    ) = None
