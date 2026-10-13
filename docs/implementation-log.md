@@ -287,3 +287,197 @@ and redacted incident/context artifacts, then graph wiring. Actual fetch accepta
 needs an explicitly approved repository/commit and GitHub installation/scopes;
 none are configured by this slice. Live sandbox activation/isolation and inference
 remain separate external acceptance boundaries. No paid call or remote write ran.
+
+## 2026-10-13 — Repository scope admission
+
+Reread required docs and active contracts. Repository now has its own Git root
+and tracked implementation; inspected recent commits and status. Current source
+HEAD: e60e682128a1a7d10d1f5dc028ca9abb0adb76c7. New changes in this session
+are uncommitted. Existing untracked .env.example was preserved.
+
+Added RepositoryGrant and ScopeDecision contracts, exact caller/repository/commit
+consent checks, canonical GitHub HTTPS URL admission and a fixed path vocabulary.
+Added lexical Git-tree mode/path admission rejecting links, submodules, traversal,
+host spoofing, credential URLs, Windows device paths and selected secret files.
+These are pure policies, not a fetcher or persisted grant registry; grants must
+come from trusted application configuration. No new authentication flow added.
+
+Test-first collection initially exited 1 because repository contracts were absent.
+New policy suite then passed 32 tests. Final real PostgreSQL harness command
+`uv run python -m scripts.test_postgres` exited 0: 201 passed in 11.14s,
+including the prior 14 database integration scenarios; two known third-party
+test-client deprecation warnings remain. Saved new JUnit separately as
+docs/evidence/m1-repository-tests.xml and restored the prior committed PostgreSQL
+artifact after the harness overwrote its default filename, preserving the old
+ledger hash. New JUnit SHA256:
+821f00610f2a77d311720d18d0cc1b6b3d78951224de942e0407903e15663f4b.
+Ruff check, format check (42 files), strict mypy (30 source files), lock check
+(36 packages) and wheel build all exited 0. No dependencies changed; the prior
+dependency/secret scans are historical and were not rerun for this slice.
+
+Threat limits: lexical admission does not resolve filesystem symlinks/junctions
+or detect case collisions. Caller authentication, immutable tree/blob verification,
+safe bounded reading, persistent consent and registry/API integration are still
+required. See docs/repository-admission.md. No repository snapshot acceptance
+is claimed; M0 and M1 remain partial. User supplied provider activation and a
+successful offline config report; no live execution/charge approval was inferred.
+No cloud calls, remote writes or untrusted-code execution occurred.
+
+Next: persistent repository registry and safe pinned snapshot reading, with an
+explicitly approved repository/commit and installation scope for live fetch
+acceptance. Live sandbox/inference proof remains an authorization boundary.
+
+## 2026-10-13 — Object reader and persisted repository grants
+
+Reread governing documents and actual implementation. HEAD remains
+e60e682128a1a7d10d1f5dc028ca9abb0adb76c7; prior scope work and unrelated
+untracked .env.example preserved. New changes are local and uncommitted.
+
+Added bounded raw Git object reading with typed SHA-1 identity checks from
+admitted commit through relevant trees to approved text blobs. Snapshot contains
+read-only bytes and SHA256 file identities. Shared existing lexical predicate
+for ancestor validation. No Git subprocess, checkout or host-path reads occur.
+Added negative cases for malformed/tampered objects, scope denial, case collisions,
+links/submodules, binary/LFS, missing/oversized objects and depth/read budgets.
+Object transports are synthetic and do not establish live integration.
+
+Migration 0002 and Store persist operator-owned grants. Runtime has SELECT only;
+API intake checks persisted caller/commit consent. Real PostgreSQL tests cover
+reopening, owner isolation, runtime INSERT denial and unapproved-commit HTTP 403.
+Downgrade/reapply remains tested in a disposable database with separate roles.
+
+Initial snapshot test collection exited 1 for an absent module. Final command
+`uv run python -m scripts.test_postgres` exited 0: 221 passed in 10.90s,
+20 new tests beyond 201; two known third-party test warnings remain. Ruff check,
+format check (46 files), mypy (32 source files), lock check (36 packages) and
+wheel build exited 0. Targeted new-source secret scan found zero findings;
+dependencies unchanged, previous vulnerability audit remains historical.
+Evidence: docs/evidence/m1-snapshot-checks.json and m1-snapshot-tests.xml.
+Restored committed m1-postgres-tests.xml after saving the new harness output
+separately, preserving historical ledger hashes.
+
+Threat limits: SHA-1 identity is not author authenticity. Transport must enforce
+timeouts/bytes before allocation. Text still needs redaction before model use.
+Production ObjectSource, authenticated GitHub fetch, durable snapshots/artifacts,
+installation-scope verification and grant revocation remain pending. Registry
+methods are trusted internal code, not independent authentication. M0/M1 remain
+partial; no live snapshot or verified-repair acceptance is claimed.
+
+Next integration needs an explicitly approved repository/commit and GitHub
+installation scope for real read-only fetch; none is configured in this session.
+Redacted context/artifact storage follows. Live sandbox still requires explicit
+charge authorization. No paid call, remote write or untrusted execution occurred.
+
+## 2026-10-13 — Sanitized context construction
+
+Reread required docs and actual implementation. Preserved existing work; source
+HEAD remains e60e682128a1a7d10d1f5dc028ca9abb0adb76c7. Continued the
+independently testable collector while live GitHub/sandbox acceptance is pending.
+
+Added frozen ContextBundle/ContextFile, selected-path collection, original-source
+integrity checks and separate original/sanitized hashes. Bounded normalization,
+known/common credential redaction and AST symbol inspection produce an explicitly
+untrusted context capped at 4096 serialized UTF-8 bytes. Oversized files are
+omitted with reasons, not silently truncated. No source execution or model call.
+
+Initial test collection exited 1 for the absent module. A later negative test
+observed a truncated-private-key leak; the fix now removes an unterminated block
+through end of input. Fifteen new tests cover sentinel exclusion from a labeled
+model sink, credentials, metadata/control normalization, invalid encoding/syntax,
+tampered hashes, input/context limits and inert injected instructions.
+
+Final `uv run python -m scripts.test_postgres` exited 0: 236 passed in 11.87s,
+including the 15 real database scenarios. Two known third-party warnings remain.
+Ruff lint/format (50 files), mypy (35 source files), lock check (36 packages)
+and wheel build exited 0. New-source secret scan found zero findings. Dependencies
+unchanged; prior vulnerability audit is historical. New evidence is preserved in
+m1-context-tests.xml and m1-context-checks.json; committed PostgreSQL JUnit restored
+after saving the harness output separately, preserving historical ledger hashes.
+
+Limits: pattern redaction is not comprehensive DLP; trusted callers must supply
+known secrets. AST is sanitized context, not original executable semantics.
+Durable context artifacts, dependency digest, automatic discovery, graph/model
+gateway integration and real-fetch acceptance remain pending. Original raw
+snapshot memory must stay private and unlogged. See docs/context-collection.md.
+M0/M1 remain partial; no verified repair or live integration completion claimed.
+
+Next: durable authorized context/artifact storage and graph integration. Live
+fetch requires an approved repo/commit and installation scope; sandbox/inference
+require explicit charge approval. No cloud call, remote write or untrusted
+execution occurred. New changes remain local and uncommitted.
+
+## 2026-10-13 — Durable sanitized context artifacts
+
+Reread docs, contracts and actual changes; HEAD remains
+e60e682128a1a7d10d1f5dc028ca9abb0adb76c7. Preserved prior work and unrelated
+untracked .env.example. Added migration 0003 and trusted Store context operations:
+canonical 4096-byte SHA256 artifacts, live-lease/version/stage/source checks,
+atomic artifact/checkpoint/TRIAGING/event commit, owner/expiry/checksum reads.
+Added authenticated local artifact GET and reducer guard requiring context
+references before TRIAGING. Runtime cannot UPDATE/DELETE artifact rows.
+
+Test-first unit run exited 1 for absent methods. Five new tests now pass, covering
+invalid hashes/IDs before DB, missing-reference transition denial, real restart,
+owner/API isolation, expiry/tamper checks, runtime rewrite denial and atomic
+rollback on forced insertion failure. Final `uv run python -m
+scripts.test_postgres` exited 0: 241 passed in 14.24s, including 17 real database
+scenarios; two known third-party warnings remain. Ruff lint/format (52 files),
+mypy (35 source files), lock check (36 packages) and wheel build exited 0.
+Changed-source secret scan found zero findings. Dependencies unchanged; previous
+vulnerability audit remains historical. Evidence: m1-artifact-tests.xml and
+m1-artifact-checks.json. Historical PostgreSQL JUnit restored after preserving
+the new harness output separately; old ledger hashes remain valid.
+
+Limits: the worker must redact before storage; schema validation is not DLP or
+source authentication. App owner checks are not tenant RLS. Seven-day read expiry
+does not physically delete bytes; purge, configurable retention, backups,
+encryption-at-rest and general manifests remain pending. Checksums cannot defeat
+an administrator rewriting both digest and payload. Tests stored synthetic data
+only; disposable DB/roles cleaned up. See docs/context-artifacts.md.
+
+M0/M1 remain partial: collection graph wiring and live integration are unverified.
+Next local task is graph/checkpoint recovery integration. Live fetch needs an
+approved repo/commit and installation scope; sandbox/inference need explicit
+charge approval. No cloud call, remote write or untrusted execution occurred.
+New changes remain local and uncommitted.
+
+## 2026-10-13 — Collection graph and domain-checkpoint recovery
+
+Reread governing docs and actual changes. HEAD remains
+e60e682128a1a7d10d1f5dc028ca9abb0adb76c7. Preserved existing implementation.
+Added pinned LangGraph 1.2.15 and LangSmith 0.14.8 (context controls only), closed
+CollectionDelta vocabulary, pure stage planning and one trusted commit reducer.
+The bounded graph resumes from domain RunState, checks persisted scope/source,
+collects sanitized context and stops at TRIAGING. No model/sandbox/GitHub dispatch.
+Scope and collector failures persist safe failure_reason codes; queued/collecting
+stages can fail closed. Hosted tracing is explicitly disabled, not environment
+dependent. See docs/collection-graph.md and ADR-013 for domain/native limits.
+
+Test-first collection exited 1 for absent module. Initial strict typing errors
+were fixed using validated delta construction, named node inputs and explicit
+StateGraph generic types. A failed local shell quoting attempt made no edit and
+was replaced by apply_patch. Ten new tests cover pure planning/privileged-delta
+rejection, real graph collection, completed replay without duplicate events,
+injected interruption at COLLECTING, expired-lease replacement resume, old-worker
+fencing, scope/context/source rejection, cancellation and tracing disabled even
+when LANGSMITH_TRACING=true. This is injected graph interruption, not a claim of
+native LangGraph checkpoint/task recovery; prior real process-death DB tests remain.
+
+Final `uv run python -m scripts.test_postgres` exited 0: 251 passed in 17.73s,
+including 23 real PostgreSQL scenarios. One existing AnyIO test-client alias
+warning remains. Installing the graph's HTTPX2 dependency removed the previous
+HTTPX compatibility warning without suppressions. Ruff check/format (55 files),
+mypy (37 source files), lock check (63 packages), wheel build passed. New production
+dependency audit: no known vulnerabilities. Changed-source secret scan: zero
+findings. Explicit LangSmith pin added afterward without changing any resolved
+version; lock/build rechecked. Evidence: m1-graph-tests.xml and m1-graph-checks.json.
+Prior committed PostgreSQL JUnit restored to preserve historical ledger hashes.
+
+M0/M1 remain partial: fixtures are synthetic preloaded snapshots, worker scheduling,
+full incident ingestion, live authenticated fetch, native pending-task recovery,
+cost/time reservations and exactly-once external action reconciliation are still
+pending. Only pure planning is safely recomputed here. No complete agent workflow,
+verified repair or deployment readiness claimed. Next: approved read-only source
+adapter and background worker/input artifact wiring before real triage. Live
+inference/sandbox still need charge authorization. No paid calls, remote writes
+or untrusted execution occurred; changes remain local and uncommitted.
