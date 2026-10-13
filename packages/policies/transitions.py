@@ -16,8 +16,10 @@ TERMINAL = frozenset(
 EDGES: dict[Stage, frozenset[Stage]] = {
     Stage.CREATED: frozenset({Stage.VALIDATING}),
     Stage.VALIDATING: frozenset({Stage.QUEUED, Stage.POLICY_BLOCKED}),
-    Stage.QUEUED: frozenset({Stage.COLLECTING}),
-    Stage.COLLECTING: frozenset({Stage.TRIAGING}),
+    Stage.QUEUED: frozenset({Stage.COLLECTING, Stage.POLICY_BLOCKED}),
+    Stage.COLLECTING: frozenset(
+        {Stage.TRIAGING, Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}
+    ),
     Stage.TRIAGING: frozenset({Stage.REPRODUCING}),
     Stage.REPRODUCING: frozenset({Stage.PATCHING, Stage.INCONCLUSIVE}),
     Stage.PATCHING: frozenset({Stage.VERIFYING, Stage.INCONCLUSIVE}),
@@ -51,6 +53,8 @@ def transition(state: RunState, target: Stage, *, expected_version: int) -> RunS
         raise TransitionError("APPROVAL_SERVICE_REQUIRED")
     if state.cancellation_requested and target != Stage.CANCELLED:
         raise TransitionError("CANCELLATION_PENDING")
+    if target == Stage.TRIAGING and not state.context_refs:
+        raise TransitionError("CONTEXT_EVIDENCE_REQUIRED")
     if target == Stage.PATCHING and (
         state.baseline_result_ref is None or state.reproduction_test_ref is None
     ):
