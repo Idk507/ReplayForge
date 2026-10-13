@@ -1,9 +1,12 @@
 """Transactional PostgreSQL checkpoints, outbox events and fenced job leases."""
 
+import hashlib
+import json
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 import psycopg
@@ -11,6 +14,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict
 
+from packages.contracts.context import ContextBundle
+from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
 from packages.policies.budget import consume
 from packages.policies.transitions import TERMINAL, transition
@@ -58,6 +63,131 @@ class Store:
 
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
+
+    @staticmethod
+    def _context_payload(bundle: ContextBundle) -> bytes:
+        """Validate bounded sanitized data, never accept raw logs or arbitrary blobs."""
+        bundle = ContextBundle.model_validate(bundle.model_dump())
+        if len({item.path for item in bundle.files}) != len(bundle.files):
+            raise StoreError("CONTEXT_INTEGRITY")
+        if any(
+            hashlib.sha256(item.content.encode()).hexdigest() != item.sanitized_sha256
+            for item in bundle.files
+        ):
+            raise StoreError("CONTEXT_INTEGRITY")
+        payload = json.dumps(
+            bundle.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        if len(payload) > 4096:
+            raise StoreError("CONTEXT_LIMIT")
+        return payload
+
+    def store_context(
+        self, lease: Lease, bundle: ContextBundle, *, expected_version: int
+    ) -> RunState:
+        """Commit sanitized context and TRIAGING checkpoint in one transaction.
+
+        Trusted worker only: the collector must perform redaction before this
+        call. No model/API tool can invoke it. Unknown commit outcomes require
+        checkpoint reconciliation; a repeated stale write is not retried.
+        """
+        payload = self._context_payload(bundle)
+        lease = Lease.model_validate(lease.model_dump())
+        digest = hashlib.sha256(payload).hexdigest()
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT checkpoint FROM runs WHERE id=%s FOR UPDATE", (lease.run_id,)
+            ).fetchone()
+            job = conn.execute(
+                """SELECT run_id FROM job_leases WHERE run_id=%s
+                AND worker_id=%s AND token=%s AND status='leased'
+                AND leased_until>clock_timestamp() FOR UPDATE""",
+                (lease.run_id, lease.worker_id, lease.token),
+            ).fetchone()
+            if row is None or job is None:
+                raise StoreError("LEASE_LOST")
+            state = RunState.model_validate(row["checkpoint"])
+            if type(expected_version) is not int or state.version != expected_version:
+                raise StoreError("STALE_VERSION")
+            if state.current_stage != Stage.COLLECTING or state.cancellation_requested:
+                raise StoreError("CONTEXT_STAGE_DENIED")
+            if bundle.source_commit != state.source_commit:
+                raise StoreError("CONTEXT_SOURCE_MISMATCH")
+            conn.execute(
+                """INSERT INTO context_artifacts(run_id,digest,payload)
+                VALUES (%s,%s,%s)""",
+                (state.run_id, digest, payload),
+            )
+            data = state.model_dump()
+            data["context_refs"] = (*state.context_refs, f"sha256:{digest}")
+            state = transition(
+                RunState.model_validate(data),
+                Stage.TRIAGING,
+                expected_version=expected_version,
+            )
+            self._save(conn, state)
+            return state
+
+    def context(self, run_id: UUID, owner: UUID, artifact_id: str) -> ContextBundle:
+        """Owner-scoped retained read with checksum and schema verification."""
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", artifact_id):
+            raise StoreError("ARTIFACT_ID_INVALID")
+        digest = artifact_id[7:]
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT a.payload FROM context_artifacts a
+                JOIN runs r ON r.id=a.run_id WHERE a.run_id=%s AND r.owner_id=%s
+                AND a.digest=%s AND a.expires_at>clock_timestamp()""",
+                (run_id, owner, digest),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            payload = row["payload"]
+            if (
+                not isinstance(payload, bytes)
+                or hashlib.sha256(payload).hexdigest() != digest
+            ):
+                raise StoreError("ARTIFACT_INTEGRITY")
+            bundle = ContextBundle.model_validate_json(payload)
+            if self._context_payload(bundle) != payload:
+                raise StoreError("ARTIFACT_INTEGRITY")
+            return bundle
+
+    def register_repository(self, grant: RepositoryGrant) -> None:
+        """Operator-only insertion; runtime must lack INSERT permission.
+
+        Requires separately authenticated human consent. No public endpoint
+        calls this method, and existing grants cannot be silently replaced.
+        """
+        grant = RepositoryGrant.model_validate(grant.model_dump())
+        with self._connection() as conn:
+            conn.execute(
+                """INSERT INTO repository_grants(id,owner_id,grant_json)
+                VALUES (%s,%s,%s)""",
+                (
+                    grant.repository_id,
+                    grant.owner_id,
+                    Jsonb(grant.model_dump(mode="json")),
+                ),
+            )
+
+    def repository(self, repository_id: UUID, owner: UUID) -> RepositoryGrant:
+        """Resolve persisted consent without revealing another owner's grant."""
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT grant_json FROM repository_grants
+                WHERE id=%s AND owner_id=%s""",
+                (repository_id, owner),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            grant = RepositoryGrant.model_validate(row["grant_json"])
+            if grant.repository_id != repository_id or grant.owner_id != owner:
+                raise StoreError("DB_INTEGRITY")
+            return grant
 
     @contextmanager
     def _connection(self) -> Iterator[psycopg.Connection[dict[str, object]]]:
@@ -266,7 +396,13 @@ class Store:
             return Lease.model_validate(claimed)
 
     def advance(
-        self, lease: Lease, target: Stage, *, expected_version: int
+        self,
+        lease: Lease,
+        target: Stage,
+        *,
+        expected_version: int,
+        failure_reason: Literal["SCOPE_DENIED", "SOURCE_MISMATCH", "CONTEXT_REJECTED"]
+        | None = None,
     ) -> RunState:
         """Lock run then job; fence expired/superseded workers before committing."""
         lease = Lease.model_validate(lease.model_dump())
@@ -288,6 +424,12 @@ class Store:
             state = RunState.model_validate(row["checkpoint"])
             if type(expected_version) is not int or state.version != expected_version:
                 raise StoreError("STALE_VERSION")
+            if failure_reason is not None:
+                if target not in {Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}:
+                    raise StoreError("INVALID_FAILURE_STAGE")
+                state = RunState.model_validate(
+                    {**state.model_dump(), "failure_reason": failure_reason}
+                )
             state = transition(state, target, expected_version=expected_version)
             self._save(conn, state)
             if target in TERMINAL:
