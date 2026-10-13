@@ -38,9 +38,9 @@ checkbox is completed by these offline tests.
 - [~] Postgres/Alembic checkpoint, event outbox and fenced job leases: real local process-death, rollback, concurrency and recovery tests passed. Full domain schema, automatic failure routing and merged acceptance remain pending.
 - [~] FastAPI metadata run creation, GET and cancellation: loopback-only bearer authentication, repository UUID scope and real DB tests passed. Redacted incident storage, repository consent resolution, rate limiting and production auth remain pending.
 - [~] Finite SSE replay pages: Last-Event-ID reconnect returns unseen persisted events in real DB/API tests. Continuous streaming/UI reconnect and deployment acceptance remain pending.
-- [ ] GitHub pinned read-only snapshot. Acceptance: snapshot hash equals expected commit.
-- [ ] Redactor + context collector. Acceptance: synthetic secret never reaches model mock.
-- [ ] LangGraph state checkpoints and failure routing. Acceptance: interrupted graph resumes without duplicate side effects.
+- [~] GitHub pinned snapshot: persisted PostgreSQL grants gate API intake; bounded reader verifies commit/tree/blob IDs and SHA256 file identities in synthetic tests. Authenticated live fetch and durable snapshot acceptance remain pending.
+- [~] Redactor/context collector: sanitized bundles persist atomically with hashed checkpoint references; owner/expiry/checksum API reads and rollback tested with PostgreSQL. Discovery, dependency digest, complete retention and graph integration remain pending.
+- [~] LangGraph collection plan/reducer loop recovers from PostgreSQL domain checkpoints; replacement-lease resume, no duplicate collection writes, scope/context failure routing and cancellation tested. Full agent graph, native pending-task persistence, action reconciliation and worker scheduling remain pending.
 **Gate:** fixture run reaches TRIAGING with durable trace and controlled outcome.
 
 ## M2 — Oct 17–20: Real execution and repair
