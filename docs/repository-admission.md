@@ -47,3 +47,12 @@ an exact path and byte cap. Raw bytes remain untrusted and need redaction before
 model use. Tests use an explicitly synthetic adapter with real-format objects.
 Production ObjectSource, authenticated fetch and persistent snapshots remain
 unimplemented; this is not live GitHub acceptance evidence.
+
+A bounded commit metadata resolver now exists in services.repository.github;
+see github-commit-resolver.md. It authenticates a fixed GET and correlates the
+approved SHA but does not implement raw ObjectSource or prove live access.
+
+Live scoped README acquisition has since passed for the user-authorized repository
+through the REST adapter; see github-live-smoke.md. Content admission is unchanged:
+portable metadata for excluded regular secret files may be skipped without reading
+their blobs. Metadata portability alone never authorizes content access.
