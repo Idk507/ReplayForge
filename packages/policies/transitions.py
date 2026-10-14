@@ -14,9 +14,13 @@ TERMINAL = frozenset(
     }
 )
 EDGES: dict[Stage, frozenset[Stage]] = {
-    Stage.CREATED: frozenset({Stage.VALIDATING}),
-    Stage.VALIDATING: frozenset({Stage.QUEUED, Stage.POLICY_BLOCKED}),
-    Stage.QUEUED: frozenset({Stage.COLLECTING, Stage.POLICY_BLOCKED}),
+    Stage.CREATED: frozenset({Stage.VALIDATING, Stage.INCONCLUSIVE}),
+    Stage.VALIDATING: frozenset(
+        {Stage.QUEUED, Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}
+    ),
+    Stage.QUEUED: frozenset(
+        {Stage.COLLECTING, Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}
+    ),
     Stage.COLLECTING: frozenset(
         {Stage.TRIAGING, Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}
     ),
