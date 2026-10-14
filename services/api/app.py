@@ -15,8 +15,10 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from packages.contracts.context import ContextBundle
 from packages.contracts.run import ArtifactID, CommitSHA, RunState
+from packages.contracts.source import SourceManifest
 from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
+from services.context.incident import prepare_incident
 from services.persistence.store import Store, StoreError
 
 
@@ -39,7 +41,7 @@ class LocalAuth(BaseModel):
 
 
 class CreateRun(BaseModel):
-    """Incident is hashed on intake, never persisted in this metadata-only slice."""
+    """Raw incident stays ephemeral; only bounded redacted input is persisted."""
 
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     repository_id: UUID
@@ -177,7 +179,16 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
             policy_version="local-v1",
             trace_id=uuid4(),
         )
-        return store.create(state, owner, payload.idempotency_key, digest)
+        try:
+            report = prepare_incident(
+                payload.incident_text,
+                known_secrets=(auth.token,) if auth.token is not None else (),
+            )
+        except ValueError:
+            raise HTTPException(422, "INCIDENT_INPUT_INVALID") from None
+        return store.create(
+            state, owner, payload.idempotency_key, digest, incident=report
+        )
 
     @app.get("/api/v1/runs/{run_id}")
     def get(run_id: UUID, owner: Annotated[UUID, Depends(identity)]) -> RunState:
@@ -194,6 +205,12 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
         run_id: UUID, payload: CancelRun, owner: Annotated[UUID, Depends(identity)]
     ) -> RunState:
         return store.cancel(run_id, owner, expected_version=payload.expected_version)
+
+    @app.get("/api/v1/runs/{run_id}/source-manifests/{artifact_id}")
+    def source_manifest(
+        run_id: UUID, artifact_id: ArtifactID, owner: Annotated[UUID, Depends(identity)]
+    ) -> SourceManifest:
+        return store.source_manifest(run_id, owner, artifact_id)
 
     @app.get("/api/v1/runs/{run_id}/events")
     def events(
