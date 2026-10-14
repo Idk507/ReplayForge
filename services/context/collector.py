@@ -67,6 +67,8 @@ def collect(
     omissions = ["ERRORS_TRUNCATED"] if len(clean_errors) > 1024 else []
     bundle = ContextBundle(
         source_commit=snapshot.source_commit,
+        commit_identity=snapshot.commit_identity,
+        evidence_origin=snapshot.evidence_origin,
         sanitized_errors=clean_errors[:1024],
         omissions=tuple(omissions),
     )
