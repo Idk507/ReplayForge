@@ -4,7 +4,8 @@ import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from uuid import uuid4
+from typing import Literal
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -14,6 +15,7 @@ from fastapi.testclient import TestClient
 from psycopg import sql
 from pydantic import SecretStr
 
+from packages.contracts.incident import IncidentReport
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
 from packages.policies.budget import BudgetError
@@ -31,6 +33,15 @@ def store() -> Store:
         role = sql.Identifier(os.environ["REPLAYFORGE_TEST_ROLE"])
         conn.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
         conn.execute(sql.SQL("GRANT SELECT ON repository_grants TO {}").format(role))
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON source_manifests TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON sealed_snapshots TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON incident_reports TO {}").format(role)
+        )
         conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON context_artifacts TO {}").format(role)
         )
@@ -199,13 +210,24 @@ def test_concurrent_claims_never_share_run(store: Store) -> None:
     assert len({claim.run_id for claim in claims if claim}) == 4
 
 
-def test_three_expired_claims_exhaust_job_with_audit_event(store: Store) -> None:
+@pytest.mark.parametrize(
+    "stage", [Stage.CREATED, Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING]
+)
+def test_three_expired_claims_exhaust_job_with_audit_event(
+    store: Store, stage: Stage
+) -> None:
     with psycopg.connect(store.dsn) as conn:
         conn.execute("UPDATE job_leases SET status='done'")
     owner, state = uuid4(), new_state()
     store.create(state, owner, uuid4(), "b" * 64)
-    for _ in range(3):
-        assert store.claim(uuid4()) is not None
+    for attempt in range(3):
+        lease = store.claim(uuid4())
+        assert lease is not None
+        if attempt == 0:
+            for target in (Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING):
+                if state.current_stage == stage:
+                    break
+                state = store.advance(lease, target, expected_version=state.version)
         with psycopg.connect(store.dsn) as conn:
             conn.execute(
                 """UPDATE job_leases SET leased_until=
@@ -214,7 +236,72 @@ def test_three_expired_claims_exhaust_job_with_audit_event(store: Store) -> None
             )
     assert store.claim(uuid4()) is None
     assert store.events(state.run_id, owner)[-1].event_type == "LEASE_EXHAUSTED"
+    exhausted = store.get(state.run_id, owner)
+    assert exhausted.current_stage == Stage.INCONCLUSIVE
+    assert exhausted.failure_reason == "LEASE_EXHAUSTED"
+    assert exhausted.version == state.version + 1
+    events = store.events(state.run_id, owner)
     assert store.claim(uuid4()) is None
+    assert store.events(state.run_id, owner) == events
+    with pytest.raises(StoreError, match="LEASE_LOST"):
+        store.heartbeat(lease)
+
+
+def test_cancellation_before_exhaustion_preserves_cancelled_result(
+    store: Store,
+) -> None:
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    owner, state = uuid4(), new_state()
+    store.create(state, owner, uuid4(), "b" * 64)
+    lease = store.claim(uuid4())
+    assert lease is not None
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            """UPDATE job_leases SET attempt_count=3,
+            leased_until=clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    cancelled = store.cancel(state.run_id, owner, expected_version=0)
+    assert store.claim(uuid4()) is None
+    assert store.get(state.run_id, owner) == cancelled
+    assert cancelled.failure_reason is None
+    assert store.events(state.run_id, owner)[-1].event_type == "CANCELLED"
+
+
+def test_exhaustion_event_failure_rolls_back_checkpoint_and_fence(store: Store) -> None:
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    owner, state = uuid4(), new_state()
+    store.create(state, owner, uuid4(), "b" * 64)
+    lease = store.claim(uuid4())
+    assert lease is not None
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            """UPDATE job_leases SET attempt_count=3,
+            leased_until=clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    before = store.events(state.run_id, owner)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """ALTER TABLE run_events ADD CONSTRAINT reject_exhaustion
+            CHECK (event_type <> 'LEASE_EXHAUSTED') NOT VALID"""
+        )
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE"):
+            store.claim(uuid4())
+        assert store.get(state.run_id, owner) == state
+        assert store.events(state.run_id, owner) == before
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT status,token FROM job_leases WHERE run_id=%s", (state.run_id,)
+            ).fetchone() == ("leased", lease.token)
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute("ALTER TABLE run_events DROP CONSTRAINT reject_exhaustion")
+    assert store.claim(uuid4()) is None
+    assert store.get(state.run_id, owner).current_stage == Stage.INCONCLUSIVE
 
 
 def test_persistent_budget_reservation_and_expired_heartbeat(store: Store) -> None:
@@ -263,7 +350,8 @@ def test_local_api_real_create_cancel_and_sse_reconnect(store: Store) -> None:
     payload = {
         "repository_id": str(repository),
         "commit_sha": "a" * 40,
-        "incident_text": "synthetic-incident-never-store-raw",
+        "incident_text": "synthetic-incident-never-store-raw password=synthetic-value "
+        + token,
         "idempotency_key": str(uuid4()),
     }
     headers = {"Authorization": "Bearer " + token}
@@ -271,6 +359,10 @@ def test_local_api_real_create_cancel_and_sse_reconnect(store: Store) -> None:
         response = http.post("/api/v1/runs", json=payload, headers=headers)
         assert response.status_code == 202
         run_id = response.json()["run_id"]
+        report = Store(store.dsn).incident(UUID(run_id), owner)
+        assert "synthetic-incident" in report.text
+        assert token not in report.text and "synthetic-value" not in report.text
+        assert "synthetic-incident" not in response.text
         assert (
             http.post("/api/v1/runs", json=payload, headers=headers).json()["run_id"]
             == run_id
@@ -369,7 +461,10 @@ def test_persisted_grants_are_scoped_and_runtime_cannot_insert(store: Store) -> 
         store.register_repository(grant.model_copy(update={"repository_id": uuid4()}))
 
 
-def test_context_artifact_atomic_restart_and_owner_isolation(store: Store) -> None:
+@pytest.mark.parametrize("identity", ["GIT_OBJECT_HASH", "GITHUB_HTTPS_METADATA"])
+def test_context_artifact_atomic_restart_and_owner_isolation(
+    store: Store, identity: Literal["GIT_OBJECT_HASH", "GITHUB_HTTPS_METADATA"]
+) -> None:
     from packages.contracts.context import ContextBundle
 
     with psycopg.connect(store.dsn) as conn:
@@ -383,7 +478,9 @@ def test_context_artifact_atomic_restart_and_owner_isolation(store: Store) -> No
     ):
         store.advance(lease, target, expected_version=version)
     bundle = ContextBundle(
-        source_commit=state.source_commit, sanitized_errors="sanitized fixture"
+        source_commit=state.source_commit,
+        sanitized_errors="sanitized fixture",
+        commit_identity=identity,
     )
     saved = store.store_context(lease, bundle, expected_version=3)
     assert saved.current_stage == Stage.TRIAGING and saved.version == 4
@@ -468,7 +565,9 @@ def test_context_artifact_failure_rolls_back_checkpoint(store: Store) -> None:
             conn.execute("ALTER TABLE context_artifacts DROP CONSTRAINT reject_context")
 
 
-def collection_fixture(store: Store, *, consent: bool = True):
+def collection_fixture(
+    store: Store, *, consent: bool = True, incident: IncidentReport | None = None
+):
     import hashlib
     from types import MappingProxyType
 
@@ -486,7 +585,7 @@ def collection_fixture(store: Store, *, consent: bool = True):
         consent=consent,
     )
     Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]).register_repository(grant)
-    store.create(state, owner, uuid4(), "b" * 64)
+    store.create(state, owner, uuid4(), "b" * 64, incident=incident)
     lease = store.claim(uuid4())
     assert lease is not None
     body = b"# synthetic source; never executed\nx=1\n"
@@ -624,13 +723,630 @@ def test_collection_source_mismatch_and_cancel_are_closed(store: Store) -> None:
 def test_successful_collection_is_not_reclaimed(store: Store) -> None:
     from services.orchestrator.collection import run_collection
 
-    owner,state,lease,snapshot = collection_fixture(store)
-    run_collection(store,owner,lease,snapshot,("src/a.py",),"")
+    owner, state, lease, snapshot = collection_fixture(store)
+    run_collection(store, owner, lease, snapshot, ("src/a.py",), "")
     with psycopg.connect(store.dsn) as conn:
-        conn.execute("""UPDATE job_leases SET leased_until=
-            clock_timestamp()-interval '1 second' WHERE run_id=%s""",(state.run_id,))
+        conn.execute(
+            """UPDATE job_leases SET leased_until=
+            clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
     assert store.claim(uuid4()) is None
-    assert store.get(state.run_id,owner).current_stage == Stage.TRIAGING
+    assert store.get(state.run_id, owner).current_stage == Stage.TRIAGING
+
+
+def test_worker_dispatches_one_job_and_success_stays_idle(store: Store) -> None:
+    from services.orchestrator.collection import CollectionInputs
+    from services.orchestrator.worker import tick
+
+    owner, state, initial, snapshot = collection_fixture(store)
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            """UPDATE job_leases SET status='queued',token=NULL
+            WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    calls: list[Stage] = []
+
+    def loader(run: RunState, grant: RepositoryGrant) -> CollectionInputs:
+        assert grant.owner_id == owner
+        calls.append(run.current_stage)
+        return CollectionInputs(snapshot, ("src/a.py",))
+
+    result = tick(store, uuid4(), loader)
+    assert result.stage == Stage.TRIAGING and result.status == "PROCESSED"
+    assert calls == [Stage.COLLECTING]
+    assert tick(store, uuid4(), loader).status == "IDLE"
+    assert len(calls) == 1
+    with pytest.raises(StoreError, match="LEASE_LOST"):
+        store.claimed_run(initial)
+
+
+def test_worker_denied_scope_never_loads_inputs(store: Store) -> None:
+    from services.orchestrator.worker import tick
+
+    owner, state, lease, snapshot = collection_fixture(store, consent=False)
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            (state.run_id,),
+        )
+
+    def loader(run: RunState, grant: RepositoryGrant):
+        pytest.fail("denied scope must not invoke the input adapter")
+
+    assert tick(store, uuid4(), loader).stage == Stage.POLICY_BLOCKED
+    assert store.get(state.run_id, owner).failure_reason == "SCOPE_DENIED"
+
+
+def test_worker_input_failure_recovers_with_fresh_claim(store: Store) -> None:
+    from services.orchestrator.collection import CollectionError, CollectionInputs
+    from services.orchestrator.worker import tick
+
+    owner, state, lease, snapshot = collection_fixture(store)
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            (state.run_id,),
+        )
+
+    def unavailable(run: RunState, grant: RepositoryGrant):
+        raise OSError("synthetic input service interruption")
+
+    with pytest.raises(CollectionError, match="INPUT_UNAVAILABLE"):
+        tick(store, uuid4(), unavailable)
+    assert store.get(state.run_id, owner).current_stage == Stage.COLLECTING
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            """UPDATE job_leases SET leased_until=
+            clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    result = tick(
+        Store(store.dsn),
+        uuid4(),
+        lambda run, grant: CollectionInputs(snapshot, ("src/a.py",)),
+    )
+    assert result.stage == Stage.TRIAGING
+    assert len(store.get(state.run_id, owner).context_refs) == 1
+
+
+def test_worker_loader_cannot_commit_after_lease_expiry(store: Store) -> None:
+    from services.orchestrator.collection import CollectionInputs
+    from services.orchestrator.worker import tick
+
+    owner, state, lease, snapshot = collection_fixture(store)
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            (state.run_id,),
+        )
+
+    def expires(run: RunState, grant: RepositoryGrant) -> CollectionInputs:
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                """UPDATE job_leases SET leased_until=
+                clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+                (state.run_id,),
+            )
+        return CollectionInputs(snapshot, ("src/a.py",))
+
+    with pytest.raises(StoreError, match="LEASE_LOST"):
+        tick(store, uuid4(), expires)
+    assert store.get(state.run_id, owner).current_stage == Stage.COLLECTING
+    assert not store.get(state.run_id, owner).context_refs
+
+
+def test_incident_atomic_creation_restart_scope_and_tamper(store: Store) -> None:
+    from services.context.incident import prepare_incident
+
+    owner, state, key = uuid4(), new_state(), uuid4()
+    report = prepare_incident("failure password=synthetic-credential")
+    store.create(state, owner, key, "c" * 64, incident=report)
+    assert Store(store.dsn).incident(state.run_id, owner) == report
+    assert "synthetic-credential" not in report.text
+    # Matching retries never rewrite the first durable input, even if an internal
+    # caller supplies a different report with the same opaque request hash.
+    store.create(state, owner, key, "c" * 64, incident=prepare_incident("replacement"))
+    assert store.incident(state.run_id, owner) == report
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        store.incident(state.run_id, uuid4())
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                "DELETE FROM incident_reports WHERE run_id=%s", (state.run_id,)
+            )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE incident_reports SET payload=%s WHERE run_id=%s",
+            (b"tampered", state.run_id),
+        )
+    with pytest.raises(StoreError, match="INCIDENT_INTEGRITY"):
+        store.incident(state.run_id, owner)
+
+
+def test_bound_incident_survives_recovery_and_reaches_context(store: Store) -> None:
+    from services.context.incident import prepare_incident
+    from services.orchestrator.collection import CollectionInputs, run_collection
+    from services.orchestrator.worker import bind_incident
+
+    report = prepare_incident("duplicate transaction password=synthetic-credential")
+    owner, state, lease, snapshot = collection_fixture(store, incident=report)
+    # A fresh adapter simulates process reconstruction, not raw in-memory input.
+    restarted = Store(store.dsn)
+
+    def source(run: RunState, grant: RepositoryGrant) -> CollectionInputs:
+        return CollectionInputs(snapshot, ("src/a.py",), "synthetic trace")
+
+    result = run_collection(
+        restarted, owner, lease, input_loader=bind_incident(restarted, source)
+    )
+    context = restarted.context(state.run_id, owner, result.context_refs[0])
+    assert "duplicate transaction" in context.sanitized_errors
+    assert "synthetic trace" in context.sanitized_errors
+    assert "synthetic-credential" not in context.model_dump_json()
+
+
+def test_missing_incident_blocks_source_loader(store: Store) -> None:
+    from services.orchestrator.collection import CollectionError, run_collection
+    from services.orchestrator.worker import bind_incident
+
+    owner, state, lease, snapshot = collection_fixture(store)
+    called = False
+
+    def source(run: RunState, grant: RepositoryGrant):
+        nonlocal called
+        called = True
+        raise AssertionError("must not access source without retained incident")
+
+    with pytest.raises(CollectionError, match="INCIDENT_UNAVAILABLE"):
+        run_collection(store, owner, lease, input_loader=bind_incident(store, source))
+    assert not called
+    assert store.get(state.run_id, owner).current_stage == Stage.COLLECTING
+
+
+def test_incident_expiry_and_creation_rollback(store: Store) -> None:
+    from services.context.incident import prepare_incident
+
+    owner, state = uuid4(), new_state()
+    report = prepare_incident("synthetic retained incident")
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute("""ALTER TABLE incident_reports ADD CONSTRAINT reject_incident
+            CHECK (false) NOT VALID""")
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE"):
+            store.create(state, owner, uuid4(), "d" * 64, incident=report)
+        with pytest.raises(StoreError, match="NOT_FOUND"):
+            store.get(state.run_id, owner)
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT count(*) FROM run_events WHERE run_id=%s", (state.run_id,)
+            ).fetchone() == (0,)
+            assert conn.execute(
+                "SELECT count(*) FROM job_leases WHERE run_id=%s", (state.run_id,)
+            ).fetchone() == (0,)
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute("ALTER TABLE incident_reports DROP CONSTRAINT reject_incident")
+    store.create(state, owner, uuid4(), "d" * 64, incident=report)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """UPDATE incident_reports SET expires_at=
+            clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        store.incident(state.run_id, owner)
+
+
+@pytest.mark.parametrize("has_identity", [False, True])
+def test_legacy_context_without_commit_identity_remains_readable(
+    store: Store, has_identity: bool
+) -> None:
+    import hashlib
+    import json
+
+    from packages.contracts.context import ContextBundle
+
+    owner, state = uuid4(), new_state()
+    store.create(state, owner, uuid4(), "e" * 64)
+    bundle = ContextBundle(source_commit=state.source_commit, sanitized_errors="legacy")
+    data = bundle.model_dump(mode="json")
+    if not has_identity:
+        data.pop("commit_identity")
+    data.pop("evidence_origin")
+    payload = json.dumps(
+        data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
+    digest = hashlib.sha256(payload).hexdigest()
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "INSERT INTO context_artifacts(run_id,digest,payload) VALUES (%s,%s,%s)",
+            (state.run_id, digest, payload),
+        )
+    restored = store.context(state.run_id, owner, "sha256:" + digest)
+    assert restored.sanitized_errors == "legacy"
+    assert restored.commit_identity == "GIT_OBJECT_HASH"
+
+
+@pytest.mark.parametrize("outcome", ["success", "unavailable", "tampered"])
+@pytest.mark.parametrize("retain_snapshot", [False, True])
+def test_api_incident_to_http_source_worker_context_pipeline(
+    store: Store, outcome: str, retain_snapshot: bool
+) -> None:
+    import base64
+    import hashlib
+
+    import httpx
+    from pydantic import SecretBytes
+
+    from services.orchestrator.source import github_inputs
+    from services.orchestrator.worker import bind_incident, tick
+    from services.repository.packaging import SnapshotCipher
+
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    owner, repository = uuid4(), uuid4()
+    auth_token = "synthetic-local-operator-" * 3
+    read_token = SecretStr("synthetic-repository-read-credential")
+    content = ("# synthetic data " + read_token.get_secret_value() + "\nx=1\n").encode()
+
+    def oid(kind: str, data: bytes) -> str:
+        return hashlib.sha1(f"{kind} {len(data)}\0".encode() + data).hexdigest()
+
+    blob = oid("blob", content)
+    subtree = oid("tree", b"100644 a.py\0" + bytes.fromhex(blob))
+    root = oid("tree", b"40000 src\0" + bytes.fromhex(subtree))
+    grant = RepositoryGrant(
+        repository_id=repository,
+        owner_id=owner,
+        remote_url="https://github.com/example/fixture",
+        commits=("a" * 40,),
+        approved_paths=("src/",),
+        consent=True,
+    )
+    Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]).register_repository(grant)
+    auth = LocalAuth(
+        token=SecretStr(auth_token), owner_id=owner, approved_repositories=(repository,)
+    )
+    headers = {"Authorization": "Bearer " + auth_token}
+    with TestClient(create_app(store, auth), client=("127.0.0.1", 1)) as api:
+        response = api.post(
+            "/api/v1/runs",
+            headers=headers,
+            json={
+                "repository_id": str(repository),
+                "commit_sha": "a" * 40,
+                "incident_text": "duplicate transaction password=synthetic-value",
+                "idempotency_key": str(uuid4()),
+            },
+        )
+    assert response.status_code == 202
+    run_id = UUID(response.json()["run_id"])
+    calls = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if outcome == "unavailable":
+            return httpx.Response(403, text="sensitive provider detail")
+        if "/commits/" in request.url.path:
+            payload = {"sha": "a" * 40, "tree": {"sha": root}}
+        elif request.url.path.endswith("/trees/" + root):
+            payload = {
+                "sha": root,
+                "truncated": False,
+                "tree": [
+                    {"path": "src", "type": "tree", "mode": "040000", "sha": subtree}
+                ],
+            }
+        elif request.url.path.endswith("/trees/" + subtree):
+            payload = {
+                "sha": subtree,
+                "truncated": False,
+                "tree": [
+                    {"path": "a.py", "type": "blob", "mode": "100644", "sha": blob}
+                ],
+            }
+        else:
+            body = b"tampered" if outcome == "tampered" else content
+            payload = {
+                "sha": blob,
+                "size": len(body),
+                "encoding": "base64",
+                "content": base64.b64encode(body).decode(),
+            }
+        return httpx.Response(200, json=payload)
+
+    restarted = Store(store.dsn)
+    cipher = (
+        SnapshotCipher(SecretBytes(os.urandom(32)), "ephemeral-test-key")
+        if retain_snapshot
+        else None
+    )
+    loader = bind_incident(
+        restarted,
+        github_inputs(
+            read_token,
+            ("src/a.py",),
+            transport=httpx.MockTransport(handle),
+            snapshot_cipher=cipher,
+        ),
+    )
+    result = tick(restarted, uuid4(), loader)
+    state = restarted.get(run_id, owner)
+    if outcome == "success":
+        assert result.stage == Stage.TRIAGING
+        context = restarted.context(run_id, owner, state.context_refs[0])
+        assert context.evidence_origin == "TEST_TRANSPORT"
+        assert state.source_manifest_ref is not None
+        manifest = restarted.source_manifest(run_id, owner, state.source_manifest_ref)
+        assert manifest.evidence_origin == "TEST_TRANSPORT"
+        assert manifest.root_tree == root and manifest.files[0].blob_id == blob
+        assert manifest.files[0].sha256 == hashlib.sha256(content).hexdigest()
+        if cipher is not None:
+            assert state.source_snapshot_ref is not None
+            sealed = restarted.sealed_snapshot(run_id, owner, state.source_snapshot_ref)
+            assert read_token.get_secret_value() not in sealed.model_dump_json()
+            restored = cipher.open(sealed, manifest, grant, owner, run_id)
+            assert restored.read_file("src/a.py", 65536) == content
+            with pytest.raises(StoreError, match="NOT_FOUND"):
+                restarted.sealed_snapshot(run_id, uuid4(), state.source_snapshot_ref)
+        else:
+            assert state.source_snapshot_ref is None
+        assert "content" not in manifest.model_dump()
+        assert read_token.get_secret_value() not in manifest.model_dump_json()
+        with pytest.raises(StoreError, match="NOT_FOUND"):
+            restarted.source_manifest(run_id, uuid4(), state.source_manifest_ref)
+        with TestClient(create_app(restarted, auth), client=("127.0.0.1", 1)) as api:
+            proof = api.get(
+                f"/api/v1/runs/{run_id}/source-manifests/{state.source_manifest_ref}",
+                headers=headers,
+            )
+            assert proof.status_code == 200
+            assert proof.json()["root_tree"] == root
+        assert context.commit_identity == "GITHUB_HTTPS_METADATA"
+        assert "duplicate transaction" in context.sanitized_errors
+        assert read_token.get_secret_value() not in context.model_dump_json()
+        assert "synthetic-value" not in context.model_dump_json()
+    else:
+        expected = (
+            Stage.INCONCLUSIVE if outcome == "unavailable" else Stage.POLICY_BLOCKED
+        )
+        assert result.stage == expected
+        assert state.failure_reason == (
+            "SOURCE_UNAVAILABLE" if outcome == "unavailable" else "SOURCE_REJECTED"
+        )
+        assert not state.context_refs
+    observed = len(calls)
+    assert tick(restarted, uuid4(), loader).status == "IDLE"
+    assert len(calls) == observed
+    with TestClient(create_app(restarted, auth), client=("127.0.0.1", 1)) as api:
+        events = api.get(f"/api/v1/runs/{run_id}/events", headers=headers).text
+        assert read_token.get_secret_value() not in events
+        assert "sensitive provider" not in events
+
+
+def source_manifest_fixture(store: Store):
+    from datetime import UTC, datetime
+
+    from packages.contracts.context import ContextBundle
+    from packages.contracts.source import SourceManifest
+
+    owner, state, lease, snapshot = collection_fixture(store)
+    for version, target in enumerate(
+        (Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING)
+    ):
+        store.advance(lease, target, expected_version=version)
+    bundle = ContextBundle(
+        source_commit=state.source_commit,
+        sanitized_errors="fixture",
+        commit_identity="GITHUB_HTTPS_METADATA",
+        evidence_origin="TEST_TRANSPORT",
+    )
+    manifest = SourceManifest(
+        repository_id=state.repository_id,
+        source_commit=state.source_commit,
+        root_tree="b" * 40,
+        evidence_origin="TEST_TRANSPORT",
+        observed_at=datetime.now(UTC),
+        trace_id=uuid4(),
+        files=(),
+    )
+    return owner, state, lease, bundle, manifest
+
+
+def test_source_manifest_transaction_rollback(store: Store) -> None:
+    owner, state, lease, bundle, manifest = source_manifest_fixture(store)
+    before = store.events(state.run_id, owner)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute("""ALTER TABLE context_artifacts
+            ADD CONSTRAINT reject_manifest_context
+            CHECK (false) NOT VALID""")
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE"):
+            store.store_context(
+                lease, bundle, expected_version=3, source_manifest=manifest
+            )
+        restored = store.get(state.run_id, owner)
+        assert restored.current_stage == Stage.COLLECTING and restored.version == 3
+        assert restored.source_manifest_ref is None and not restored.context_refs
+        assert store.events(state.run_id, owner) == before
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT count(*) FROM source_manifests WHERE run_id=%s", (state.run_id,)
+            ).fetchone() == (0,)
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "ALTER TABLE context_artifacts DROP CONSTRAINT reject_manifest_context"
+            )
+
+
+def test_source_manifest_retention_tamper_and_runtime_permissions(store: Store) -> None:
+    owner, state, lease, bundle, manifest = source_manifest_fixture(store)
+    saved = store.store_context(
+        lease, bundle, expected_version=3, source_manifest=manifest
+    )
+    artifact = saved.source_manifest_ref
+    assert artifact is not None
+    assert Store(store.dsn).source_manifest(state.run_id, owner, artifact) == manifest
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                "DELETE FROM source_manifests WHERE run_id=%s", (state.run_id,)
+            )
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                "UPDATE source_manifests SET payload=%s WHERE run_id=%s",
+                (b"rewrite", state.run_id),
+            )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """UPDATE source_manifests SET expires_at=
+            clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        store.source_manifest(state.run_id, owner, artifact)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """UPDATE source_manifests SET expires_at=
+            clock_timestamp()+interval '1 day',payload=%s WHERE run_id=%s""",
+            (b"tampered", state.run_id),
+        )
+    with pytest.raises(StoreError, match="SOURCE_MANIFEST_INTEGRITY"):
+        store.source_manifest(state.run_id, owner, artifact)
+
+
+def test_source_manifest_scope_mismatch_cannot_commit(store: Store) -> None:
+    owner, state, lease, bundle, manifest = source_manifest_fixture(store)
+    with pytest.raises(StoreError, match="SOURCE_MANIFEST_SCOPE"):
+        store.store_context(
+            lease,
+            bundle,
+            expected_version=3,
+            source_manifest=manifest.model_copy(update={"repository_id": uuid4()}),
+        )
+    assert store.get(state.run_id, owner).source_manifest_ref is None
+    with psycopg.connect(store.dsn) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM source_manifests WHERE run_id=%s", (state.run_id,)
+        ).fetchone() == (0,)
+
+
+def test_bounded_worker_loop_processes_real_job_then_observes_idle(
+    store: Store,
+) -> None:
+    from threading import Event
+
+    from services.orchestrator.collection import CollectionInputs
+    from services.orchestrator.worker import serve
+
+    owner, state, lease, snapshot = collection_fixture(store)
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            (state.run_id,),
+        )
+
+    def loader(run: RunState, grant: RepositoryGrant) -> CollectionInputs:
+        return CollectionInputs(snapshot, ("src/a.py",))
+
+    result = serve(Store(store.dsn), uuid4(), loader, Event(), max_ticks=2)
+    assert result.processed == 1 and result.idle == 1 and result.ticks == 2
+    assert store.get(state.run_id, owner).current_stage == Stage.TRIAGING
+    assert not result.stop_requested
+
+
+def sealed_fixture(store: Store):
+    from types import MappingProxyType
+
+    from pydantic import SecretBytes
+
+    from services.repository.packaging import SnapshotCipher
+    from services.repository.snapshot import Snapshot
+
+    owner, state, lease, bundle, manifest = source_manifest_fixture(store)
+    grant = store.repository(state.repository_id, owner)
+    cipher = SnapshotCipher(SecretBytes(os.urandom(32)), "ephemeral-test-key")
+    snapshot = Snapshot(
+        state.source_commit,
+        (),
+        MappingProxyType({}),
+        "GITHUB_HTTPS_METADATA",
+        "TEST_TRANSPORT",
+    )
+    sealed = cipher.seal(snapshot, manifest, grant, owner, state.run_id)
+    return owner, state, lease, bundle, manifest, sealed
+
+
+def test_encrypted_snapshot_failure_rolls_back_every_artifact(store: Store) -> None:
+    owner, state, lease, bundle, manifest, sealed = sealed_fixture(store)
+    before = store.events(state.run_id, owner)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute("""ALTER TABLE run_events ADD CONSTRAINT reject_snapshot_event
+            CHECK (event_type <> 'STAGE_CHANGED') NOT VALID""")
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE"):
+            store.store_context(
+                lease,
+                bundle,
+                expected_version=3,
+                source_manifest=manifest,
+                sealed_snapshot=sealed,
+            )
+        restored = store.get(state.run_id, owner)
+        assert (
+            restored.source_snapshot_ref is None
+            and restored.source_manifest_ref is None
+        )
+        assert not restored.context_refs and restored.version == 3
+        assert store.events(state.run_id, owner) == before
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT count(*) FROM sealed_snapshots WHERE run_id=%s", (state.run_id,)
+            ).fetchone() == (0,)
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute("ALTER TABLE run_events DROP CONSTRAINT reject_snapshot_event")
+
+
+def test_encrypted_snapshot_retention_tamper_and_runtime_permissions(
+    store: Store,
+) -> None:
+    owner, state, lease, bundle, manifest, sealed = sealed_fixture(store)
+    saved = store.store_context(
+        lease,
+        bundle,
+        expected_version=3,
+        source_manifest=manifest,
+        sealed_snapshot=sealed,
+    )
+    ref = saved.source_snapshot_ref
+    assert ref is not None
+    assert Store(store.dsn).sealed_snapshot(state.run_id, owner, ref) == sealed
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                "DELETE FROM sealed_snapshots WHERE run_id=%s", (state.run_id,)
+            )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """UPDATE sealed_snapshots SET expires_at=
+            clock_timestamp()-interval '1 second' WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        store.sealed_snapshot(state.run_id, owner, ref)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """UPDATE sealed_snapshots SET expires_at=
+            clock_timestamp()+interval '1 day',payload=%s WHERE run_id=%s""",
+            (b"tampered", state.run_id),
+        )
+    with pytest.raises(StoreError, match="SNAPSHOT_INTEGRITY"):
+        store.sealed_snapshot(state.run_id, owner, ref)
 
 
 def test_migration_downgrade_and_reapply(store: Store) -> None:
