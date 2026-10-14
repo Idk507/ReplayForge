@@ -1,0 +1,82 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "tree acquisition changes local/uncommitted; prior work preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_github_snapshot.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "failed": 7,
+      "reason": "acquire not implemented"
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-tree-compat-red-tests.xml",
+      "exit_code": 1,
+      "passed": 302,
+      "failed": 1,
+      "seconds": 36.67,
+      "reason": "legacy canonical artifact compatibility regression"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_github_snapshot.py tests/unit/test_github_commit.py tests/unit/test_snapshot.py --tb=short",
+      "exit_code": 0,
+      "passed": 51,
+      "seconds": 0.19
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-github-tree-tests.xml",
+      "exit_code": 0,
+      "passed": 304,
+      "postgres_scenarios": 39,
+      "seconds": 37.82,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 63
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 41
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "wheel ZIP membership inspection for repository modules/context contract",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/repository/github.py services/repository/snapshot.py services/context/collector.py packages/contracts/context.py services/persistence/store.py tests/unit/test_github_snapshot.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-github-tree-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged production dependency graph"
+    }
+  ],
+  "artifact_sha256": {
+    "m1-github-tree-tests.xml": "f3886557e09effa7099022f89ea6bbd6c7e4ad6ed66f27ad01cdb5c2b0f72b22",
+    "m1-tree-compat-red-tests.xml": "c4bef6cca8ea037ce7900ebc7bb81fbc7c6ee52aeac3b5318a449d14354045e8",
+    "m1-github-tree-secret-scan.json": "625f43274f434944ce6a43c60343493a6309b43bedbaf8002cbfcd1301ccf019",
+    "m1-github-tree-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2"
+  },
+  "live_github_requests": 0,
+  "paid_provider_calls": 0,
+  "remote_writes": 0
+}
