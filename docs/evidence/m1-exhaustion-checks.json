@@ -1,0 +1,64 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "local uncommitted changes including preserved prior worker implementation",
+  "checks": [
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-exhaustion-red-tests.xml",
+      "exit_code": 1,
+      "passed": 255,
+      "failed": 1,
+      "seconds": 23.94
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-exhaustion-tests.xml",
+      "exit_code": 0,
+      "passed": 261,
+      "postgres_scenarios": 33,
+      "seconds": 29.11,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 56
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 38
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-exhaustion-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged locked Windows production dependency graph"
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/run.py packages/policies/transitions.py services/persistence/store.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0
+    }
+  ],
+  "artifact_sha256": {
+    "m1-exhaustion-tests.xml": "54cfb999f61e1f503de88f1a71b3624d71181622439636cc0e9d07794ee7326c",
+    "m1-exhaustion-red-tests.xml": "230a8fec1f9e707f386c1f1b022306337c93664b4a125878afe1a42a76141062",
+    "m1-exhaustion-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2",
+    "m1-exhaustion-secret-scan.json": "cdf879be74a29bcce6408dd93b7f10b6612f4f782f1454336d005c3e133f945d"
+  },
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
