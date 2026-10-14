@@ -46,7 +46,22 @@ def allowed_entry(grant: RepositoryGrant, path: str, mode: str) -> bool:
 
 
 def safe_tree_path(path: str) -> bool:
-    """Lexical portability check shared by file and ancestor admission."""
+    """Admission requires both portable syntax and absence of prohibited names."""
+    if not portable_tree_path(path):
+        return False
+    return not any(
+        component.lower() in {".git", ".github", ".env", ".ssh"}
+        or component.lower().startswith(".env.")
+        or component.lower().endswith((".pem", ".key", ".p12", ".pfx"))
+        for component in path.split("/")
+    )
+
+
+def portable_tree_path(path: str) -> bool:
+    """Validate syntax only, for metadata of entries that will never be read.
+
+    This is not content admission. allowed_entry always uses safe_tree_path.
+    """
     if not 1 <= len(path) <= 240:
         return False
     if not path.isascii() or not re.fullmatch(r"[A-Za-z0-9_./-]+", path):
@@ -56,12 +71,8 @@ def safe_tree_path(path: str) -> bool:
             return False
         folded = component.lower()
         stem = folded.split(".")[0]
-        if (
-            folded in {".git", ".github", ".env", ".ssh"}
-            or folded.startswith(".env.")
-            or folded.endswith((".pem", ".key", ".p12", ".pfx"))
-            or stem in {"con", "prn", "aux", "nul"}
-            or re.fullmatch(r"(?:com|lpt)[0-9]", stem)
+        if stem in {"con", "prn", "aux", "nul"} or re.fullmatch(
+            r"(?:com|lpt)[0-9]", stem
         ):
             return False
     return True
