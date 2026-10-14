@@ -1,5 +1,7 @@
 """Local collection graph; PostgreSQL domain checkpoints are authoritative."""
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Literal, Self
 from uuid import UUID
 
@@ -8,14 +10,47 @@ from langsmith import tracing_context
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from packages.contracts.context import ContextBundle
+from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
+from packages.contracts.source import SealedSnapshot, SourceManifest
 from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import TERMINAL
 from services.context.collector import ContextError, collect
 from services.persistence.store import Lease, Store, StoreError
 from services.repository.snapshot import Snapshot
 
-FailureReason = Literal["SCOPE_DENIED", "SOURCE_MISMATCH", "CONTEXT_REJECTED"]
+FailureReason = Literal[
+    "SCOPE_DENIED",
+    "SOURCE_MISMATCH",
+    "CONTEXT_REJECTED",
+    "SOURCE_REJECTED",
+    "SOURCE_UNAVAILABLE",
+]
+
+
+class SourceInputError(Exception):
+    """Closed safe loader outcome; never carries a provider response or token."""
+
+    def __init__(
+        self, reason: Literal["SOURCE_REJECTED", "SOURCE_UNAVAILABLE"]
+    ) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+@dataclass(frozen=True)
+class CollectionInputs:
+    """Trusted provider output; raw data stays out of graph/public state."""
+
+    snapshot: Snapshot = field(repr=False)
+    paths: tuple[str, ...]
+    errors: str = field(default="", repr=False)
+    known_secrets: tuple[SecretStr, ...] = field(default=(), repr=False)
+    source_manifest: SourceManifest | None = field(default=None, repr=False)
+    sealed_snapshot: SealedSnapshot | None = field(default=None, repr=False)
+
+
+InputLoader = Callable[[RunState, RepositoryGrant], CollectionInputs]
 
 
 class CollectionError(Exception):
@@ -35,10 +70,16 @@ class CollectionDelta(BaseModel):
         Stage.INCONCLUSIVE,
     ]
     context: ContextBundle | None = Field(default=None, repr=False)
+    source_manifest: SourceManifest | None = Field(default=None, repr=False)
+    sealed_snapshot: SealedSnapshot | None = Field(default=None, repr=False)
     failure_reason: FailureReason | None = None
 
     @model_validator(mode="after")
     def coherent(self) -> Self:
+        if self.sealed_snapshot is not None and self.source_manifest is None:
+            raise ValueError("SNAPSHOT_MANIFEST_REQUIRED")
+        if self.source_manifest is not None and self.target != Stage.TRIAGING:
+            raise ValueError("SOURCE_MANIFEST_STAGE_DENIED")
         if (self.target == Stage.TRIAGING) != (self.context is not None):
             raise ValueError("CONTEXT_DELTA_REQUIRED")
         if (self.target in {Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}) != (
@@ -71,11 +112,12 @@ def run_collection(
     store: Store,
     owner: UUID,
     lease: Lease,
-    snapshot: Snapshot,
-    paths: tuple[str, ...],
-    errors: str,
+    snapshot: Snapshot | None = None,
+    paths: tuple[str, ...] = (),
+    errors: str = "",
     *,
     known_secrets: tuple[SecretStr, ...] = (),
+    input_loader: InputLoader | None = None,
 ) -> RunState:
     """Resume collection from persisted stage; stop before any triage inference.
 
@@ -116,22 +158,64 @@ def run_collection(
                     target=Stage.POLICY_BLOCKED, failure_reason="SCOPE_DENIED"
                 )
             }
-        if snapshot.source_commit != run.source_commit:
+        if snapshot is not None and snapshot.source_commit != run.source_commit:
             return {
                 "delta": CollectionDelta(
                     target=Stage.POLICY_BLOCKED, failure_reason="SOURCE_MISMATCH"
                 )
             }
         if run.current_stage == Stage.COLLECTING:
+            if snapshot is None:
+                if input_loader is None:
+                    raise CollectionError("INPUT_LOADER_REQUIRED")
+                try:
+                    inputs = input_loader(run, grant)
+                except SourceInputError as error:
+                    return {
+                        "delta": CollectionDelta(
+                            target=Stage.POLICY_BLOCKED
+                            if error.reason == "SOURCE_REJECTED"
+                            else Stage.INCONCLUSIVE,
+                            failure_reason=error.reason,
+                        )
+                    }
+                except (OSError, TimeoutError):
+                    raise CollectionError("INPUT_UNAVAILABLE") from None
+            else:
+                inputs = CollectionInputs(snapshot, paths, errors, known_secrets)
+            if inputs.snapshot.source_commit != run.source_commit:
+                return {
+                    "delta": CollectionDelta(
+                        target=Stage.POLICY_BLOCKED, failure_reason="SOURCE_MISMATCH"
+                    )
+                }
+            if any(not allowed_entry(grant, path, "100644") for path in inputs.paths):
+                return {
+                    "delta": CollectionDelta(
+                        target=Stage.POLICY_BLOCKED, failure_reason="SCOPE_DENIED"
+                    )
+                }
             try:
-                bundle = collect(snapshot, paths, errors, known_secrets=known_secrets)
+                bundle = collect(
+                    inputs.snapshot,
+                    inputs.paths,
+                    inputs.errors,
+                    known_secrets=inputs.known_secrets,
+                )
             except ContextError:
                 return {
                     "delta": CollectionDelta(
                         target=Stage.INCONCLUSIVE, failure_reason="CONTEXT_REJECTED"
                     )
                 }
-            return {"delta": CollectionDelta(target=Stage.TRIAGING, context=bundle)}
+            return {
+                "delta": CollectionDelta(
+                    target=Stage.TRIAGING,
+                    context=bundle,
+                    source_manifest=inputs.source_manifest,
+                    sealed_snapshot=inputs.sealed_snapshot,
+                )
+            }
         return {"delta": plan(run)}
 
     def reducer(state: CollectionState) -> dict[str, RunState | None]:
@@ -140,7 +224,11 @@ def run_collection(
         delta = CollectionDelta.model_validate(state.delta.model_dump())
         if delta.context is not None:
             updated = store.store_context(
-                lease, delta.context, expected_version=state.run.version
+                lease,
+                delta.context,
+                expected_version=state.run.version,
+                source_manifest=delta.source_manifest,
+                sealed_snapshot=delta.sealed_snapshot,
             )
         else:
             updated = store.advance(
