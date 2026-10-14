@@ -481,3 +481,320 @@ verified repair or deployment readiness claimed. Next: approved read-only source
 adapter and background worker/input artifact wiring before real triage. Live
 inference/sandbox still need charge authorization. No paid calls, remote writes
 or untrusted execution occurred; changes remain local and uncommitted.
+
+## 2026-10-14 — collection claim completion and bounded dispatch
+
+Inspected the collection/storage contracts at source HEAD
+`c10687e35c12e7fa1502c39e43ab577fe901ae93`. A regression reproduced completed
+collection jobs being reclaimed. The saved red run has 252 tests and two failures
+(reclaim regression and the tightened late-write error expectation).
+
+Context persistence now closes its collection claim atomically. Added a one-job
+dispatcher and deferred trusted input loader after scope admission, with safe
+input failures and expired-worker fencing. Five additional PostgreSQL scenarios
+exercise dispatch, denial, recovery, completion and expiry. No real source loader
+or background polling service is claimed. See collection-worker.md for limits.
+
+Final `uv run python -m scripts.test_postgres --evidence-name m1-worker-tests.xml`
+exited 0: 256 passed, including 28 PostgreSQL scenarios, in 29.65s. One third-party
+AnyIO deprecation warning remains. Ruff check/format (56 files), mypy (38 source
+files), lock check (63 packages), wheel build and isolated worker import passed.
+Changed-source secret scan found zero findings. No dependency versions changed;
+the prior graph dependency audit remains historical, not a new audit run.
+
+A stale shared JUnit output was detected before finalizing evidence. The harness
+now accepts a validated dedicated evidence filename; the final fresh XML has zero
+failures/errors. Earlier committed evidence was preserved. Current checks and
+SHA256 are in evidence/m1-worker-checks.json; the red run is separately retained.
+
+M0/M1 remain partial. Next: durable incident/input binding and an authenticated,
+bounded read-only source adapter, then polling/exhaustion handling. Live provider
+proof still requires explicit authorization for charges. No cloud calls, remote
+writes or untrusted execution occurred. Changes remain local and uncommitted.
+
+## 2026-10-14 — terminal collection lease exhaustion
+
+Reread repository contracts and inspected current worker/storage implementation.
+Prior worker changes were preserved. Source HEAD remains
+`c10687e35c12e7fa1502c39e43ab577fe901ae93`; this slice is local/uncommitted.
+The earliest unresolved local recovery defect was an exhausted job leaving its
+run active indefinitely. The regression run reproduced CREATED after three
+expired acquisitions: 255 passed, one failed, exit 1 in 23.94s.
+
+The deterministic reducer permits infrastructure failure to INCONCLUSIVE before
+collection. Claim reconciliation now atomically saves LEASE_EXHAUSTED, increments
+the checkpoint version, clears the token and writes stage/exhaustion events.
+Tests cover all four collection stages, repeated claims, stale heartbeat,
+cancellation before reconciliation and rollback when the exhaustion audit fails.
+Threat impact: no new credentials, permissions, outbound calls or model tools;
+run/job locks and append-only events retain the existing concurrency boundary.
+
+Final command `uv run python -m scripts.test_postgres --evidence-name
+m1-exhaustion-tests.xml` exited 0: 261 passed, 33 PostgreSQL scenarios, 29.11s.
+One existing third-party AnyIO deprecation warning remains. Ruff check/format,
+mypy (38 source files), lock check (63 packages) and wheel build passed. A fresh
+audit of the unchanged production graph found no known vulnerabilities; targeted
+secret scan found zero findings. Commands, exit codes and artifact checksums are
+in evidence/m1-exhaustion-checks.json. No UI exists to lint or smoke-test.
+
+M0/M1 remain partial. Reconciliation requires a subsequent claim call; there is
+no timer/polling daemon, and later-stage/legacy TRIAGING reconciliation is pending.
+Durable incident binding and authenticated source loading are still needed.
+The earliest milestone exit test remains live Nemotron/sandbox proof, requiring
+explicit cloud-charge authorization. No paid provider calls, remote writes,
+deployments or untrusted host execution occurred.
+
+## 2026-10-14 — durable redacted incident intake and worker binding
+
+Read governing specs and inspected intake, collector, worker, migrations and
+related tests. Source HEAD: c10687e35c12e7fa1502c39e43ab577fe901ae93. Prior worker
+and lease-exhaustion edits were preserved. The API discarded incident text after
+hashing, preventing recovered workers from using the original report.
+
+Added immutable bounded IncidentReport preparation and migration 0004. API
+repository admission precedes redaction; the local bearer token and credential
+patterns are removed before truncation. Run/report/event/job commit together.
+Owner-scoped reads enforce retention, SHA256 and canonical schema. Runtime has
+SELECT/INSERT only. Matching retries preserve the original report. Legacy
+metadata-only runs fail closed instead of being backfilled.
+
+bind_incident loads the retained report after scope admission and before source
+I/O, then passes it through context redaction with the source trace. Synthetic
+adapter tests prove recovery across Store reconstruction; they do not prove live
+repository acquisition or a verified repair. Missing input stops source loading.
+
+TDD: the first unit command exited 1 with the expected missing new module;
+after implementation five unit cases passed. Storage slice: 268 passed in 29.27s.
+Final `uv run python -m scripts.test_postgres --evidence-name
+m1-incident-bound-tests.xml` exited 0: 270 passed, 37 PostgreSQL scenarios, 32.35s.
+One existing third-party AnyIO warning remains. Ruff check/format (60 files),
+mypy (40 source files), lock check (63 packages), wheel build passed. Fresh
+unchanged-production dependency audit found zero known vulnerabilities. Targeted
+secret scan returned one match at tests/unit/test_incident.py:10, reviewed as the
+explicit synthetic redaction credential; no suppression was added and no real
+credential was found. Evidence commands, exit codes and checksums are recorded
+in evidence/m1-incident-checks.json. No UI checks apply to this backend slice.
+
+Threat review: sanitized input is still untrusted and cannot grant execution;
+raw report stays outside checkpoints/events and no public download route was
+added. Patterns are incomplete DLP; arbitrary bare credentials/personal data may
+survive. Seven-day expiry denies reads, without deleting backups or bytes.
+Production confidentiality, purge and encryption remain unresolved.
+
+M0/M1 remain partial. Next local dependency: bounded authenticated read-only
+repository adapter and durable source input. Earliest live milestone acceptance
+still needs explicit charge authorization for Nemotron/sandbox probes. No cloud
+calls, remote writes or untrusted execution occurred; edits remain uncommitted.
+
+## 2026-10-14 — bounded authenticated commit metadata resolver
+
+Read governing specs and inspected repository grant/snapshot APIs and recent
+changes. Source HEAD c10687e35c12e7fa1502c39e43ab577fe901ae93; prior local incident,
+worker and exhaustion work preserved. GitHubReader adds one scoped authenticated
+GET for an exact approved commit. Consent/owner/private admission occurs before
+HTTP. The fixed origin, disabled environment proxies/redirects, bounded response,
+deadline and safe errors prevent caller-controlled destinations or raw output.
+No write path is exposed. Official GitHub/HTTPX sources and contract limits are
+recorded in github-commit-resolver.md.
+
+GitHub structured commit metadata is not raw commit bytes. The resolver returns
+only correlated commit/tree identity and safe trace/time/policy metadata, with
+raw_commit_verified=false and explicit TEST_TRANSPORT provenance in offline tests.
+The existing snapshot validator was not changed or weakened. Token provisioning
+must enforce Contents:read separately; this adapter cannot prove token scope.
+
+Initial TDD command failed with the missing new module. Initial response fixtures
+needed correction to avoid enormous pytest IDs and mock eager decompression;
+no production checks were suppressed. Final focused tests: 20 passed in 0.13s.
+Full `uv run python -m scripts.test_postgres --evidence-name
+m1-github-resolver-tests.xml`: exit 0, 290 passed, 37 PostgreSQL scenarios, 31.86s.
+One pre-existing AnyIO deprecation warning remains. Ruff check/format (62 files),
+mypy (41 source files), lock check (63 packages), wheel build, fresh unchanged
+production dependency audit and targeted secret scan passed; zero known
+vulnerabilities or targeted secret findings. Commands and artifact checksums:
+evidence/m1-github-resolver-checks.json. No UI checks apply.
+
+M0/M1 remain partial. Live authenticated resolution is blocked on an operator
+approved repository/commit and separately provisioned read credential; none was
+discovered or used. Raw tree/blob acquisition, provenance integration and durable
+snapshot storage remain next implementation work. M0 live inference/sandbox proof
+still requires explicit charge authorization. No live GitHub requests, paid
+provider calls, remote writes, deployment or untrusted execution occurred. Changes
+remain local and uncommitted.
+
+## 2026-10-14 — bounded REST tree/blob snapshots and provenance compatibility
+
+Read governing docs and inspected actual snapshot/resolver, collector, storage
+and tests at HEAD c10687e35c12e7fa1502c39e43ab577fe901ae93. Earlier local work and
+unrelated untracked files were preserved. Added GitHubReader.acquire: admitted
+commit metadata binds the root, then bounded non-recursive REST trees/blobs feed
+the shared raw object/path validator. Original load_snapshot still requires the
+raw commit hash. No commit bytes are synthesized from REST metadata.
+
+Tree reconstruction uses Git ordering and mode normalization. Truncated trees,
+tampering, invalid base64/size, symlinks, binary/LFS and denied directories fail
+closed. Object reads retain prior count/decoded-byte/depth caps; REST encoding
+has a separate 128 KiB response cap and acquisition progress deadline. Details
+and official GitHub contracts are in github-snapshots.md.
+
+Snapshot/context commit_identity preserves GITHUB_HTTPS_METADATA separately
+from GIT_OBJECT_HASH. A real regression test exposed old canonical context
+artifacts becoming unreadable after the new field: 302 passed, one failed,
+exit 1 in 36.67s. Compatibility now checks the exact legacy form without changing
+bytes/digests or dropping supplied provenance. Both new forms pass restart/API
+owner, checksum and expiry tests. This does not establish signed authorship.
+
+Initial acquisition tests failed seven times because acquire was absent. Final
+focused suite: 51 passed in 0.19s. Final `uv run python -m scripts.test_postgres
+--evidence-name m1-github-tree-tests.xml`: exit 0, 304 passed including 39 real
+PostgreSQL scenarios in 37.82s. One existing third-party AnyIO warning remains.
+Ruff check/format (63 files), mypy (41 source files), lock (63 packages), wheel
+build/package membership, fresh unchanged-production dependency audit and targeted
+secret scan passed. Zero known vulnerabilities or targeted secret findings.
+Commands, exit codes and checksums: evidence/m1-github-tree-checks.json.
+
+Threat impact: fixed authenticated GETs only, no URLs followed, shell, extraction
+or repository execution. Live GitHub and token scope are unverified; fixtures are
+explicit TEST_TRANSPORT. Full raw snapshots remain ephemeral and provenance
+artifacts/production worker wiring remain pending. M0/M1 stay partial; live
+repository acceptance requires approved scope and a separately provisioned read
+credential, while M0 inference/sandbox proof requires charge authorization. No
+live GitHub requests, paid calls or remote writes occurred. Changes are local
+and uncommitted.
+
+## 2026-10-14 — durable source manifests and bounded worker polling
+
+Read governing specs and inspected implementation/tests at HEAD
+c10687e35c12e7fa1502c39e43ab577fe901ae93; preserved all prior local work and unrelated
+untracked files. Identified missing durable root/tree/file acquisition provenance
+after the existing context handoff. Added bounded immutable SourceManifest and
+migration 0005, storing only metadata (not source bytes, credentials or raw logs).
+
+GitHub inputs now supply root/tree/blob/SHA256/time/trace/origin metadata. The graph
+reducer commits it alongside context, source_manifest_ref, checkpoint event and
+job completion. Storage checks run/repository/commit, persisted owner consent,
+allowed paths, context origin and original file hashes. Observed-origin context
+without a manifest is rejected. Owner-scoped API/storage reads enforce seven-day
+expiry, SHA256 and canonical schema. Runtime SELECT/INSERT only; no UPDATE/DELETE.
+Tests cover pipeline recovery/readback, owner isolation, rollback after manifest
+insertion, scope mismatch, expiry, tamper and runtime permission denial.
+
+First TDD command failed with the new manifest module absent; focused contracts
+then passed 12 tests. Manifest slice: 333 passed, 46 PostgreSQL scenarios, 40.96s.
+Continued with independently testable bounded polling over existing tick. serve
+limits ticks/idle wait, accepts an Event-compatible stop, interrupts idle waits
+and propagates worker errors without retry. It starts no daemon/configured loader.
+Polling TDD initially failed with serve absent, then 10 focused tests passed in
+0.68s; additional processed-job and real-DB completion-to-idle cases were included
+in final validation. Shutdown is cooperative after an in-flight call, not forced
+sandbox cancellation. See source-manifests.md and collection-worker.md.
+
+Final `uv run python -m scripts.test_postgres --evidence-name
+m1-durable-worker-tests.xml`: exit 0, 345 passed including 47 PostgreSQL scenarios,
+41.93s. One pre-existing third-party AnyIO warning remains. Ruff check/format
+(72 files), mypy (45 source files), lock (63 packages), wheel build, fresh audit
+of unchanged production dependencies and targeted secret scanning passed; zero
+known vulnerabilities/targeted findings. Actual commands, exit codes, source HEAD
+and artifact checksums: evidence/m1-durable-worker-checks.json. No UI checks apply.
+
+Threat review: manifests are metadata-only and owner-scoped; checksums do not
+establish signed provenance or defeat privileged DB tampering. Legacy unobserved
+fixtures remain supported without a manifest and do not establish live evidence.
+Expiry is not deletion; deployment encryption/purge remain unresolved. Full raw
+snapshot storage, sandbox packaging, process service/signal wiring and full live
+worker acceptance are still pending. M0/M1 stay partial. Next: durable raw source
+packaging/retention and worker service configuration. Live paid M0 proof remains
+behind explicit charge authorization. No live GitHub requests, paid provider
+calls, remote writes, deployment or untrusted execution occurred in this turn.
+Changes remain local and uncommitted.
+
+## 2026-10-14 — scoped source loader and composed collection pipeline
+
+Reread governing documents and inspected current reader, graph, worker and tests
+at HEAD c10687e35c12e7fa1502c39e43ab577fe901ae93. Prior local edits and unrelated
+files were preserved. Added github_inputs, an operator-configured InputLoader
+with explicit token and 1–16 distinct selected paths. No environment discovery
+or automatic dispatch occurs. Persisted graph scope admission and retained input
+precede source I/O; selected paths are checked again before acquisition. Each
+loader call closes its HTTP client and supplies the read credential to redaction.
+
+Closed SourceInputError outcomes route rejected source to POLICY_BLOCKED and
+unavailable/auth/rate-limit/service input to INCONCLUSIVE. Only the graph reducer
+commits these states through the existing lease fence, closing terminal jobs.
+No denied action or unavailable request is automatically retried. New intake is
+required after operator remediation. Unexpected programming errors still surface.
+
+Snapshot and ContextBundle now retain evidence_origin from acquisition. Synthetic
+HTTP remains TEST_TRANSPORT through stored context. Canonical legacy context
+without provenance fields remains readable without changing stored bytes/digests;
+missing origin is NOT_RECORDED. Both historical shapes are regression tested.
+
+Initial focused TDD command exited 1 with SourceInputError absent; then eight
+focused loader tests passed in 1.25s. Final `uv run python -m scripts.test_postgres
+--evidence-name m1-source-pipeline-tests.xml` exited 0: 316 passed, including 43
+PostgreSQL scenarios, in 40.52s. Composed tests cover real authenticated API intake,
+persisted grants/report, reconstructed worker, synthetic REST tree/blob reads,
+credential redaction and context readback; source denial/unavailability closes the
+run without refetch. One existing third-party AnyIO warning remains. Ruff
+check/format (65 files), mypy (42 source files), lock (63 packages), wheel build,
+fresh unchanged-production dependency audit and targeted secret scan passed.
+Zero known vulnerabilities/targeted secret findings. Commands, exit codes and
+checksums: evidence/m1-source-pipeline-checks.json. No UI checks apply.
+
+Threat review: fixed read-only broker paths and operator secrets only; no model
+network tools, raw source/log checkpoints or code execution were introduced.
+Context provenance does not verify signed authorship or repairs. Live token scope
+is unverified, raw snapshots are ephemeral, and slow acquisition can lose its
+lease; storage fencing rejects stale commits. See source-worker.md for composition.
+
+M0/M1 remain partial. Next: durable source/provenance artifacts and worker service
+configuration/scheduling. Live acceptance needs an operator-approved repository,
+commit and separate read credential; paid M0 inference/sandbox proof needs explicit
+charge authorization. No live GitHub requests, paid calls, remote writes or
+deployment occurred. Changes remain local and uncommitted.
+
+## 2026-10-14 — authorized live GitHub read and omission regression fix
+
+Reread governing specs/current code at HEAD
+c10687e35c12e7fa1502c39e43ab577fe901ae93, preserving existing local changes.
+The user explicitly authorized Idk507/maf_ds_agent for read testing and allowed
+available GitHub credentials. main resolved once to
+08d828835fcb0cada16aca45c721ad0075e0c70e; subsequent adapter reads pinned that SHA.
+No repository code was executed. Added offline-first scripts.check_github for
+this fixed public repository and README.md only. CLI credential use is explicit,
+captured in memory, shell-free and never printed/stored. Invalid live commit
+arguments fail before credential retrieval; offline mode never retrieves tokens.
+
+The first actual adapter attempt failed PATH_DENIED on .env.example root metadata.
+An offline regression reproduced the failure. Portable metadata syntax is now
+separate from content admission: excluded regular secret files are omitted without
+fetching their blobs; allowed_entry still rejects those names. Traversal/reserved
+paths, symlinks/submodules and object/hash limits remain enforced. Regression
+cases cover .env, .env.example and secrets.key with absent forbidden blob objects,
+proving omission cannot accidentally fetch their content. Existing negatives pass.
+
+The post-fix live adapter command exited 0, PASSED/REMOTE_SERVICE. Root tree:
+b70f64691e5ffc8a79286233fafe07c9e9f03460. README: 15629 bytes, SHA256
+32673d68690246993d5990be48db183279fb1c4f6d29c2492717944a5e30c737.
+Both safe failed/passed reports are retained separately. Credential least
+privilege is not proven; repository metadata reports admin/push capabilities.
+The broad available CLI credential was used only in this bounded GET smoke and
+was not installed as a production worker secret. See github-live-smoke.md.
+
+Final `uv run python -m scripts.test_postgres --evidence-name
+m1-live-github-tests.xml`: exit 0, 324 passed, 43 PostgreSQL scenarios, 38.50s.
+One pre-existing third-party AnyIO warning remains. Ruff check/format (68 files),
+mypy (44 source files), lock (63 packages), wheel build, fresh unchanged-production
+dependency audit passed with zero known vulnerabilities. Targeted source/report
+secret scan flagged the same public commit SHA in both live JSON reports. Both
+detector hashes were checked against SHA1 of that public identifier; no real
+credential was found and no suppression was added. Initial feature/CLI/omission red
+tests and actual command exit codes/checksums: evidence/m1-live-github-checks.json.
+
+M0/M1 remain partial. Authenticated scoped file acquisition is now observed live;
+least-privilege installation, durable source/provenance artifacts and full live
+API/worker acceptance remain pending. Next implementation: durable artifacts and
+worker service configuration. Paid inference/sandbox acceptance still requires
+explicit charge authorization. Two live adapter invocations and two CLI metadata
+queries performed reads only; no paid provider calls, remote writes, deployment
+or untrusted host execution occurred. Changes remain local and uncommitted.
