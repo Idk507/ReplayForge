@@ -1,0 +1,93 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "local uncommitted probe and omission fix; prior work preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_github_smoke.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_snapshot.py -k excluded_secret --tb=short (before fix)",
+      "exit_code": 1,
+      "failed": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_github_smoke.py -k invalid_cli_commit --tb=short (before CLI fix)",
+      "exit_code": 1,
+      "failed": 1
+    },
+    {
+      "command": "uv run python -m scripts.check_github --live --use-gh-cli --commit 08d828835fcb0cada16aca45c721ad0075e0c70e",
+      "attempt": 1,
+      "exit_code": 1,
+      "status": "FAILED",
+      "error_class": "PATH_DENIED"
+    },
+    {
+      "command": "uv run python -m scripts.check_github --live --use-gh-cli --commit 08d828835fcb0cada16aca45c721ad0075e0c70e",
+      "attempt": 2,
+      "exit_code": 0,
+      "status": "PASSED",
+      "evidence_origin": "REMOTE_SERVICE"
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-live-github-tests.xml",
+      "exit_code": 0,
+      "passed": 324,
+      "postgres_scenarios": 43,
+      "seconds": 38.5,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 68
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 44
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files scripts/check_github.py services/repository/smoke.py packages/policies/repository.py services/repository/snapshot.py tests/unit/test_github_smoke.py tests/unit/test_snapshot.py docs/evidence/m1-github-live-read.json docs/evidence/m1-github-live-read-fixed.json",
+      "exit_code": 0,
+      "findings": 2,
+      "reviewed_public_identifiers": 2,
+      "real_credentials_found": 0,
+      "review": "Both detector hashes equal SHA1 of the public pinned commit. No suppression added."
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-live-github-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged production dependency graph"
+    }
+  ],
+  "artifact_sha256": {
+    "m1-live-github-tests.xml": "bbc59767b0c312277de8eb72b8f4e56fb93b6d959f8d8ecf874f6c4defd459f7",
+    "m1-github-live-read.json": "dfe9e78109cdca60f401f5a38523f86f0d5a543f50c06d8a8e25499cb9d6865d",
+    "m1-github-live-read-fixed.json": "26d05737015af4f5e41a57c3ebd81a621b44c02eeb085741bade658ad22d47d3",
+    "m1-live-github-secret-scan.json": "56d0ea8a3034563d4a32b670b237e722f5ddf530345ca8410065c6a4231d8b9f",
+    "m1-live-github-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2"
+  },
+  "live_adapter_invocations": 2,
+  "live_cli_metadata_queries": 2,
+  "paid_provider_calls": 0,
+  "remote_writes": 0,
+  "credential_least_privilege_verified": false
+}
