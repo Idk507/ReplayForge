@@ -64,9 +64,10 @@ each page. Authenticated but unapproved repositories return 403; another owner's
 run is concealed as 404. Invalid input responses never echo incident bodies.
 HTTP input is capped at 32 KiB before validation; no cookies or CORS grants exist.
 
-Intake currently hashes incident text and retains only its digest. This proves
-metadata intake, not an operational incident investigation. Redacted incident
-artifact storage, repository URL/consent resolution, rate limits and production
+Intake hashes the request and stores a bounded redacted incident report atomically
+with the run (migration 0004). This proves durable intake, not an operational
+incident investigation. Worker input binding, repository URL/consent resolution,
+rate limits and production
 OIDC authentication must precede public or repair-workflow use. There is no API
 route for verifier writes, approval or PR creation. Cancellation fences local
 jobs but cannot terminate a future sandbox until that integration is built.
@@ -86,3 +87,15 @@ Migration 0003 adds context_artifacts; runtime needs SELECT/INSERT only. Context
 storage atomically advances COLLECTING to TRIAGING with a hashed reference.
 Artifact reads enforce owner, expiry and checksum checks. Expiry is not deletion;
 see context-artifacts.md.
+
+Migration 0004 adds incident_reports; runtime needs SELECT/INSERT only, without
+UPDATE/DELETE. Legacy runs have no retained report. See incident-inputs.md.
+
+Migration 0005 adds source_manifests; runtime needs SELECT/INSERT only, without
+UPDATE/DELETE. Observed GitHub collection now commits source metadata alongside
+context and checkpoint. See source-manifests.md; raw source bytes are not stored.
+
+For separately named test evidence, run
+`uv run python -m scripts.test_postgres --evidence-name m1-worker-tests.xml`.
+The harness accepts only a simple lowercase XML filename under docs/evidence
+and rejects traversal before requesting database credentials.
