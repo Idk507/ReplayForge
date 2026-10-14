@@ -55,6 +55,8 @@ class RunState(BaseModel):
     current_stage: Stage = Stage.CREATED
     version: int = Field(default=0, strict=True, ge=0)
     context_refs: tuple[ArtifactID, ...] = Field(default=(), max_length=100)
+    source_manifest_ref: ArtifactID | None = None
+    source_snapshot_ref: ArtifactID | None = None
     hypothesis_refs: tuple[ArtifactID, ...] = Field(default=(), max_length=3)
     selected_hypothesis_ref: ArtifactID | None = None
     reproduction_test_ref: ArtifactID | None = None
@@ -65,5 +67,13 @@ class RunState(BaseModel):
     cancellation_requested: bool = Field(default=False, strict=True)
     remaining_budget: Budget = Field(default_factory=Budget)
     failure_reason: (
-        Literal["SCOPE_DENIED", "SOURCE_MISMATCH", "CONTEXT_REJECTED"] | None
+        Literal[
+            "SCOPE_DENIED",
+            "SOURCE_MISMATCH",
+            "CONTEXT_REJECTED",
+            "LEASE_EXHAUSTED",
+            "SOURCE_REJECTED",
+            "SOURCE_UNAVAILABLE",
+        ]
+        | None
     ) = None
