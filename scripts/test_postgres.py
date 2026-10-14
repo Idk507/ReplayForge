@@ -1,7 +1,9 @@
 """Run real integration tests in a disposable local database; prompts securely."""
 
+import argparse
 import getpass
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -14,6 +16,11 @@ from psycopg.conninfo import make_conninfo
 
 def main() -> int:
     """Create only random task-owned resources; drop them even on test failure."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence-name", default="m1-postgres-tests.xml")
+    args = parser.parse_args()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}\.xml", args.evidence_name):
+        parser.error("evidence-name must be a simple lowercase XML filename")
     password = getpass.getpass("Local postgres administrator password: ")
     suffix = uuid4().hex
     role, database = f"rf_test_{suffix}", f"rf_test_{suffix}"
@@ -66,7 +73,7 @@ def main() -> int:
                             "-m",
                             "pytest",
                             "-q",
-                            "--junitxml=docs/evidence/m1-postgres-tests.xml",
+                            f"--junitxml=docs/evidence/{args.evidence_name}",
                         ],
                         env=env,
                         timeout=180,
