@@ -5,11 +5,16 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 from packages.contracts.repository import RepositoryGrant
-from packages.policies.repository import admit, allowed_entry, safe_tree_path
+from packages.policies.repository import (
+    admit,
+    allowed_entry,
+    portable_tree_path,
+    safe_tree_path,
+)
 
 
 class SnapshotError(Exception):
@@ -39,6 +44,12 @@ class Snapshot:
     source_commit: str
     files: tuple[FileIdentity, ...]
     _content: Mapping[str, bytes] = field(repr=False)
+    commit_identity: Literal["GIT_OBJECT_HASH", "GITHUB_HTTPS_METADATA"] = (
+        "GIT_OBJECT_HASH"
+    )
+    evidence_origin: Literal["NOT_RECORDED", "TEST_TRANSPORT", "REMOTE_SERVICE"] = (
+        "NOT_RECORDED"
+    )
 
     def read_file(self, path: str, max_bytes: int) -> bytes:
         """Return exact approved bytes; never normalize a requested path."""
@@ -60,6 +71,31 @@ def load_snapshot(
     SHA-1 here checks Git object identity, not author authenticity or collision
     resistance. Independently authenticated source refs are still required.
     """
+    return _load_snapshot(source, grant, caller, commit)
+
+
+def load_attested_tree(
+    source: ObjectSource, grant: RepositoryGrant, caller: UUID, commit: str, tree: str
+) -> Snapshot:
+    """Trusted adapter only: commit/tree binding comes from authenticated provider.
+
+    Every tree/blob still undergoes raw hash/path checks. This distinct entry
+    point never claims local raw-commit verification and is not a model tool.
+    """
+    if not re.fullmatch(r"[a-f0-9]{40}", tree):
+        raise SnapshotError("TREE_IDENTITY")
+    return _load_snapshot(source, grant, caller, commit, root_tree=tree)
+
+
+def _load_snapshot(
+    source: ObjectSource,
+    grant: RepositoryGrant,
+    caller: UUID,
+    commit: str,
+    *,
+    root_tree: str | None = None,
+) -> Snapshot:
+    """Shared bounded tree traversal; raw and provider commit proofs stay distinct."""
     grant = RepositoryGrant.model_validate(grant.model_dump())
     if not admit(grant, caller, grant.repository_id, commit).allowed:
         raise SnapshotError("SCOPE_DENIED")
@@ -88,9 +124,16 @@ def load_snapshot(
             raise SnapshotError("OBJECT_IDENTITY")
         return body
 
-    header = fetch(commit, "commit").split(b"\n", 1)[0]
-    if not re.fullmatch(rb"tree [a-f0-9]{40}", header):
-        raise SnapshotError("COMMIT_SCHEMA")
+    if root_tree is None:
+        header = fetch(commit, "commit").split(b"\n", 1)[0]
+        if not re.fullmatch(rb"tree [a-f0-9]{40}", header):
+            raise SnapshotError("COMMIT_SCHEMA")
+        root_tree = header[5:].decode("ascii")
+        identity: Literal["GIT_OBJECT_HASH", "GITHUB_HTTPS_METADATA"] = (
+            "GIT_OBJECT_HASH"
+        )
+    else:
+        identity = "GITHUB_HTTPS_METADATA"
 
     def walk(oid: str, prefix: str, depth: int) -> None:
         if depth > 16:
@@ -148,12 +191,13 @@ def load_snapshot(
                 )
             else:
                 # Denied paths are omitted; unsafe names must still fail closed.
-                if not safe_tree_path(path):
+                if not portable_tree_path(path):
                     raise SnapshotError("PATH_DENIED")
 
-    walk(header[5:].decode("ascii"), "", 0)
+    walk(root_tree, "", 0)
     return Snapshot(
         commit,
         tuple(sorted(identities, key=lambda item: item.path)),
         MappingProxyType(content),
+        identity,
     )
