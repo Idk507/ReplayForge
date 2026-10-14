@@ -25,6 +25,12 @@ class ContextBundle(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     source_commit: CommitSHA
+    commit_identity: Literal["GIT_OBJECT_HASH", "GITHUB_HTTPS_METADATA"] = (
+        "GIT_OBJECT_HASH"
+    )
+    evidence_origin: Literal["NOT_RECORDED", "TEST_TRANSPORT", "REMOTE_SERVICE"] = (
+        "NOT_RECORDED"
+    )
     files: tuple[ContextFile, ...] = Field(default=(), max_length=16)
     sanitized_errors: str = Field(max_length=1024, repr=False)
     omissions: tuple[str, ...] = Field(default=(), max_length=18)
