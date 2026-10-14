@@ -149,6 +149,27 @@ def test_out_of_scope_directory_not_requested() -> None:
     assert len(load_snapshot(objects, grant, grant.owner_id, commit).files) == 1
 
 
+@pytest.mark.parametrize("name", [b".env", b".env.example", b"secrets.key"])
+def test_excluded_secret_file_is_omitted_without_fetching_its_blob(name: bytes) -> None:
+    objects, grant, commit = fixture()
+    original = objects.values[commit][1].split(b"\n")[0][5:].decode()
+    forbidden_blob = "d" * 40  # Deliberately absent: reading it would fail.
+    root = objects.add(
+        "tree",
+        objects.values[original][1]
+        + b"100644 "
+        + name
+        + b"\0"
+        + bytes.fromhex(forbidden_blob),
+    )
+    commit = objects.add("commit", f"tree {root}\n\n".encode())
+    grant = grant.model_copy(update={"commits": (commit,)})
+    snapshot = load_snapshot(objects, grant, grant.owner_id, commit)
+    assert tuple(f.path for f in snapshot.files) == ("src/a.py",)
+    with pytest.raises(SnapshotError, match="PATH_DENIED"):
+        snapshot.read_file(name.decode(), 100)
+
+
 @pytest.mark.parametrize("deep", [False, True])
 def test_traversal_budget_is_enforced(deep: bool) -> None:
     objects, grant, _ = fixture()
