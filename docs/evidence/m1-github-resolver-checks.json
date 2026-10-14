@@ -1,0 +1,69 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "resolver local/uncommitted; pre-existing edits preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_github_commit.py (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1,
+      "reason": "missing new module"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_github_commit.py --tb=short",
+      "exit_code": 0,
+      "passed": 20,
+      "seconds": 0.13
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-github-resolver-tests.xml",
+      "exit_code": 0,
+      "passed": 290,
+      "postgres_scenarios": 37,
+      "seconds": 31.86,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 62
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 41
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/repository/github.py tests/unit/test_github_commit.py",
+      "exit_code": 0,
+      "findings": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-github-resolver-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged production dependency graph"
+    }
+  ],
+  "artifact_sha256": {
+    "m1-github-resolver-tests.xml": "06e8a3e39ecf4be5f47d4a4fd75d0fe8e0c46cb6fedd5feb59b8ab361ce875b9",
+    "m1-github-resolver-secret-scan.json": "5d04286c8583b8056f7ceae7190b68739e7aa0c7677a55bc93e3cdb175abf523",
+    "m1-github-resolver-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2"
+  },
+  "live_github_requests": 0,
+  "paid_provider_calls": 0,
+  "remote_writes": 0
+}
