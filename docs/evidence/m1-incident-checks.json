@@ -1,0 +1,77 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "local uncommitted incident slice; prior worker/exhaustion changes preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_incident.py (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1,
+      "reason": "new module not implemented"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_incident.py",
+      "exit_code": 0,
+      "passed": 5
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-incident-tests.xml",
+      "exit_code": 0,
+      "passed": 268,
+      "seconds": 29.27
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-incident-bound-tests.xml",
+      "exit_code": 0,
+      "passed": 270,
+      "seconds": 32.35,
+      "postgres_scenarios": 37,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 60
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 40
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-incident-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged production dependency graph"
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/incident.py services/context/incident.py services/persistence/store.py services/api/app.py services/orchestrator/worker.py migrations/versions/0004_incident_reports.py tests/unit/test_incident.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 1,
+      "reviewed_synthetic_fixtures": 1,
+      "real_credentials_found": 0,
+      "review": "tests/unit/test_incident.py:10 is explicit synthetic redaction input; no suppression added"
+    }
+  ],
+  "artifact_sha256": {
+    "m1-incident-tests.xml": "b34c5efa33f255878268cb1e701d1efce088cde7a4fdd3e9dec7f630c784126e",
+    "m1-incident-bound-tests.xml": "43b7c0b98cc7990a4096cc4469523a4d14b01931b785b760da3cc10f7a661c77",
+    "m1-incident-secret-scan.json": "7eec5585dcd86bafb31b35fd31037adce8ef6147afb212571415e02288d8270f",
+    "m1-incident-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2"
+  },
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
