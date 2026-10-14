@@ -21,7 +21,10 @@ Pure uncommitted planning is recomputed after interruption. That is sufficient
 for this collection-only slice; future model/network/execution nodes need durable
 action intents, external IDs and reconciliation before retry. Exactly-once
 external effects are not established. A background polling worker, complete agent
-graph, scheduling/backoff and automatic exhausted-job routing remain pending.
+graph and scheduling/backoff remain pending. Collection lease exhaustion now
+routes atomically to INCONCLUSIVE on the next claim attempt.
+A one-step dispatcher now exists (collection-worker.md); a polling daemon and
+production input loader are not implemented.
 
 Raw snapshot/error/secrets stay in private closure data, outside graph state.
 The ephemeral delta can contain sanitized context but is not persisted by
@@ -37,3 +40,7 @@ explicit failure routing and cancellation. They do not prove authenticated fetch
 complete incident ingestion, real inference or sandbox repair execution.
 
 Reference: https://docs.langchain.com/oss/python/langgraph/graph-api .
+
+Input loading may now be deferred until COLLECTING via a trusted InputLoader,
+after persisted scope checks. Successful context commit also closes the
+collection job atomically, preventing later reclaim of completed work.
