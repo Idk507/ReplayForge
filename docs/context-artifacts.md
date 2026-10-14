@@ -17,6 +17,10 @@ checksum/canonical schema. Local authenticated GET
 expired and absent artifacts return 404. Events contain no context content;
 checkpoints contain only content IDs.
 
+Context now retains commit_identity to distinguish raw Git commit validation
+from GitHub HTTPS commit-to-tree metadata. Old canonical artifacts without this
+field remain readable without digest changes; new writes always include it.
+
 Runtime requires SELECT/INSERT only and cannot UPDATE/DELETE artifacts. These
 are trusted application owner checks, not tenant RLS. Checksums establish
 integrity, not signed provenance or protection from a database administrator.
