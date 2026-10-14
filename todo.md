@@ -12,7 +12,7 @@
 - [ ] Probe catalog for NVIDIA model ID and make genuine Token Factory inference. Acceptance: sanitized request/response metadata and trace.
 - [ ] Verify access to remote isolated Linux sandbox and run harmless `python -V` within it. Acceptance: output and sandbox termination recorded.
 - [ ] Verify Tavily key or SDK access for actual runtime call. Acceptance: search returns source URLs.
-- [ ] Register authorized GitHub test installation; check exact permission scopes. Acceptance: read-only repo fetch succeeds.
+- [~] Authorized live README fetch passed through ReplayForge for Idk507/maf_ds_agent at 08d828835fcb0cada16aca45c721ad0075e0c70e. CLI access metadata reports admin/push capabilities; separate read-only installation and exact token scopes remain pending. See m1-live-github-checks.json.
 - [ ] Create repo skeleton and OSS license. Acceptance: clean clone and CI smoke.
 **Gate:** stop broad implementation if no viable Nemotron inference or isolation design is available; resolve blockers first.
 
@@ -35,12 +35,12 @@ checkbox is completed by these offline tests.
 
 ## M1 — Oct 14–16: Control plane + agent loop
 - [~] Pydantic schemas and enums: local RunState, stages, artifact references and action budgets validated; full agent/API contracts and durable integration remain pending. See implementation log.
-- [~] Postgres/Alembic checkpoint, event outbox and fenced job leases: real local process-death, rollback, concurrency and recovery tests passed. Full domain schema, automatic failure routing and merged acceptance remain pending.
-- [~] FastAPI metadata run creation, GET and cancellation: loopback-only bearer authentication, repository UUID scope and real DB tests passed. Redacted incident storage, repository consent resolution, rate limiting and production auth remain pending.
+- [~] Postgres/Alembic checkpoint, event outbox and fenced job leases: real local process-death, rollback, concurrency and recovery tests passed. Three expired collection claims now atomically close the run as INCONCLUSIVE with LEASE_EXHAUSTED; cancellation and audit rollback tested. Full domain schema, later-stage failure routing and merged acceptance remain pending. See m1-exhaustion-checks.json.
+- [~] FastAPI run creation, GET and cancellation: loopback-only bearer authentication, repository UUID scope and real DB tests passed. Redacted incident reports now commit atomically with intake; owner, checksum, expiry, idempotency and rollback tested. Repository consent resolution, rate limiting and production auth remain pending. See m1-incident-checks.json.
 - [~] Finite SSE replay pages: Last-Event-ID reconnect returns unseen persisted events in real DB/API tests. Continuous streaming/UI reconnect and deployment acceptance remain pending.
-- [~] GitHub pinned snapshot: persisted PostgreSQL grants gate API intake; bounded reader verifies commit/tree/blob IDs and SHA256 file identities in synthetic tests. Authenticated live fetch and durable snapshot acceptance remain pending.
+- [~] GitHub pinned snapshot: bounded acquisition and provenance tests pass; authorized live README fetch/hash passed on a pinned maf_ds_agent commit (m1-live-github-checks.json). Excluded secret files are omitted without blob fetch while content admission remains denied. Durable raw snapshots, least-privilege installation and full live worker acceptance remain pending.
 - [~] Redactor/context collector: sanitized bundles persist atomically with hashed checkpoint references; owner/expiry/checksum API reads and rollback tested with PostgreSQL. Discovery, dependency digest, complete retention and graph integration remain pending.
-- [~] LangGraph collection plan/reducer loop recovers from PostgreSQL domain checkpoints; replacement-lease resume, no duplicate collection writes, scope/context failure routing and cancellation tested. Full agent graph, native pending-task persistence, action reconciliation and worker scheduling remain pending.
+- [~] LangGraph collection recovery, scoped loader and bounded polling tested with PostgreSQL. Metadata source manifests now commit atomically with context/checkpoint/job completion and expose owner-scoped verified reads. Polling has bounded ticks, idle waits, cooperative stop and no automatic exception retry (m1-durable-worker-checks.json). Raw snapshot storage, deployed service configuration, full graph/live worker acceptance and action reconciliation remain pending.
 **Gate:** fixture run reaches TRIAGING with durable trace and controlled outcome.
 
 ## M2 — Oct 17–20: Real execution and repair
