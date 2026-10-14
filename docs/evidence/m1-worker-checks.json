@@ -1,0 +1,51 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "worker changes local/uncommitted; existing implementation preserved",
+  "checks": [
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-worker-tests.xml",
+      "exit_code": 0,
+      "passed": 256,
+      "seconds": 29.65,
+      "warnings": 1,
+      "postgres_scenarios": 28
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 56
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 38
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "isolated wheel import of services.orchestrator.worker",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/orchestrator services/persistence/store.py scripts/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0,
+      "scope": "changed worker/graph/storage source and test harness"
+    }
+  ],
+  "junit_sha256": "f805ef5c4bc4f6304bd81df4ab53b516e4eb3834d44f8f072d1cd00138f89e2b",
+  "cloud_calls": 0,
+  "remote_writes": 0
+}
