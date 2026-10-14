@@ -1,0 +1,87 @@
+{
+  "observed_date": "2026-10-14",
+  "source_head": "c10687e35c12e7fa1502c39e43ab577fe901ae93",
+  "source_state": "local uncommitted manifest and polling slices; prior work preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_source_manifest.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_source_manifest.py tests/unit/test_collection_graph.py tests/unit/test_context_storage.py",
+      "exit_code": 0,
+      "passed": 12
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-source-manifest-tests.xml",
+      "exit_code": 0,
+      "passed": 333,
+      "postgres_scenarios": 46,
+      "seconds": 40.96,
+      "warnings": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_worker_polling.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_worker_polling.py --tb=short",
+      "exit_code": 0,
+      "passed": 10,
+      "seconds": 0.68
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-durable-worker-tests.xml",
+      "exit_code": 0,
+      "passed": 345,
+      "postgres_scenarios": 47,
+      "seconds": 41.93,
+      "warnings": 1
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 72
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 45
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 63
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/source.py packages/contracts/run.py services/orchestrator/source.py services/orchestrator/collection.py services/orchestrator/worker.py services/persistence/store.py services/api/app.py migrations/versions/0005_source_manifests.py tests/unit/test_source_manifest.py tests/unit/test_worker_polling.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-graph-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-source-manifest-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0,
+      "scope": "unchanged production dependency graph"
+    }
+  ],
+  "artifact_sha256": {
+    "m1-durable-worker-tests.xml": "8cecc510eb56491832ca1024612bec8cc8440593096f2dc9391977f8b86c0745",
+    "m1-source-manifest-tests.xml": "8ae550f180fdd0d4209cd0ec405a89544c755022c5cb666fd0ed390c0a30b173",
+    "m1-durable-worker-secret-scan.json": "d58ae3ac56a8601e29a854bf9984583b6b6f3ce13d8aac35f9680aee63cf6e81",
+    "m1-source-manifest-dependency-audit.json": "4767130a5fec0e431e95f3def12a15e7a084f48ce8cfac4533f25216f71220e2"
+  },
+  "live_github_requests": 0,
+  "paid_provider_calls": 0,
+  "remote_writes": 0
+}
