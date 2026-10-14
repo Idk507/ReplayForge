@@ -12,12 +12,15 @@ from uuid import UUID, uuid4
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from packages.contracts.context import ContextBundle
+from packages.contracts.incident import IncidentReport
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
+from packages.contracts.source import SealedSnapshot, SourceManifest
 from packages.policies.budget import consume
+from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import TERMINAL, transition
 
 
@@ -65,7 +68,9 @@ class Store:
         self.dsn = dsn
 
     @staticmethod
-    def _context_payload(bundle: ContextBundle) -> bytes:
+    def _context_payload(
+        bundle: ContextBundle, *, legacy_fields: tuple[str, ...] = ()
+    ) -> bytes:
         """Validate bounded sanitized data, never accept raw logs or arbitrary blobs."""
         bundle = ContextBundle.model_validate(bundle.model_dump())
         if len({item.path for item in bundle.files}) != len(bundle.files):
@@ -75,8 +80,13 @@ class Store:
             for item in bundle.files
         ):
             raise StoreError("CONTEXT_INTEGRITY")
+        data = bundle.model_dump(mode="json")
+        for key in legacy_fields:
+            # Read compatibility for artifacts written before REST acquisition.
+            # Never used for new writes or to drop supplied provenance fields.
+            data.pop(key)
         payload = json.dumps(
-            bundle.model_dump(mode="json"),
+            data,
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
@@ -86,7 +96,13 @@ class Store:
         return payload
 
     def store_context(
-        self, lease: Lease, bundle: ContextBundle, *, expected_version: int
+        self,
+        lease: Lease,
+        bundle: ContextBundle,
+        *,
+        expected_version: int,
+        source_manifest: SourceManifest | None = None,
+        sealed_snapshot: SealedSnapshot | None = None,
     ) -> RunState:
         """Commit sanitized context and TRIAGING checkpoint in one transaction.
 
@@ -97,9 +113,42 @@ class Store:
         payload = self._context_payload(bundle)
         lease = Lease.model_validate(lease.model_dump())
         digest = hashlib.sha256(payload).hexdigest()
+        source_payload = None
+        if source_manifest is None:
+            if bundle.evidence_origin != "NOT_RECORDED":
+                raise StoreError("SOURCE_MANIFEST_REQUIRED")
+        else:
+            source_payload = self._source_payload(source_manifest)
+            source_manifest = SourceManifest.model_validate(
+                source_manifest.model_dump()
+            )
+            identities = {item.path: item.sha256 for item in source_manifest.files}
+            if (
+                source_manifest.source_commit != bundle.source_commit
+                or source_manifest.evidence_origin != bundle.evidence_origin
+                or source_manifest.commit_identity != bundle.commit_identity
+                or any(identities.get(f.path) != f.source_sha256 for f in bundle.files)
+            ):
+                raise StoreError("SOURCE_MANIFEST_MISMATCH")
+        sealed_payload = None
+        if sealed_snapshot is not None:
+            sealed_snapshot = SealedSnapshot.model_validate(
+                sealed_snapshot.model_dump()
+            )
+            if (
+                source_payload is None
+                or sealed_snapshot.run_id != lease.run_id
+                or (
+                    sealed_snapshot.manifest_sha256
+                    != hashlib.sha256(source_payload).hexdigest()
+                )
+            ):
+                raise StoreError("SNAPSHOT_BINDING")
+            sealed_payload = self._sealed_payload(sealed_snapshot)
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT checkpoint FROM runs WHERE id=%s FOR UPDATE", (lease.run_id,)
+                "SELECT checkpoint,owner_id FROM runs WHERE id=%s FOR UPDATE",
+                (lease.run_id,),
             ).fetchone()
             job = conn.execute(
                 """SELECT run_id FROM job_leases WHERE run_id=%s
@@ -116,20 +165,166 @@ class Store:
                 raise StoreError("CONTEXT_STAGE_DENIED")
             if bundle.source_commit != state.source_commit:
                 raise StoreError("CONTEXT_SOURCE_MISMATCH")
+            source_ref = None
+            if source_manifest is not None and source_payload is not None:
+                owner = UUID(str(row["owner_id"]))
+                consent = conn.execute(
+                    """SELECT grant_json FROM repository_grants
+                    WHERE id=%s AND owner_id=%s""",
+                    (state.repository_id, owner),
+                ).fetchone()
+                if (
+                    consent is None
+                    or source_manifest.repository_id != state.repository_id
+                ):
+                    raise StoreError("SOURCE_MANIFEST_SCOPE")
+                grant = RepositoryGrant.model_validate(consent["grant_json"])
+                if not admit(
+                    grant, owner, state.repository_id, state.source_commit
+                ).allowed or any(
+                    not allowed_entry(grant, f.path, "100644")
+                    for f in source_manifest.files
+                ):
+                    raise StoreError("SOURCE_MANIFEST_SCOPE")
+                source_digest = hashlib.sha256(source_payload).hexdigest()
+                conn.execute(
+                    """INSERT INTO source_manifests(run_id,digest,payload)
+                    VALUES (%s,%s,%s)""",
+                    (state.run_id, source_digest, source_payload),
+                )
+                source_ref = "sha256:" + source_digest
             conn.execute(
                 """INSERT INTO context_artifacts(run_id,digest,payload)
                 VALUES (%s,%s,%s)""",
                 (state.run_id, digest, payload),
             )
             data = state.model_dump()
+            if sealed_payload is not None:
+                sealed_digest = hashlib.sha256(sealed_payload).hexdigest()
+                conn.execute(
+                    """INSERT INTO sealed_snapshots(run_id,digest,payload)
+                    VALUES (%s,%s,%s)""",
+                    (state.run_id, sealed_digest, sealed_payload),
+                )
+                data["source_snapshot_ref"] = "sha256:" + sealed_digest
             data["context_refs"] = (*state.context_refs, f"sha256:{digest}")
+            if source_ref is not None:
+                data["source_manifest_ref"] = source_ref
             state = transition(
                 RunState.model_validate(data),
                 Stage.TRIAGING,
                 expected_version=expected_version,
             )
             self._save(conn, state)
+            # Collection hands off at TRIAGING; this collection job is finished.
+            # Commit the fence with its artifact/checkpoint, not in a later call.
+            conn.execute(
+                "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
+                (state.run_id,),
+            )
             return state
+
+    @staticmethod
+    def _source_payload(manifest: SourceManifest) -> bytes:
+        """Canonical bounded metadata; never accepts source contents or logs."""
+        manifest = SourceManifest.model_validate(manifest.model_dump())
+        payload = json.dumps(
+            manifest.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        if len(payload) > 65536:
+            raise StoreError("SOURCE_MANIFEST_LIMIT")
+        return payload
+
+    @staticmethod
+    def _sealed_payload(sealed: SealedSnapshot) -> bytes:
+        sealed = SealedSnapshot.model_validate(sealed.model_dump())
+        payload = json.dumps(
+            sealed.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        if len(payload) > 4100000:
+            raise StoreError("SNAPSHOT_LIMIT")
+        return payload
+
+    def sealed_snapshot(
+        self, run_id: UUID, owner: UUID, artifact_id: str
+    ) -> SealedSnapshot:
+        """Trusted internal ciphertext read only; no public raw-source API route."""
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", artifact_id):
+            raise StoreError("ARTIFACT_ID_INVALID")
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT s.payload FROM sealed_snapshots s JOIN runs r ON r.id=s.run_id
+                WHERE s.run_id=%s AND r.owner_id=%s AND s.digest=%s
+                AND s.expires_at>clock_timestamp()""",
+                (run_id, owner, artifact_id[7:]),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            payload = row["payload"]
+            if (
+                not isinstance(payload, bytes)
+                or hashlib.sha256(payload).hexdigest() != artifact_id[7:]
+            ):
+                raise StoreError("SNAPSHOT_INTEGRITY")
+            try:
+                sealed = SealedSnapshot.model_validate_json(payload)
+            except ValidationError:
+                raise StoreError("SNAPSHOT_INTEGRITY") from None
+            if sealed.run_id != run_id or self._sealed_payload(sealed) != payload:
+                raise StoreError("SNAPSHOT_INTEGRITY")
+            return sealed
+
+    def source_manifest(
+        self, run_id: UUID, owner: UUID, artifact_id: str
+    ) -> SourceManifest:
+        """Owner/retention/checksum/canonical read of a committed source manifest."""
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", artifact_id):
+            raise StoreError("ARTIFACT_ID_INVALID")
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT s.payload FROM source_manifests s JOIN runs r ON r.id=s.run_id
+                WHERE s.run_id=%s AND r.owner_id=%s AND s.digest=%s
+                AND s.expires_at>clock_timestamp()""",
+                (run_id, owner, artifact_id[7:]),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            payload = row["payload"]
+            if (
+                not isinstance(payload, bytes)
+                or hashlib.sha256(payload).hexdigest() != artifact_id[7:]
+            ):
+                raise StoreError("SOURCE_MANIFEST_INTEGRITY")
+            try:
+                manifest = SourceManifest.model_validate_json(payload)
+            except ValidationError:
+                raise StoreError("SOURCE_MANIFEST_INTEGRITY") from None
+            if self._source_payload(manifest) != payload:
+                raise StoreError("SOURCE_MANIFEST_INTEGRITY")
+            return manifest
+
+    def claimed_run(self, lease: Lease) -> tuple[UUID, RunState]:
+        """Resolve owner/checkpoint only for an active trusted worker claim."""
+        lease = Lease.model_validate(lease.model_dump())
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT r.owner_id,r.checkpoint FROM runs r
+                JOIN job_leases j ON j.run_id=r.id WHERE r.id=%s
+                AND j.worker_id=%s AND j.token=%s AND j.status='leased'
+                AND j.leased_until>clock_timestamp()""",
+                (lease.run_id, lease.worker_id, lease.token),
+            ).fetchone()
+            if row is None:
+                raise StoreError("LEASE_LOST")
+            return UUID(str(row["owner_id"])), RunState.model_validate(
+                row["checkpoint"]
+            )
 
     def context(self, run_id: UUID, owner: UUID, artifact_id: str) -> ContextBundle:
         """Owner-scoped retained read with checksum and schema verification."""
@@ -151,8 +346,17 @@ class Store:
                 or hashlib.sha256(payload).hexdigest() != digest
             ):
                 raise StoreError("ARTIFACT_INTEGRITY")
-            bundle = ContextBundle.model_validate_json(payload)
-            if self._context_payload(bundle) != payload:
+            try:
+                bundle = ContextBundle.model_validate_json(payload)
+                stored = json.loads(payload)
+                legacy_fields = tuple(
+                    key
+                    for key in ("commit_identity", "evidence_origin")
+                    if key not in stored
+                )
+            except (ValidationError, ValueError):
+                raise StoreError("ARTIFACT_INTEGRITY") from None
+            if self._context_payload(bundle, legacy_fields=legacy_fields) != payload:
                 raise StoreError("ARTIFACT_INTEGRITY")
             return bundle
 
@@ -221,7 +425,13 @@ class Store:
         )
 
     def create(
-        self, state: RunState, owner: UUID, key: UUID, request_hash: str
+        self,
+        state: RunState,
+        owner: UUID,
+        key: UUID,
+        request_hash: str,
+        *,
+        incident: IncidentReport | None = None,
     ) -> RunState:
         """Commit initial checkpoint, event and job together; deduplicate by owner."""
         state = RunState.model_validate(state.model_dump())
@@ -237,6 +447,12 @@ class Store:
             raise StoreError("INVALID_INITIAL_STATE")
         if not re.fullmatch(r"[a-f0-9]{64}", request_hash):
             raise StoreError("INVALID_REQUEST_HASH")
+        incident_payload = None
+        if incident is not None:
+            incident = IncidentReport.model_validate(incident.model_dump())
+            incident_payload = incident.model_dump_json().encode()
+            if len(incident_payload) > 4096:
+                raise StoreError("INCIDENT_LIMIT")
         with self._connection() as conn:
             # Serialize the same owner/key before INSERT/row-lock upgrades.
             # Unique indexes remain the durable backstop; hash collisions only
@@ -278,9 +494,47 @@ class Store:
                 ):
                     raise StoreError("IDEMPOTENCY_CONFLICT")
                 return existing
+            if incident_payload is not None:
+                conn.execute(
+                    """INSERT INTO incident_reports(run_id,digest,payload)
+                    VALUES (%s,%s,%s)""",
+                    (
+                        state.run_id,
+                        hashlib.sha256(incident_payload).hexdigest(),
+                        incident_payload,
+                    ),
+                )
             self._event(conn, state, "CREATED")
             conn.execute("INSERT INTO job_leases(run_id) VALUES (%s)", (state.run_id,))
         return state
+
+    def incident(self, run_id: UUID, owner: UUID) -> IncidentReport:
+        """Read retained immutable input with owner, digest and schema checks.
+
+        Trusted internal consumer only; no public raw-report endpoint exists.
+        Legacy metadata-only runs have no report and fail closed as NOT_FOUND.
+        """
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT i.payload,i.digest FROM incident_reports i
+                JOIN runs r ON r.id=i.run_id WHERE i.run_id=%s AND r.owner_id=%s
+                AND i.expires_at>clock_timestamp()""",
+                (run_id, owner),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            payload = row["payload"]
+            if not isinstance(payload, bytes) or (
+                hashlib.sha256(payload).hexdigest() != row["digest"]
+            ):
+                raise StoreError("INCIDENT_INTEGRITY")
+            try:
+                report = IncidentReport.model_validate_json(payload)
+            except ValidationError:
+                raise StoreError("INCIDENT_INTEGRITY") from None
+            if report.model_dump_json().encode() != payload:
+                raise StoreError("INCIDENT_INTEGRITY")
+            return report
 
     def get(self, run_id: UUID, owner: UUID) -> RunState:
         """Owner-scoped reads conceal another owner's existence."""
@@ -378,6 +632,16 @@ class Store:
                 raise StoreError("DB_INTEGRITY")
             state = RunState.model_validate(row["checkpoint"])
             if job["attempt_count"] == 3:
+                # Run/job locks fence cancellation and stale workers. Exhaustion
+                # is an observed infrastructure limit, never a repair verdict.
+                if state.current_stage not in TERMINAL:
+                    state = RunState.model_validate(
+                        {**state.model_dump(), "failure_reason": "LEASE_EXHAUSTED"}
+                    )
+                    state = transition(
+                        state, Stage.INCONCLUSIVE, expected_version=state.version
+                    )
+                    self._save(conn, state)
                 conn.execute(
                     """UPDATE job_leases SET status='exhausted',token=NULL
                     WHERE run_id=%s""",
@@ -401,7 +665,13 @@ class Store:
         target: Stage,
         *,
         expected_version: int,
-        failure_reason: Literal["SCOPE_DENIED", "SOURCE_MISMATCH", "CONTEXT_REJECTED"]
+        failure_reason: Literal[
+            "SCOPE_DENIED",
+            "SOURCE_MISMATCH",
+            "CONTEXT_REJECTED",
+            "SOURCE_REJECTED",
+            "SOURCE_UNAVAILABLE",
+        ]
         | None = None,
     ) -> RunState:
         """Lock run then job; fence expired/superseded workers before committing."""
