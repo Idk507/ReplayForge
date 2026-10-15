@@ -13,6 +13,7 @@ from services.orchestrator.collection import (
     SourceInputError,
 )
 from services.repository.github import GitHubReader, RepositoryReadError
+from services.repository.keyring import SnapshotKeyring
 from services.repository.packaging import PackageError, SnapshotCipher
 from services.repository.snapshot import SnapshotError
 
@@ -23,7 +24,7 @@ def github_inputs(
     *,
     known_secrets: tuple[SecretStr, ...] = (),
     transport: httpx.BaseTransport | None = None,
-    snapshot_cipher: SnapshotCipher | None = None,
+    snapshot_cipher: SnapshotCipher | SnapshotKeyring | None = None,
 ) -> InputLoader:
     """Create an operator-configured loader; construction performs no HTTP.
 
