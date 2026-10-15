@@ -1,0 +1,92 @@
+{
+  "limitations": [
+    "Planning only; no command execution or production runner admission",
+    "Artifact references and image SHA256 declarations require independent byte/identity validation",
+    "Planning checks budget but does not reserve it atomically",
+    "No patch application, reproduced baseline, clean replay or VERIFIED repair",
+    "M0/M1/M2 partial; no provider credentials or calls this turn"
+  ],
+  "checks": [
+    {
+      "exit_code": 1,
+      "command": "uv run pytest -q tests/unit/test_command_policy.py --tb=short (before implementation)",
+      "collection_errors": 1
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_command_policy.py --tb=short",
+      "passed": 26
+    },
+    {
+      "warnings": 1,
+      "seconds": 58.46,
+      "passed": 417,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-command-plan-tests.xml",
+      "exit_code": 0,
+      "postgres_scenarios": 61
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff check ."
+    },
+    {
+      "exit_code": 0,
+      "files": 83,
+      "command": "uv run ruff format --check ."
+    },
+    {
+      "exit_code": 0,
+      "source_files": 50,
+      "command": "uv run mypy"
+    },
+    {
+      "exit_code": 0,
+      "packages": 66,
+      "command": "uv lock --check"
+    },
+    {
+      "exit_code": 0,
+      "command": "uv build --wheel"
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-command-plan-dependency-audit.json",
+      "known_vulnerabilities": 0
+    },
+    {
+      "exit_code": 0,
+      "scope": "targeted files only",
+      "findings": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/execution.py services/runner/commands.py tests/unit/test_command_policy.py"
+    }
+  ],
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3",
+  "observed_date": "2026-10-15",
+  "artifacts": [
+    {
+      "path": "docs/evidence/m2-command-plan-tests.xml",
+      "sha256": "b96dc0ca1b9de1def2017efb4295a6a154ff5de3173ec391ba55d30a23fa4600"
+    },
+    {
+      "path": "docs/evidence/m2-command-plan-dependency-audit.json",
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e"
+    },
+    {
+      "path": "docs/evidence/m2-command-plan-secret-scan.json",
+      "sha256": "d0fd2c441a002ca48618b9972fcd535fdb9e88f4844b3ea69f23762b4e07ce38"
+    },
+    {
+      "path": "packages/contracts/execution.py",
+      "sha256": "01038833039ccf7582311a951f000947af942d03aeb0bdf2945aeab8944f4419"
+    },
+    {
+      "path": "services/runner/commands.py",
+      "sha256": "85796894ffd4df00631d3bb577fe7181cdb775ab1bacaee16dddc5ad6e9ec981"
+    },
+    {
+      "path": "tests/unit/test_command_policy.py",
+      "sha256": "d995734a8b549bb2ae8dd509359f5c894cbf88e3b90e3c089a195aff12d0a3e0"
+    }
+  ],
+  "source_state": "local command-planning slice; prior work preserved"
+}
