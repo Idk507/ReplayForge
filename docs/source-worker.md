@@ -37,7 +37,11 @@ Tests use synthetic HTTP responses and disposable real PostgreSQL. They cover
 API incident intake, persisted grant admission, worker reconstruction, source
 redaction, context readback and terminal failure/no-reclaim behavior. The separate
 authorized live README smoke has passed; production least-privilege credentials
-and full live worker acceptance remain unverified. Raw source snapshots remain
-ephemeral; durable raw storage, deployment egress and production authentication
-are pending. The reader's bounded acquisition can still outlast a
+and full live worker acceptance remain unverified. Source snapshots are ephemeral
+by default. Explicit snapshot_cipher=SnapshotCipher(...) or SnapshotKeyring(...)
+enables bounded encrypted subset storage atomically with context and manifest;
+see encrypted-snapshots.md. Keyring rotation uses one active write key and
+historical decrypt keys. Production key provisioning, purge/backup retention,
+deployment egress and production authentication remain pending.
+The reader's bounded acquisition can still outlast a
 lease under delays; the commit fence rejects stale work without refunding it.
