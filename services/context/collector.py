@@ -7,7 +7,13 @@ import unicodedata
 
 from pydantic import SecretStr
 
-from packages.contracts.context import ContextBundle, ContextFile
+from packages.contracts.context import (
+    DEPENDENCY_PATHS,
+    ContextBundle,
+    ContextFile,
+    DependencyFile,
+    dependency_digest,
+)
 from services.repository.snapshot import Snapshot, SnapshotError
 
 PRIVATE_KEY = re.compile(
@@ -65,11 +71,28 @@ def collect(
 
     clean_errors = redact(errors)
     omissions = ["ERRORS_TRUNCATED"] if len(clean_errors) > 1024 else []
+    dependencies = []
+    for identity in sorted(snapshot.files, key=lambda f: f.path):
+        if identity.path not in DEPENDENCY_PATHS:
+            continue
+        try:
+            raw = snapshot.read_file(identity.path, 65536)
+        except SnapshotError:
+            raise ContextError("PATH_DENIED") from None
+        if (
+            len(raw) != identity.size_bytes
+            or hashlib.sha256(raw).hexdigest() != identity.sha256
+        ):
+            raise ContextError("SOURCE_INTEGRITY")
+        dependencies.append(DependencyFile(path=identity.path, sha256=identity.sha256))
+    dependency_files = tuple(dependencies)
     bundle = ContextBundle(
         source_commit=snapshot.source_commit,
         commit_identity=snapshot.commit_identity,
         evidence_origin=snapshot.evidence_origin,
         sanitized_errors=clean_errors[:1024],
+        dependency_files=dependency_files,
+        deps_hash=dependency_digest(dependency_files),
         omissions=tuple(omissions),
     )
     identities = {item.path: item for item in snapshot.files}
