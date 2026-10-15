@@ -1,0 +1,99 @@
+{
+  "observed_date": "2026-10-15",
+  "artifacts": [
+    {
+      "path": "docs/evidence/m1-key-rotation-tests.xml",
+      "sha256": "ad82cba884ff6bb733812686caac0aa75dbb26978d5cc7d2e2f039a56cda288a"
+    },
+    {
+      "path": "docs/evidence/m1-key-rotation-dependency-audit.json",
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e"
+    },
+    {
+      "path": "docs/evidence/m1-key-rotation-secret-scan.json",
+      "sha256": "b31075997b38a4c92992512b9c691d0ff4d9980241a4297ed1a57aa7e54e39fd"
+    },
+    {
+      "path": "docs/evidence/m1-encrypted-snapshot-audit-requirements.txt",
+      "sha256": "a91af64aa51f059e1d15565a5b6869d533ef90ae75182998e88d96876aefb743"
+    },
+    {
+      "path": "services/repository/keyring.py",
+      "sha256": "baf4e6a42fce3aed974aa291896b5154aae48731de95e6a24bd362bdd722b90e"
+    },
+    {
+      "path": "services/orchestrator/source.py",
+      "sha256": "885355b8daaf629f0e49d766b19904145553f7571059b642c64fd64660c12622"
+    },
+    {
+      "path": "tests/unit/test_snapshot_keyring.py",
+      "sha256": "d97556f580e3ae580fdf9b9ca1c40f23d32915278e226ba19e612a3d346eb8c5"
+    },
+    {
+      "path": "tests/integration/test_postgres.py",
+      "sha256": "181f0472a5b27545d94a4523d617839675081fd5257f162b9e856fd6df62a111"
+    }
+  ],
+  "limitations": [
+    "Synthetic source and temporary keys only",
+    "Reconstructed keyring tests do not prove key backup or separate-process secret provisioning",
+    "Production key source/recovery and deletion/backup retention not configured",
+    "No live inference/sandbox, remote writes, UI E2E or full milestone acceptance"
+  ],
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3",
+  "source_state": "local keyring changes on inspected HEAD; unrelated work preserved",
+  "checks": [
+    {
+      "exit_code": 1,
+      "collection_errors": 1,
+      "command": "uv run pytest -q tests/unit/test_snapshot_keyring.py --tb=short (before implementation)"
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_snapshot_keyring.py tests/unit/test_snapshot_package.py tests/unit/test_source_loader.py --tb=short",
+      "passed": 26
+    },
+    {
+      "warnings": 1,
+      "postgres_scenarios": 55,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-key-rotation-tests.xml",
+      "exit_code": 0,
+      "seconds": 62.37,
+      "passed": 371
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "files": 77,
+      "command": "uv run ruff format --check ."
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run mypy",
+      "source_files": 47
+    },
+    {
+      "exit_code": 0,
+      "command": "uv lock --check",
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-key-rotation-dependency-audit.json",
+      "known_vulnerabilities": 0
+    },
+    {
+      "exit_code": 0,
+      "scope": "targeted files only",
+      "findings": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/repository/keyring.py services/orchestrator/source.py tests/unit/test_snapshot_keyring.py tests/integration/test_postgres.py"
+    }
+  ]
+}
