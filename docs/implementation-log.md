@@ -798,3 +798,241 @@ worker service configuration. Paid inference/sandbox acceptance still requires
 explicit charge authorization. Two live adapter invocations and two CLI metadata
 queries performed reads only; no paid provider calls, remote writes, deployment
 or untrusted host execution occurred. Changes remain local and uncommitted.
+
+## 2026-10-15 — encrypted snapshot acceptance
+
+Reviewed governing contracts and the implementation at source HEAD
+355953dc81e5f7e455a3143aa9261ec7ea587ce3. Completed validation of the
+opt-in encrypted source packaging/storage slice already present in this checkout.
+AES-256-GCM with fresh nonces binds run and manifest; bounded restoration checks
+consent, paths, sizes and both source hashes. Migration 0006 stores ciphertext
+only. Graph reducer commits artifact references, context, manifests, event and
+job completion atomically. Tests demonstrate rollback, restart, owner/expiry
+checks, tamper rejection and runtime write restrictions. No key is auto-loaded;
+no production key is provisioned. See encrypted-snapshots.md for threat limits.
+
+Full disposable local PostgreSQL command exited 0: 360 passed, 52 PostgreSQL
+scenarios, 54.61s, one existing third-party AnyIO deprecation warning. Ruff check
+and format (75 files), strict mypy (46 sources), lock (66 packages), wheel build,
+fresh production dependency audit and targeted secret scan passed. An initial
+mypy invocation named nonexistent apps; corrected to services/packages/scripts
+and passed without changes. Evidence/m1-encrypted-snapshot-checks.json records
+commands and checksums. No UI exists to lint or run browser E2E against.
+
+M0/M1 remain partial; no whole-milestone checkbox was promoted. Production key
+provisioning/rotation/recovery and deletion/backup retention remain pending.
+Next: establish operator key management before enabling retention, then finish
+worker service configuration and remote replay packaging. Live inference and
+sandbox acceptance need explicit charge authorization. No paid calls, remote
+writes or repository execution occurred. Existing unrelated .env.example left
+untouched. Documentation/evidence updates remain local; no merge is asserted.
+
+## 2026-10-15 — explicit snapshot key rotation
+
+Inspected specs, worker/source contracts, codec, storage tests and recent history
+at HEAD 355953dc81e5f7e455a3143aa9261ec7ea587ce3; prior work preserved.
+The earliest locally testable source-retention gap was rotation/recovery of
+existing ciphertext when replacing a single encryption key. Added SnapshotKeyring
+with 1–16 independent keys, one active write key, copied configuration and exact
+historical key selection. Unknown/retired IDs fail closed, with no fallback or
+key discovery. The scoped loader accepts the keyring without changing defaults.
+New unit tests cover rotation, reconstructed instances, retirement, forged key
+IDs, invalid configuration and copied input. PostgreSQL pipeline now additionally
+covers rotated-keyring success, unavailable provider and tampered source.
+
+Red test command failed collection because the keyring module did not exist.
+Targeted codec/keyring/loader tests then passed 26 cases. Final full disposable
+PostgreSQL suite passed 371 tests, 55 integration scenarios, 62.37s; one existing
+third-party AnyIO warning. Ruff check/format (77 files), strict mypy (47 source
+files), lock check (66 packages), wheel build, dependency audit and targeted secret
+scan passed. Initial formatting errors were fixed with ruff format; no tests or
+checks were weakened. Evidence: evidence/m1-key-rotation-checks.json and JUnit.
+
+Threat review: rotation does not grant access or execute source. Caller/run/
+manifest checks and AES-GCM authentication remain in SnapshotCipher. A forged
+key ID cannot redirect decryption successfully. Keys are neither persisted nor
+returned by API/graph; default repr excludes them. Independent key material is
+required. Python memory erasure and privileged process access remain limitations.
+No claim is made of durable key backup: reconstructed tests reuse test-only keys.
+
+M0/M1 remain partial. Real provisioning/recovery requires an operator-controlled
+secret store and stable key IDs; no production keys were generated or installed.
+Next: choose/provision that trusted key source, then wire worker startup and
+retention purge under a separate maintenance identity. Paid inference/sandbox
+acceptance still needs explicit authorization. No cloud charges, remote writes,
+untrusted execution, deployment or merge occurred. Changes remain local.
+
+## 2026-10-15 — authorized live M0 probes and inference origin fix
+
+Reread governing specs/tracker and inspected actual adapters, tests and history at
+355953dc81e5f7e455a3143aa9261ec7ea587ce3. User explicitly authorized live charges,
+continued use of the configured credential, and minimal use only when needed.
+Exactly one catalog GET plus one fixed inference POST and one synthetic sandbox
+operation were run. No automatic submission retries, image imports, private
+source uploads, Tavily calls, GitHub writes or deployment occurred.
+
+Inference command uv run python -m scripts.check_nebius --live exited 0:
+Nemotron nvidia/nemotron-3-super-120b-a12b, HTTP 200, 22 input and 27 output tokens,
+1672ms observed client latency. Cost unknown, not zero. Original safe report:
+evidence/m0-live-inference-attempt.json. No response text retained. Trace is local,
+not a provider request ID. The PowerShell Tee command saved only safe JSON.
+
+An explicit in-memory operator invocation of SandboxConfig.from_env + run_smoke
+used the process key, saved Contree project and previously selected Python image
+UUID. It exited 0: PASSED/REMOTE_SERVICE, Python 3.12.13, UID/GID 1000, loopback
+only, no Docker socket or credential environment names; terminal compute confirmed.
+Operation 01a13f95-af3c-73cd-aa52-64eade3aa9c7. Normal completion needed no DELETE.
+No secret was added to guest arguments or env. See m0-live-sandbox-attempt.json.
+
+Found an inference evidence-label gap: injected and real clients had identical
+report schemas with no origin label. Added required evidence_origin derived from
+transport injection. Regression failed first (1 failed, 24 passed), then the
+full offline/disposable PostgreSQL suite passed: 371 tests, 55 PostgreSQL cases,
+83.00s, one existing AnyIO deprecation warning. Historical live JSON is unchanged;
+no paid call repeated for this schema fix. An intermediate targeted invocation
+named nonexistent test_sandbox.py and ran no tests; corrected via full suite.
+Ruff/format 77 files, mypy 47 sources, lock 66 packages and wheel passed. Audit:
+zero known vulnerabilities. Targeted scan: 2 existing synthetic test literals,
+SHA1-checked against test-secret and secret; no actual key in reports, no suppression.
+
+M0/M1 remain partial. Real inference and fixed guest execution are now observed;
+full isolation/retention/deletion and production runner gates remain open. Current
+provider security/limits docs require team confirmation for deletion/retention
+needs. Next critical task: resolve sandbox capability guarantees or select a
+remote runner that satisfies them before repository execution. Independent M1
+operator key provisioning, service wiring and purge remain pending. Credential
+exposure risk remains despite user-authorized use; no real credential is saved
+in repo evidence. Changes are local; no merge is asserted. Full commands/hashes:
+evidence/m0-live-acceptance-checks.json; scope: live-platform-acceptance.md.
+
+## 2026-10-15 — bounded dependency provenance
+
+Reread governing specs and relevant collector/artifact/graph/source documents;
+inspected implementation/history at 355953dc81e5f7e455a3143aa9261ec7ea587ce3.
+Preserved all prior local work. M0 full runner capability remains externally
+unconfirmed; selected the earliest independent M1 context gap: dependency digest.
+
+Added immutable dependency file identities and a canonical aggregate hash to
+ContextBundle. Six exact root manifest names, only from the already admitted
+snapshot, are recognized. Every body is capped and size/SHA256 checked, including
+manifests not selected for model context. Only path/hash metadata is added;
+no dependency resolver/install, host read, URL fetch or executable hook. Unknown
+or absent approved manifests remain unknown (null digest), not an empty environment.
+Metadata counts against existing context budget. Store binds dependency identities
+to SourceManifest even when manifest contents are omitted. Older canonical stored
+bundles missing these fields remain readable without digest/byte rewrite.
+
+Initial unit tests: 3 failed, 1 passed before implementation. Targeted tests:
+22 passed. Initial full suite: 375 passed, 2 failed (61.39s), because I appended
+new tests after the existing must-run-last migration reset. The reset removed
+runtime grants on recreated tables. Moved the unchanged reset scenario back to
+last; did not broaden permissions or remove assertions. Final full command:
+uv run python -m scripts.test_postgres --evidence-name
+m1-dependency-provenance-final-tests.xml exited 0: 377 passed, 57 PostgreSQL cases,
+61.43s, one existing third-party AnyIO warning. Failed JUnit retained separately.
+Ruff check/format (78 files), mypy (47 sources), lock (66 packages), wheel build,
+production dependency audit and targeted secret scan passed. Formatting errors
+from initial edits were corrected before final acceptance. No UI exists for E2E.
+
+Threat review: hashes bind identity, not dependency safety or completeness.
+Only approved snapshot files are inspected; no new read scope or provider call
+is introduced. No raw dependency content is added to metadata. Existing explicit
+source-context selection still uses redaction. Canonical validation denies
+unrecognized/duplicate/unordered dependency identities and aggregate tampering.
+Store rejects mismatches before DB writes. Synthetic fixtures do not prove live
+worker service operation. No DB migration was needed.
+
+M0/M1 remain partial. Next critical external task: confirm required sandbox
+resource/retention guarantees before repository execution. Next independent local
+slice: explicit worker service startup/configuration, with production key source
+and purge policy still unresolved. No cloud credential, inference, sandbox,
+Tavily or GitHub call occurred this turn; local DB password used only for the
+previously authorized disposable integration test database. No remote writes,
+charges, deployment or merge. Evidence: m1-dependency-provenance-checks.json.
+
+## 2026-10-15 — explicit local worker startup
+
+Reviewed governing specs, current implementation/history and worker/source/DB
+contracts at 355953dc81e5f7e455a3143aa9261ec7ea587ce3; prior changes preserved.
+Selected the missing executable startup boundary on the shortest demo path.
+Added scripts.run_worker: offline default performs no config/credential access or
+DB/provider work. Explicit --run validates operator configuration, rejects remote
+DB destinations and privileged/migration roles, then composes retained incident,
+scoped source loader and existing bounded serve loop. Default one tick; max 1000.
+SIGINT/SIGTERM cooperatively stop and prior handlers restore on every outcome.
+CLI failures expose only safe codes, never raw DB/provider exceptions; no retries.
+No dotenv/gh CLI/Nebius credential discovery or snapshot key auto-loading.
+
+Config admits only explicit loopback DB host/user/database/password and bounded
+connection fields. Explicit hostaddr prevents PGHOSTADDR environment redirection;
+connect/SQL/lock timeouts are pinned. Paths are bounded, distinct and safe; runtime
+persisted consent remains authoritative. Role preflight denies superuser, role/DB
+creators and repository-grant writers before loader construction. This is not a
+complete grant audit. Existing runtime permissions were not expanded.
+
+Red: test_worker_startup collection failed before module existed. Targeted startup
+and polling tests passed 20 before the final config masking case was added;
+startup-only final tests passed 10. Full disposable DB suite exited 0: 391 passed,
+61 PostgreSQL cases, 67.89s, one existing AnyIO warning. Integration uses synthetic
+source only: incident-to-TRIAGING, pre-dispatch stop, sanitized unexpected failure,
+handler restoration and migration-role rejection. Ruff check/format 80 files,
+mypy 48 sources, lock 66 packages, wheel, dependency audit and targeted scan passed.
+Initial formatting and make_conninfo typing issues corrected before acceptance.
+Default CLI printed NOT_RUN; entry function returns 2, observed wrapper exit 1.
+No provider access occurred. Evidence: m1-worker-startup-checks.json.
+
+Threat review: configuration is operator input, not incident/model instructions.
+No new authority to register grants, execute source, publish PRs, migrate schema or
+encrypt retained source is exposed. Tokens/DSN use SecretStr and masked repr;
+only safe polling counters cross output. Unexpected failures stop without retry,
+leaving fenced lease recovery intact. Signal stop is not run cancellation.
+
+M0/M1 remain partial. Next demo-path task: constrained reproduction/command and
+patch contracts for the single fixture, followed by stage dispatch. Full runner
+resource/deletion guarantees still need external confirmation before repository
+execution; production read token/grants and supervisor remain operator setup.
+Key management/purge are pending and retention stays disabled in CLI. No cloud
+credentials/calls, GitHub reads/writes, charges, deployment or merge this turn.
+Local PostgreSQL credential used only for authorized disposable test resources.
+
+## 2026-10-15 — inert constrained pytest command planning
+
+Reread specs/tracker and current runner ports, state transitions, budget and
+repository contracts at 355953dc81e5f7e455a3143aa9261ec7ea587ce3. Prior work
+preserved. M0 runner admission remains externally blocked, so implemented the
+independent M2 command boundary needed for the single-fixture path.
+
+Added frozen TestCommandRequest/TestCommandPlan and pure plan_pytest broker.
+No process, shell, filesystem or provider call exists in this slice. Fixed
+PYTEST_FILES_V1 argv; shell=false, no inherited env, plugin autoload disabled,
+repository pytest config ignored and addopts cleared. Request admits only 1–16
+safe approved tests/*.py paths, mandates regression target, exact source/run/
+manifest/test refs and declared image hash. Baseline requires REPRODUCING and no
+patch; candidate/clean replay require VERIFYING, baseline ref and latest patch ref.
+Checks consent, cancellation and remaining command budget. Plans never authorize
+execution or count as observed test results. Budget is checked, not reserved.
+
+Initial tests failed collection before new contracts existed. Final targeted
+command-policy suite passed 26 cases: injected paths, flags/unknown fields,
+artifact/owner/stage changes, denied scope, cancellation, exhausted budget, stale
+patches and forged argv/env/authority. Full disposable PostgreSQL suite exited 0:
+417 tests, 61 PostgreSQL cases, 58.46s, one existing AnyIO warning. Ruff check,
+format 83 files, strict mypy 50 sources, lock 66 packages, wheel, dependency audit
+and targeted secret scan passed. No dependencies added. Evidence:
+m2-command-plan-checks.json and m2-command-plan-tests.xml.
+
+Threat review: tests/conftest are still untrusted code; disabling autoload/config
+is not a security boundary. Artifact refs/image hash are declarations until a
+trusted dispatcher validates bytes and runner identity. Current run/checkpoint
+validation is not lease fencing or atomic budget reservation. Plan schema blocks
+changes to fixed template/env and always denies execution authority. No existing
+M0 adapter was expanded; production SandboxBackend remains deferred. Detailed
+limits in command-planning.md. No model verdict or synthetic pass is promoted.
+
+M0/M1 remain partial, M2 command planning is partial. Critical external boundary:
+confirm resource/filesystem/network/retention guarantees and actual image identity
+before repository execution. Next local task: bounded patch admission/application
+and reproduction evidence contracts, then trusted artifact materialization and
+stage dispatch. No cloud credentials, provider calls, charges, remote writes,
+repository execution, deployment or merge occurred. Only local disposable DB
+test credentials were used. UI/E2E repair acceptance remains unavailable.
