@@ -56,6 +56,7 @@ def test_probe_records_metadata_without_content_or_credentials() -> None:
 
     result = probe(config(), transport=httpx.MockTransport(respond))
     assert result.input_tokens == 8
+    assert result.evidence_origin == "TEST_TRANSPORT"
     assert result.output_tokens == 2
     assert result.estimated_cost_usd is None
     assert "test-secret" not in result.model_dump_json()
