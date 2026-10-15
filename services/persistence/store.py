@@ -128,6 +128,9 @@ class Store:
                 or source_manifest.evidence_origin != bundle.evidence_origin
                 or source_manifest.commit_identity != bundle.commit_identity
                 or any(identities.get(f.path) != f.source_sha256 for f in bundle.files)
+                or any(
+                    identities.get(f.path) != f.sha256 for f in bundle.dependency_files
+                )
             ):
                 raise StoreError("SOURCE_MANIFEST_MISMATCH")
         sealed_payload = None
@@ -351,7 +354,12 @@ class Store:
                 stored = json.loads(payload)
                 legacy_fields = tuple(
                     key
-                    for key in ("commit_identity", "evidence_origin")
+                    for key in (
+                        "commit_identity",
+                        "evidence_origin",
+                        "dependency_files",
+                        "deps_hash",
+                    )
                     if key not in stored
                 )
             except (ValidationError, ValueError):
