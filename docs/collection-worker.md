@@ -12,7 +12,8 @@ before dispatch claims nothing. An in-flight call finishes or reaches its own
 timeout before shutdown. Any worker/database/programming exception propagates
 without automatic retry. Imports and constructors never start a daemon or loader.
 Polling returns safe counters; it does not cancel individual runs. Deployment,
-process signal wiring and supervisor/backoff policy remain operator work.
+supervisor/backoff policy remain operator work. Explicit local CLI startup and
+process signal wiring now exist; see worker-startup.md.
 
 The graph calls the loader only at COLLECTING, after persisted caller/commit
 consent checks. CollectionInputs keeps raw snapshot/error/secret data out of repr
