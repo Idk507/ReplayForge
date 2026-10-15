@@ -15,6 +15,12 @@ context file. Persisted owner consent and allowed manifest paths are checked
 again within the transaction. Observed TEST_TRANSPORT/REMOTE_SERVICE context
 requires a manifest; legacy NOT_RECORDED fixtures remain supported.
 
+Dependency-file identities in collected context are also bound to manifest paths
+and original SHA256 values, even when their contents are omitted from context.
+See context-collection.md for the exact bounded root-manifest vocabulary and
+aggregate hash definition. This is provenance for the approved subset, not an
+installed dependency environment or a verification verdict.
+
 Manifest insertion, context insertion, source_manifest_ref/context_refs checkpoint
 updates, TRIAGING event and job completion commit together. Failure rolls back
 all of them. Only a live lease and expected version may commit. One manifest is
@@ -29,7 +35,8 @@ UPDATE/DELETE are prohibited. Seven-day read expiry is not deletion. Deployment
 encryption, purge/backup retention and signed provider evidence remain pending.
 Checksums do not protect against a privileged database administrator.
 
-This closes the durable metadata provenance gap. Full original file bytes are
-still ephemeral: reproducible sandbox packaging, encrypted raw snapshot storage,
-artifact signatures and retention must be implemented before claiming durable
-raw-source replay. No new live fetch or cloud execution is needed for these tests.
+This closes the durable metadata provenance gap. Opt-in encrypted file subsets
+are now stored with migration 0006; see encrypted-snapshots.md. Production key
+management, complete sandbox packaging, artifact signatures and retention purge
+remain pending before claiming durable raw-source replay. No new live fetch or
+cloud execution is needed for these tests.
