@@ -1,0 +1,84 @@
+{
+  "checks": [
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-encrypted-snapshot-tests.xml",
+      "postgres_scenarios": 52,
+      "passed": 360,
+      "warnings": 1,
+      "exit_code": 0,
+      "seconds": 54.61
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 75
+    },
+    {
+      "reason": "apps directory absent; corrected invocation below",
+      "command": "uv run mypy apps services packages",
+      "exit_code": 2
+    },
+    {
+      "source_files": 46,
+      "command": "uv run mypy services packages scripts",
+      "exit_code": 0
+    },
+    {
+      "packages": 66,
+      "command": "uv lock --check",
+      "exit_code": 0
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uv export --locked --no-dev --no-hashes --no-emit-project --output-file docs/evidence/m1-encrypted-snapshot-audit-requirements.txt",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-encrypted-snapshot-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    {
+      "findings": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/repository/packaging.py packages/contracts/source.py packages/contracts/run.py services/orchestrator/source.py services/orchestrator/collection.py services/persistence/store.py migrations/versions/0006_sealed_snapshots.py tests/unit/test_snapshot_package.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "scope": "targeted source and test files, not entire repository"
+    }
+  ],
+  "source_state": "implementation present at inspected HEAD; acceptance docs/evidence local",
+  "observed_date": "2026-10-15",
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3",
+  "limitations": [
+    "Synthetic source and injected GitHub HTTP transport for this slice",
+    "No production key provisioning/rotation/recovery",
+    "Read expiry does not delete rows or backups",
+    "Approved subset omits full tree and executable modes",
+    "No live paid inference/sandbox acceptance or remote writes",
+    "No UI E2E; full milestone remains partial"
+  ],
+  "artifacts": [
+    {
+      "sha256": "47551904825b2a8ccde825bc1bf0fa047033d95afdd070e77d7c5e27f4fffd06",
+      "path": "docs/evidence/m1-encrypted-snapshot-tests.xml"
+    },
+    {
+      "sha256": "a91af64aa51f059e1d15565a5b6869d533ef90ae75182998e88d96876aefb743",
+      "path": "docs/evidence/m1-encrypted-snapshot-audit-requirements.txt"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m1-encrypted-snapshot-dependency-audit.json"
+    },
+    {
+      "sha256": "3e424cd415c5d7860fba2362cf6081d25f66b5efc688cd97c08a8ee4b2d7f5aa",
+      "path": "docs/evidence/m1-encrypted-snapshot-secret-scan.json"
+    }
+  ]
+}
