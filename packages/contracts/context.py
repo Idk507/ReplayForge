@@ -1,10 +1,49 @@
 """Bounded sanitized context; construction does not authenticate source provenance."""
 
-from typing import Literal
+import hashlib
+import json
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from packages.contracts.run import CommitSHA
+
+DEPENDENCY_PATHS = frozenset(
+    {
+        "pyproject.toml",
+        "uv.lock",
+        "poetry.lock",
+        "Pipfile.lock",
+        "requirements.txt",
+        "requirements-dev.txt",
+    }
+)
+
+
+class DependencyFile(BaseModel):
+    """Original approved manifest identity; no dependency URLs or raw content."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    path: str
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def recognized(self) -> Self:
+        if self.path not in DEPENDENCY_PATHS:
+            raise ValueError("DEPENDENCY_PATH_DENIED")
+        return self
+
+
+def dependency_digest(files: tuple[DependencyFile, ...]) -> str | None:
+    """Version-one canonical path/hash fingerprint of the admitted subset."""
+    if not files:
+        return None
+    payload = json.dumps(
+        {"schema_version": "1.0", "files": [f.model_dump() for f in files]},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 class ContextFile(BaseModel):
@@ -32,7 +71,18 @@ class ContextBundle(BaseModel):
         "NOT_RECORDED"
     )
     files: tuple[ContextFile, ...] = Field(default=(), max_length=16)
+    dependency_files: tuple[DependencyFile, ...] = Field(default=(), max_length=6)
+    deps_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     sanitized_errors: str = Field(max_length=1024, repr=False)
     omissions: tuple[str, ...] = Field(default=(), max_length=18)
     trust: Literal["UNTRUSTED_REPOSITORY_DATA"] = "UNTRUSTED_REPOSITORY_DATA"
     can_authorize_execution: Literal[False] = False
+
+    @model_validator(mode="after")
+    def dependency_identity(self) -> Self:
+        paths = tuple(f.path for f in self.dependency_files)
+        if paths != tuple(sorted(set(paths))) or self.deps_hash != dependency_digest(
+            self.dependency_files
+        ):
+            raise ValueError("DEPENDENCY_IDENTITY")
+        return self
