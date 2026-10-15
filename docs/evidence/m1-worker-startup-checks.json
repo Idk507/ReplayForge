@@ -1,0 +1,104 @@
+{
+  "limitations": [
+    "Synthetic source loader for startup integration; no full live worker proof",
+    "Startup guard is not complete DB privilege audit",
+    "CLI snapshot retention disabled; operator key provisioning/recovery unresolved",
+    "No deployed supervisor, later-stage dispatch, verified repair or UI E2E",
+    "M0/M1 partial; no provider credentials or calls this turn"
+  ],
+  "observed_date": "2026-10-15",
+  "artifacts": [
+    {
+      "sha256": "a2f64e0a5d8d41b42af4e1d4703d619b8b033e4e63af8ecbc1f38a52ee517166",
+      "path": "docs/evidence/m1-worker-startup-tests.xml"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m1-worker-startup-dependency-audit.json"
+    },
+    {
+      "sha256": "964f08be938e7daa48f5e740dc0c8b5534034fe8471632c4993015cb11809844",
+      "path": "docs/evidence/m1-worker-startup-secret-scan.json"
+    },
+    {
+      "sha256": "932dbcd15fb468e081dc60df5c3026606e84fc52e631f19d0a2584d48b2b8e61",
+      "path": "scripts/run_worker.py"
+    },
+    {
+      "sha256": "38492fc2bf4cbc0003bfacc355648f27dc80a7d7b00abcbce94e72cacc0b487a",
+      "path": "tests/unit/test_worker_startup.py"
+    },
+    {
+      "sha256": "701b7a77064a3a6027ea90329165792f0fa49342f1ac00f6d46e5b362c4867a5",
+      "path": "tests/integration/test_postgres.py"
+    }
+  ],
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3",
+  "checks": [
+    {
+      "exit_code": 1,
+      "command": "uv run pytest -q tests/unit/test_worker_startup.py --tb=short (before implementation)",
+      "collection_errors": 1
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_worker_startup.py tests/unit/test_worker_polling.py --tb=short (before final masking test)",
+      "passed": 20
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_worker_startup.py --tb=short",
+      "passed": 10
+    },
+    {
+      "warnings": 1,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-worker-startup-tests.xml",
+      "seconds": 67.89,
+      "exit_code": 0,
+      "passed": 391,
+      "postgres_scenarios": 61
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "files": 80,
+      "command": "uv run ruff format --check ."
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run mypy",
+      "source_files": 48
+    },
+    {
+      "exit_code": 0,
+      "command": "uv lock --check",
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-worker-startup-dependency-audit.json",
+      "known_vulnerabilities": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files scripts/run_worker.py tests/unit/test_worker_startup.py tests/integration/test_postgres.py",
+      "scope": "targeted files only",
+      "findings": 0
+    },
+    {
+      "expected": true,
+      "status": "NOT_RUN",
+      "command": "uv run python -m scripts.run_worker",
+      "main_return_tested": 2,
+      "wrapper_exit_code": 1
+    }
+  ],
+  "source_state": "local worker startup slice; existing changes preserved"
+}
