@@ -1,0 +1,116 @@
+{
+  "limitations": [
+    "Approved root-manifest subset only; no installed dependency environment or safety verdict",
+    "No cloud credentials or live provider calls in this slice",
+    "M0/M1 partial; runner capabilities, service wiring, key provisioning and retention purge remain pending",
+    "Local unmerged work; no UI E2E"
+  ],
+  "artifacts": [
+    {
+      "sha256": "ca03f58afb19131c456c67355890d3f68f1566dd4cff87ca3c6de0c351bcae8b",
+      "path": "docs/evidence/m1-dependency-provenance-tests.xml"
+    },
+    {
+      "sha256": "22d3a475aa1ba38193ccc560468a7153226f5153425d0217780e733b70219eb0",
+      "path": "docs/evidence/m1-dependency-provenance-final-tests.xml"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m1-dependency-provenance-dependency-audit.json"
+    },
+    {
+      "sha256": "10d7d760167e057253ce5bd3c52c60c6c8080594a99bcd9627da6f53525f27fc",
+      "path": "docs/evidence/m1-dependency-provenance-final-secret-scan.json"
+    },
+    {
+      "sha256": "4a2857ce3ff05cc9af8906c9d8709e6a9ef9a33c2c154dad1fbbc1b4384493ee",
+      "path": "packages/contracts/context.py"
+    },
+    {
+      "sha256": "2e940f366df15396ea3eee22cd6dfe54094e0cbd06e0c538ab957e30d017a5f8",
+      "path": "services/context/collector.py"
+    },
+    {
+      "sha256": "a779096611074506f824da580eebc6be91d5936fc9304b8845ad929ef6fac822",
+      "path": "services/persistence/store.py"
+    },
+    {
+      "sha256": "6f49e2414ab1a009cbec79c7944eb9dff14f7bb1adc16bd231b59f450511907d",
+      "path": "tests/unit/test_dependencies.py"
+    },
+    {
+      "sha256": "5ef026e69fd1a0e77ff778d45951239e2d602c8440b63c8250b26875c3f08829",
+      "path": "tests/integration/test_postgres.py"
+    }
+  ],
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3",
+  "checks": [
+    {
+      "passed": 1,
+      "failed": 3,
+      "exit_code": 1,
+      "command": "uv run pytest -q tests/unit/test_dependencies.py --tb=short (before implementation)"
+    },
+    {
+      "passed": 22,
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_dependencies.py tests/unit/test_context.py tests/unit/test_context_storage.py --tb=short"
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-dependency-provenance-tests.xml",
+      "passed": 375,
+      "reason": "new tests incorrectly followed must-run-last migration reset; moved reset back to last without permission changes",
+      "exit_code": 1,
+      "seconds": 61.39,
+      "failed": 2
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m1-dependency-provenance-final-tests.xml",
+      "passed": 377,
+      "exit_code": 0,
+      "seconds": 61.43,
+      "warnings": 1,
+      "postgres_scenarios": 57
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff format --check .",
+      "files": 78
+    },
+    {
+      "source_files": 47,
+      "exit_code": 0,
+      "command": "uv run mypy"
+    },
+    {
+      "packages": 66,
+      "exit_code": 0,
+      "command": "uv lock --check"
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "known_vulnerabilities": 0,
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m1-dependency-provenance-dependency-audit.json"
+    },
+    {
+      "scope": "targeted files only; final scan after test-order correction",
+      "findings": 0,
+      "exit_code": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/context.py services/context/collector.py services/persistence/store.py tests/unit/test_dependencies.py tests/integration/test_postgres.py"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "observed_date": "2026-10-15",
+  "source_state": "local dependency provenance slice; existing unrelated work preserved"
+}
