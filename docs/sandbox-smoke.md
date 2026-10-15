@@ -1,7 +1,10 @@
 # M0 remote sandbox smoke
 
-The remote adapter is implemented and tested offline. Live access and isolation
-remain unverified. No repository execution is available.
+The fixed synthetic probe passed live on 2026-10-15. It observed Python 3.12.13,
+UID/GID 1000, loopback-only interfaces, no Docker socket and no credential-named
+environment variables. The correlated operation reached a confirmed terminal
+state. See evidence/m0-live-sandbox-attempt.json and m0-live-acceptance-checks.json.
+No repository execution is available; this does not establish all runner controls.
 
 ## Windows operator setup
 
@@ -72,6 +75,12 @@ retry occurs.
 | Provider log/input-image deletion | Not guaranteed by disposable runs | Unverified |
 | Arbitrary repo execution, patches, signed artifacts | Disabled/unimplemented | Unverified |
 
-M0 and the M2 production runner remain open. Backend extension requires provider
+The capability table above describes the original pre-live baseline. The fixed
+Python run, non-root/empty credential environment, loopback-only networking and
+safe observation hash now have live evidence. Cancellation was not exercised
+live because normal completion reached terminal state; offline cancellation
+tests are separate. Terminal compute does not prove image/log deletion.
+
+M0 full isolation/cleanup and the M2 production runner remain open. Backend extension requires provider
 capability evidence or an alternative remote Linux runner, not relaxing these
 requirements. See ADR-009 and the implementation log for actual local checks.
