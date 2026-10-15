@@ -9,6 +9,7 @@ import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from time import monotonic
+from typing import Literal
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -114,6 +115,7 @@ class ProbeResult(BaseModel):
     """Safe observed metadata, without prompt, response text or provider IDs."""
 
     schema_version: str = "1.0"
+    evidence_origin: Literal["TEST_TRANSPORT", "REMOTE_SERVICE"]
     trace_id: str
     observed_at: datetime
     model: str
@@ -204,6 +206,7 @@ def probe(
             raise ProbeError("M_SCHEMA_INVALID")
     usage = completion.usage
     return ProbeResult(
+        evidence_origin="TEST_TRANSPORT" if transport is not None else "REMOTE_SERVICE",
         trace_id=uuid4().hex,
         observed_at=datetime.now(UTC),
         model=config.model,
