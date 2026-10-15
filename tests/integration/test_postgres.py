@@ -955,6 +955,8 @@ def test_legacy_context_without_commit_identity_remains_readable(
     if not has_identity:
         data.pop("commit_identity")
     data.pop("evidence_origin")
+    data.pop("dependency_files")
+    data.pop("deps_hash")
     payload = json.dumps(
         data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode()
@@ -967,12 +969,13 @@ def test_legacy_context_without_commit_identity_remains_readable(
     restored = store.context(state.run_id, owner, "sha256:" + digest)
     assert restored.sanitized_errors == "legacy"
     assert restored.commit_identity == "GIT_OBJECT_HASH"
+    assert restored.deps_hash is None and restored.dependency_files == ()
 
 
 @pytest.mark.parametrize("outcome", ["success", "unavailable", "tampered"])
-@pytest.mark.parametrize("retain_snapshot", [False, True])
+@pytest.mark.parametrize("retain_snapshot", [False, True, "rotated"])
 def test_api_incident_to_http_source_worker_context_pipeline(
-    store: Store, outcome: str, retain_snapshot: bool
+    store: Store, outcome: str, retain_snapshot: bool | str
 ) -> None:
     import base64
     import hashlib
@@ -1058,11 +1061,21 @@ def test_api_incident_to_http_source_worker_context_pipeline(
         return httpx.Response(200, json=payload)
 
     restarted = Store(store.dsn)
+    from services.repository.keyring import SnapshotKeyring
+
     cipher = (
         SnapshotCipher(SecretBytes(os.urandom(32)), "ephemeral-test-key")
         if retain_snapshot
         else None
     )
+    if retain_snapshot == "rotated":
+        cipher = SnapshotKeyring(
+            {
+                "historical": SecretBytes(os.urandom(32)),
+                "active": SecretBytes(os.urandom(32)),
+            },
+            active_key_id="active",
+        )
     loader = bind_incident(
         restarted,
         github_inputs(
@@ -1347,6 +1360,154 @@ def test_encrypted_snapshot_retention_tamper_and_runtime_permissions(
         )
     with pytest.raises(StoreError, match="SNAPSHOT_INTEGRITY"):
         store.sealed_snapshot(state.run_id, owner, ref)
+
+
+@pytest.mark.parametrize("matching", [True, False])
+def test_dependency_provenance_storage_binding(store: Store, matching: bool) -> None:
+    import hashlib
+    from datetime import UTC, datetime
+    from types import MappingProxyType
+
+    from packages.contracts.source import SourceFile, SourceManifest
+    from services.context.collector import collect
+    from services.repository.snapshot import FileIdentity, Snapshot
+
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    owner, state = uuid4(), new_state()
+    grant = RepositoryGrant(
+        repository_id=state.repository_id,
+        owner_id=owner,
+        remote_url="https://github.com/example/fixture",
+        commits=(state.source_commit,),
+        approved_paths=("requirements.txt",),
+        consent=True,
+    )
+    Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]).register_repository(grant)
+    store.create(state, owner, uuid4(), "b" * 64)
+    lease = store.claim(uuid4())
+    assert lease is not None
+    for version, stage in enumerate((Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING)):
+        store.advance(lease, stage, expected_version=version)
+    body = b"example==1.0\n"
+    sha = hashlib.sha256(body).hexdigest()
+    snapshot = Snapshot(
+        state.source_commit,
+        (FileIdentity("requirements.txt", "c" * 40, sha, len(body)),),
+        MappingProxyType({"requirements.txt": body}),
+        "GITHUB_HTTPS_METADATA",
+        "TEST_TRANSPORT",
+    )
+    bundle = collect(snapshot, ("requirements.txt",), "")
+    # Dependency binding must hold even when no manifest content enters context.
+    bundle = bundle.model_copy(update={"files": ()})
+    manifest = SourceManifest(
+        repository_id=state.repository_id,
+        source_commit=state.source_commit,
+        root_tree="d" * 40,
+        observed_at=datetime.now(UTC),
+        trace_id=uuid4(),
+        evidence_origin="TEST_TRANSPORT",
+        files=(
+            SourceFile(
+                path="requirements.txt",
+                blob_id="c" * 40,
+                sha256=sha if matching else "0" * 64,
+                size_bytes=len(body),
+            ),
+        ),
+    )
+    if not matching:
+        with pytest.raises(StoreError, match="SOURCE_MANIFEST_MISMATCH"):
+            store.store_context(
+                lease, bundle, expected_version=3, source_manifest=manifest
+            )
+        assert not store.get(state.run_id, owner).context_refs
+        return
+    saved = store.store_context(
+        lease, bundle, expected_version=3, source_manifest=manifest
+    )
+    restored = Store(store.dsn).context(state.run_id, owner, saved.context_refs[0])
+    assert restored.deps_hash == bundle.deps_hash
+    assert restored.dependency_files == bundle.dependency_files
+
+
+@pytest.mark.parametrize("outcome", ["success", "stop", "failure"])
+def test_worker_cli_processes_retained_incident_offline(
+    store: Store, monkeypatch, capsys, outcome: str
+) -> None:
+    import json
+    import signal
+
+    from scripts import run_worker
+    from services.context.incident import prepare_incident
+    from services.orchestrator.collection import CollectionInputs
+
+    owner, state, lease, snapshot = collection_fixture(
+        store, incident=prepare_incident("synthetic incident")
+    )
+    # Release fixture claim so startup owns its own fenced dispatch.
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute(
+            """UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second'
+            WHERE run_id=%s""",
+            (state.run_id,),
+        )
+    monkeypatch.setenv("REPLAYFORGE_DATABASE_URL", store.dsn)
+    monkeypatch.setenv("REPLAYFORGE_GITHUB_READ_TOKEN", "synthetic-read-token")
+    monkeypatch.setenv("REPLAYFORGE_WORKER_PATHS", '["src/a.py"]')
+    monkeypatch.setattr("sys.argv", ["run_worker", "--run"])
+    monkeypatch.setattr(
+        run_worker,
+        "github_inputs",
+        lambda *args: lambda run, grant: CollectionInputs(snapshot, ("src/a.py",)),
+    )
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    original_serve = run_worker.serve
+
+    def dispatch(*args, **kwargs):
+        if outcome == "failure":
+            raise RuntimeError("synthetic-private-error")
+        if outcome == "stop":
+            handler = signal.getsignal(signal.SIGINT)
+            assert callable(handler)
+            handler(signal.SIGINT, None)
+        return original_serve(*args, **kwargs)
+
+    monkeypatch.setattr(run_worker, "serve", dispatch)
+    assert run_worker.main() == (1 if outcome == "failure" else 0)
+    result = json.loads(capsys.readouterr().out)
+    assert previous == {sig: signal.getsignal(sig) for sig in previous}
+    if outcome == "failure":
+        assert result == {"status": "FAILED", "error_class": "WORKER_FAILED"}
+        return
+    if outcome == "stop":
+        assert result["ticks"] == 0 and result["stop_requested"]
+        return
+    assert result["processed"] == 1 and result["ticks"] == 1
+    assert Store(store.dsn).get(state.run_id, owner).current_stage == Stage.TRIAGING
+
+
+def test_worker_cli_rejects_migration_role_before_loader(
+    store: Store, monkeypatch, capsys
+) -> None:
+    import json
+
+    from scripts import run_worker
+
+    monkeypatch.setenv(
+        "REPLAYFORGE_DATABASE_URL", os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]
+    )
+    monkeypatch.setenv("REPLAYFORGE_GITHUB_READ_TOKEN", "synthetic-read-token")
+    monkeypatch.setenv("REPLAYFORGE_WORKER_PATHS", '["src/a.py"]')
+    monkeypatch.setattr("sys.argv", ["run_worker", "--run"])
+    monkeypatch.setattr(
+        run_worker,
+        "github_inputs",
+        lambda *args: pytest.fail("privileged startup reached loader"),
+    )
+    assert run_worker.main() == 2
+    assert json.loads(capsys.readouterr().out)["error_class"] == "WORKER_ROLE_DENIED"
 
 
 def test_migration_downgrade_and_reapply(store: Store) -> None:
