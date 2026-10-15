@@ -1,0 +1,117 @@
+{
+  "authorization": "User authorized bounded paid inference and sandbox acceptance and existing-key use; minimal calls only",
+  "limitations": [
+    "No provider request ID or billed cost captured",
+    "No verified OCI digest or hard CPU/memory/PID/read-only-root controls",
+    "Terminal compute does not prove deletion of provider logs/uploads/images",
+    "No arbitrary repository execution, PR write or deployment",
+    "M0/M1 partial; exposed-key security risk remains"
+  ],
+  "observed_date": "2026-10-15",
+  "checks": [
+    {
+      "exit_code": 0,
+      "origin": "real HTTP, no injected transport; original report predates evidence_origin field",
+      "command": "uv run python -m scripts.check_nebius --live"
+    },
+    {
+      "compute_terminal_confirmed": true,
+      "exit_code": 0,
+      "origin": "REMOTE_SERVICE",
+      "command": "uv run python -c: SandboxConfig.from_env(explicit process key, Contree profile project, pinned image UUID); run_smoke(config,allow_live=True)",
+      "image_uuid": "4fa16c8f-62a9-35a4-a4ea-07b7e8cd44ae"
+    },
+    {
+      "exit_code": 1,
+      "passed": 24,
+      "command": "uv run pytest -q tests/unit/test_nebius.py --tb=short (before origin fix)",
+      "failed": 1
+    },
+    {
+      "exit_code": 1,
+      "result": "wrong test path; no tests ran; corrected by full suite",
+      "command": "uv run pytest -q tests/unit/test_nebius.py tests/unit/test_sandbox.py --tb=short"
+    },
+    {
+      "exit_code": 0,
+      "seconds": 83.0,
+      "warnings": 1,
+      "passed": 371,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m0-live-acceptance-regression-tests.xml",
+      "postgres_scenarios": 55
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff check ."
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff format --check .",
+      "files": 77
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run mypy",
+      "source_files": 47
+    },
+    {
+      "packages": 66,
+      "exit_code": 0,
+      "command": "uv lock --check"
+    },
+    {
+      "exit_code": 0,
+      "command": "uv build --wheel"
+    },
+    {
+      "known_vulnerabilities": 0,
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m0-live-acceptance-dependency-audit.json"
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/providers/nebius.py tests/unit/test_nebius.py docs/evidence/m0-live-inference-attempt.json docs/evidence/m0-live-sandbox-attempt.json",
+      "classification": "existing test-secret and secret literals; SHA1 matches both detector hashes; no suppressions or live key findings",
+      "findings": 2
+    }
+  ],
+  "live_calls": {
+    "catalog_get": 1,
+    "inference_post": 1,
+    "cost_usd": null,
+    "automatic_write_retries": 0,
+    "sandbox_operations_submitted": 1
+  },
+  "source_state": "existing local work preserved; inference origin fix and evidence local",
+  "artifacts": [
+    {
+      "path": "docs/evidence/m0-live-inference-attempt.json",
+      "sha256": "7936caf06571c5f065db2bec6adc3d1644955e6b280a992c10c9fe38dae57c63"
+    },
+    {
+      "path": "docs/evidence/m0-live-sandbox-attempt.json",
+      "sha256": "b3dd8b246c3abcc8ee8fe43da9affef763ba9079d7811b7ab66b433e53fef11a"
+    },
+    {
+      "path": "docs/evidence/m0-live-acceptance-regression-tests.xml",
+      "sha256": "07b25e88c1f12d40dd2cd45f27affd653b93abc83ce1a1c7407ed031f5a683ac"
+    },
+    {
+      "path": "docs/evidence/m0-live-acceptance-dependency-audit.json",
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e"
+    },
+    {
+      "path": "docs/evidence/m0-live-acceptance-secret-scan.json",
+      "sha256": "d337a2eb2120cb6ab562ae9a04533ac477cd2c950eabd27ca3712d13aebe49cb"
+    },
+    {
+      "path": "packages/providers/nebius.py",
+      "sha256": "4256ecc0c6855ce4763e8c00a5bdd64033243c5633470b2c3263560e2a0f17ed"
+    },
+    {
+      "path": "tests/unit/test_nebius.py",
+      "sha256": "170e8e7e1897726b4c166052d7576f0c86925a2215c0baa5dc5ab573b0d33c3c"
+    }
+  ],
+  "source_head": "355953dc81e5f7e455a3143aa9261ec7ea587ce3"
+}
