@@ -1,0 +1,74 @@
+{
+  "observed_date": "2026-10-16",
+  "base_commit": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "working_tree": "local unmerged changes",
+  "passed": 509,
+  "postgres_scenarios": 78,
+  "pytest_seconds": 66.34,
+  "checks": [
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-dispatch-reservation-final-tests.xml",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 93
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "sources": 54
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-dispatch-reservation-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/persistence/baseline.py migrations/versions/0008_baseline_dispatch.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0
+    }
+  ],
+  "initial_runs": [
+    {
+      "artifact": "m2-dispatch-reservation-tests.xml",
+      "passed": 503,
+      "failed": 1,
+      "reason": "test expected raw database error instead of sanitized StoreError"
+    },
+    {
+      "artifact": "m2-dispatch-reservation-targeted-tests.xml",
+      "passed": 1,
+      "failed": 6,
+      "reason": "negative test setup used wrong event column and non-JSON-mode UUID serialization; corrected"
+    }
+  ],
+  "sha256": {
+    "services/persistence/baseline.py": "cb351cf77231b680bd868b949c8d8056a62331237c76e8a956337e05190da07f",
+    "migrations/versions/0008_baseline_dispatch.py": "0aea5054c12164d8958506e60450bb8070483fa3e85d16fd7fe34b6d404b5d64",
+    "tests/integration/test_postgres.py": "73f49b91866152e026278608c2998956debfca03b60cadb7b57ebe5f31b7be6f"
+  },
+  "limitations": [
+    "No provider calls, charges or remote writes",
+    "No dispatch permission or automatic external retry",
+    "No genuine baseline, stage promotion or M2 acceptance",
+    "One third-party AnyIO deprecation warning",
+    "UI absent: UI checks not applicable",
+    "Budget is command count only; spend/time enforcement pending"
+  ]
+}
