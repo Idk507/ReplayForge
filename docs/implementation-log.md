@@ -1036,3 +1036,276 @@ and reproduction evidence contracts, then trusted artifact materialization and
 stage dispatch. No cloud credentials, provider calls, charges, remote writes,
 repository execution, deployment or merge occurred. Only local disposable DB
 test credentials were used. UI/E2E repair acceptance remains unavailable.
+
+## 2026-10-15 — strict patch admission before remote application
+
+Reread governing specs/tracker and current snapshot, command, state and repository
+contracts. Recent source HEAD: 14e20da52107160d1a77bfa8e74ef2368ff22cf7; earlier
+command/foundation work now present in history. Preserved unrelated .env.example.
+Selected the next independent M2 patch preflight boundary; runner admission is
+still external and no executable operation is added.
+
+Added pure services.runner.patches.admit_patch and frozen safe result metadata.
+Requires current PATCHING state, consent, uncancelled run, remaining patch budget
+and exact source/manifest/baseline/reproduction refs. Parses exact modify-only
+Git unified diffs, derives paths/changed-line counts and hashes exact UTF-8 bytes.
+Limits: 500,000 bytes, 10,000 lines, 25 files, 5,000 added/deleted lines. Only
+approved src/app Python files allowed. Denies tests/workflows/lockfiles/secrets,
+traversal, duplicates, creation/deletion, renames, binary/mode changes, malformed
+or overlapping hunks, CRLF and NUL. No raw diff in result; no execution authority.
+No files, processes, provider clients, database writes or budget reservations.
+
+Red tests failed collection before module existed. Initial adversarial run had
+18 passes and 2 harness errors while a 500 KB parameter became an automatic
+pytest ID; short explicit IDs fixed the harness and prevent raw diffs entering
+pytest test-name telemetry. Intermediate 19 cases passed. Expanded final patch
+suite: 30 passed. Initial Ruff long lines/import order fixed before acceptance.
+Full disposable DB command exited 0: 447 passed, 61 PostgreSQL scenarios, 63.18s,
+one existing third-party AnyIO warning. Ruff/format 85 files, strict mypy 51
+sources, lock 66 packages, wheel build, production dependency audit and targeted
+secret scan passed. No dependencies changed. Evidence: m2-patch-admission-checks.json.
+
+Threat review: parsing is admission for a future check, not application/safety
+proof. Hunk context is not compared to source bytes and file existence is not
+established. Actual git apply --check and application remain mandatory in a fresh
+admitted remote sandbox. Source/test/baseline refs are bindings, not validated
+observations; trusted artifact retrieval, atomic budget/fencing/cancellation and
+runner identity checks remain required. All tests use synthetic source text.
+A patch can still introduce arbitrary Python behavior and must pass independent
+static/security/regression/clean-replay gates. M0 probe remains unchanged.
+
+M0/M1/M2 remain partial. Next: reproduction/baseline evidence validation and
+trusted artifact materialization, then fixed remote check/application/dispatch
+once runner resource, filesystem, image and retention guarantees are confirmed.
+No local source execution, cloud credential access, provider calls, charges,
+remote writes, deployment or merge occurred. Local PostgreSQL password was used
+only for previously authorized disposable integration tests. Changes are local.
+
+## 2026-10-15 — bounded unauthenticated baseline inspection
+
+Reread governing specs/tracker and inspected command plans, patch gate, runner
+contracts and recent code at 14e20da52107160d1a77bfa8e74ef2368ff22cf7. Prior local
+patch-admission changes preserved. Implemented the next independent M2 gap:
+qualifying a supplied baseline report without mistaking setup faults for proof.
+
+Added FailureExpectation and inspect_baseline. Checks exact baseline plan phase,
+report SHA256, strict exit code 1, regression classname/function, one failed target,
+AssertionError plus bounded explicit marker, no other failures/errors/skips and
+consistent suite/root counts. XML is UTF-8 only, capped at 128 KiB/2048 nodes/
+64 depth/16 suites/256 cases. DTD/entities, nested outcomes/metadata, duplicate
+cases, malformed/oversized reports and syntax/import/collection traces fail closed.
+Only safe refs/bindings/reasons/time/trace leave the function; no raw XML, marker,
+failure text or output logs. No filesystem/process/network or DB writes occur.
+
+Every result remains UNAUTHENTICATED_INPUT with can_authorize_patching=false.
+MATCHED_ASSERTION means supplied XML structurally matches the expected failure,
+not that any remote execution happened or reproduced the incident. No graph edge,
+state mutation or baseline ref setter was added. Trusted runner receipt validation
+and actual artifact retrieval remain required; no synthetic pass is promoted.
+
+Red unit collection failed before module existed. Initial targeted suite passed
+16 cases, expanded suite 22. Initial formatting/type issues corrected before final
+checks. Full disposable PostgreSQL command exited 0: 469 passed, 61 PostgreSQL
+scenarios, 70.48s, one existing AnyIO deprecation warning. Ruff check/format 87 files,
+strict mypy 52 sources, lock 66 packages, wheel, dependency audit (zero known
+vulnerabilities) and targeted secret scan (zero findings) passed. No dependencies
+added. Evidence: m2-baseline-inspection-checks.json and corresponding JUnit.
+
+Threat review: untrusted XML cannot trigger external resolution, expansion or
+source execution. Global byte bounds precede parsing; iterative node/depth checks
+and flat outcome validation bound interpretation. A fabricated report can match,
+so authentication is explicitly absent and cannot grant patch authority. Marker
+matching alone is not business-cause proof. Parser failures never echo input.
+Raw workload reports are not automatically retained or sent to any model.
+
+M0/M1/M2 remain partial. Next critical integration: authenticated/correlated runner
+receipts, exact source/test/patch/report artifact retrieval and trusted reducer
+handoff. Actual baseline/candidate/application/clean replay still blocked on full
+runner resource/filesystem/image/retention admission. No cloud credentials or
+provider calls, charges, remote writes, repository execution, deployment or merge
+this turn. Local PostgreSQL password used only for authorized disposable tests.
+
+## 2026-10-15 — signed baseline receipts and report binding
+
+Continued the next step at source HEAD 14e20da52107160d1a77bfa8e74ef2368ff22cf7,
+inspecting current baseline, command and repository contracts; preserved prior
+patch/baseline local work. Applied test-driven workflow; no bug-free guarantee.
+
+Added ExecutionReceipt/SignedReceipt, explicit ReceiptVerifier public-key registry
+and signed-baseline inspection wrapper. Canonical JSON signs purpose/version,
+algorithm/key ID and payload. Hashes exact full command plan and signed envelope.
+Verifies signature, configured origin, run/plan/execution, pre/post source tree,
+report hash, aware clock (300-second age, five-second future skew), terminal state,
+no timeout/signal and baseline exit 1. Wrapper hashes actual bounded JUnit bytes
+before signature correlation and existing structural/failure inspection.
+
+Registry is copied, bounded to 16 explicit public keys; no signing/key discovery,
+credentials, filesystem or provider access. Tests use ephemeral private keys and
+TEST_TRANSPORT only. No production signer/key installed. Verified wrappers retain
+can_authorize_patching=false: signer identity is not runner capability or business
+behavior proof. Same-action verification is idempotent; no one-use replay cache
+or durable action consumption is claimed. Expectations must be from trusted action
+records, not a model or guest. Producer must live outside workload and independently
+observe facts, redact report bytes and sign their exact hashes. No graph write added.
+
+Red tests failed collection before module existed. First implementation run:
+14 passed, 2 failed due duplicate now argument in test helper; corrected helper,
+then 16 passed. Expanded suite: 22 passed. Full disposable PostgreSQL command
+exited 0: 491 passed, 61 PostgreSQL scenarios, 145.71s; one existing AnyIO warning.
+Ruff check/format 89 files, strict mypy 53 sources, lock 66 packages, wheel,
+dependency audit (zero known vulnerabilities) and targeted secret scan (zero
+findings) passed. Initial long-line issues formatted before final acceptance.
+No dependencies added. Official cryptography Ed25519 sign/verify docs checked;
+existing pinned package used. See runner-receipts.md and m2-runner-receipt-checks.json.
+
+Threat review: signature covers domain purpose, algorithm/key ID and report/source/
+plan bindings; tampering or other expected executions rejected. Signing keys never
+enter library/guest data. Signature verification authenticates only configured
+signer claims. XML remains bounded untrusted content; fake signed statements under
+a compromised/misconfigured key are not hardware attestation. Key registration,
+revocation, signer deployment, source inventory semantics and live capabilities
+remain operational requirements. No model can use this module to commit a verdict.
+
+M0/M1/M2 remain partial. Next: durable action/receipt storage and idempotent fenced
+acceptance, trusted artifact retrieval/materialization and production collector
+identity, followed by actual runner admission/execution. No cloud credential use,
+provider call, charge, GitHub write, repository execution, deployment or merge.
+Local PostgreSQL password used only for authorized disposable regression tests.
+
+## 2026-10-15 — durable baseline journal and evidence recovery
+
+Inspected current run/job/storage, receipt and command contracts at HEAD
+14e20da52107160d1a77bfa8e74ef2368ff22cf7; prior local changes preserved.
+Applied incremental/test-driven workflows. Migration 0007 adds append-only baseline
+actions, receipts and correlated audit rows. Runtime SELECT/INSERT only; no model
+API, dispatcher, budget debit or graph/stage mutation is introduced.
+
+BaselineAction stores exact canonical plan, execution ID, expected tree and failure
+expectation under 16 KiB/hash checks. Writes lock run/job, check owner/live fence,
+version/REPRODUCING/cancellation and persisted scope/source/test bindings. Unique
+execution and run/plan identities reconcile exact repeats and reject conflicts;
+six planned actions maximum per run. Action+PLANNED audit commit atomically.
+Receipt retention loads expectations from DB, checks real JUnit bytes/signature
+with DB clock and commits safe receipt/inspection metadata+audit atomically. No
+raw report/source/log or signing key is retained. Owner/expiry/schema/checksum/
+canonical reads support restart. Historical reads are not current-key approval.
+
+Red schema test failed collection before module existed. Model test then passed.
+Initial full suite passed 501 tests/70 PostgreSQL cases, 75.55s. Review identified
+that retaining a completion incorrectly reused a fresh-command budget gate. Added
+a real DB regression: targeted run failed COMMAND_BINDING_DENIED at budget zero
+(1 failed, 501 deselected, 3.52s; artifact retained). Fixed retention to check scope
+and immutable bindings independently; it cannot start work or refund budget. New
+planning remains budget-gated. Final full command exited 0: 502 passed, 71
+PostgreSQL scenarios, 68.28s; one existing AnyIO warning. Cases cover concurrent
+replay/restart, owner/version/lease conflict, tampering/expiry, no runtime DELETE,
+audit rollback and completion after last command debit. Fixture migration role
+explicitly seeds synthetic REPRODUCING state; runtime graph progression is not
+asserted. Last migration reset remains last test.
+
+Final Ruff/format 92 files, mypy 54 sources, lock 66 packages, rebuilt wheel,
+production dependency audit (zero known vulnerabilities) and targeted final secret
+scan (zero findings) passed. Initial long SQL line formatting and mixed newline
+issues corrected; no suppressions or test weakening. No dependencies added.
+Evidence: m2-baseline-journal-checks.json, separate initial/red/final JUnit files.
+
+Threat review: no external operation follows journal insertion. Source/report
+signatures bind configured signer claims, not safe runner capabilities. Current
+scope and fences guard retention without requiring another execution budget.
+Checksums cannot protect privileged DB tampering; reads must be independently
+reverified before security decisions. Seven-day expiry is not deletion. Audit
+contains IDs/version/trace/worker/time, no workload text. Signature freshness
+applies to retention retries; recovery after freshness reads prior immutable data.
+SSE exposure, dispatched/unknown-provider reconciliation and atomic budgeted intent
+remain future work. Checkpoint unchanged; PATCHING stays closed.
+
+M0/M1/M2 partial. Next: budgeted durable dispatch and trusted artifact materialization
+with production collector identity and runner capability admission. No cloud keys,
+provider calls, charges, GitHub writes, repository execution, deployment or merge.
+Only previously authorized local disposable PostgreSQL credentials were used.
+# 2026-10-16 — Atomic baseline dispatch intent reservation
+
+Local unmerged slice based on 14e20da52107160d1a77bfa8e74ef2368ff22cf7.
+Migration 0008 and BaselineJournal.reserve_dispatch atomically record execution
+intent, debit one sandbox command, increment the checkpoint version and emit a
+budget audit event. Exact concurrent retries reconcile without another debit.
+Owner, current consent/bindings, live lease, cancellation, stage and initial
+version checks remain mandatory. A completed action cannot reserve new work.
+There is no external dispatch, execution permission, refund or automated retry.
+
+Acceptance: 509 tests passed in 66.34s, including 78 real PostgreSQL scenarios;
+one upstream AnyIO deprecation warning. Ruff check/format (93 files), mypy
+(54 sources), lock validation (66 packages), wheel build, dependency audit
+(zero known vulnerabilities) and targeted secret scan (zero findings) passed.
+The full initial run exposed a test expecting an unsanitized database error;
+expanded negative tests exposed two test setup mistakes. These were corrected,
+and failed reports are retained alongside final evidence. Formatter normalizes
+the integration file's mixed line endings; unchanged test logic is preserved.
+Commands, exit codes, source hashes and reports:
+docs/evidence/m2-dispatch-reservation-checks.json.
+
+M2 remains partial. Provider operation identity/reconciliation, production signer,
+runner admission, executable baseline/patch replay and reducer stage acceptance
+remain next. No cloud credentials, billable service or remote write was used.
+# 2026-10-16 — Bounded provider-operation recovery journal
+
+Local unmerged slice based on 14e20da52107160d1a77bfa8e74ef2368ff22cf7.
+Migration 0009 and OperationJournal retain at most three immutable lifecycle
+assertions per reserved execution: SUBMISSION_UNKNOWN, OPERATION_KNOWN and
+COMPUTE_TERMINAL. They bind the action hash, owner/run, provider/operation UUID,
+trace, worker, checkpoint version and DB timestamp. Unique operation identity,
+live lease/version fencing, bounded ordered records and canonical hash checks
+support recovery without refunding budget or scheduling another operation.
+Cancellation permits later binding/terminal metadata under a live lease, but
+cannot start a new submission assertion. No stage or baseline result is changed.
+
+Acceptance: intentional red collection failed before the module existed; the ten
+unit contract cases then passed. Thirteen focused PostgreSQL scenarios passed;
+after adding rollback, permission and final-command cases, the complete suite
+passed 534 tests including 93 PostgreSQL scenarios in 84.23s (exit 0). One upstream
+AnyIO deprecation warning remains. Ruff check/format (97 files), strict mypy
+(55 sources), lock validation (66 packages), wheel build, diff whitespace and
+targeted secret scanning (zero findings) passed. Dependency inputs are unchanged;
+the preceding m2-dispatch-reservation-dependency-audit.json reports zero known
+vulnerabilities and is reused, not represented as a new scan.
+
+Commands, exit codes, file hashes and test artifacts are recorded in
+docs/evidence/m2-operation-journal-checks.json. Threat boundary and recovery
+semantics are documented in docs/operation-reconciliation.md. All lifecycle
+assertions are UNVERIFIED_ADAPTER_INPUT and cannot authorize execution. Live
+lookup/polling, one-use submission controller, authenticated runner evidence,
+cleanup after lease completion and physical purge remain pending. No provider
+credentials, cloud execution, charge or remote write was used. M2 stays partial.
+
+## 2026-10-16 — Signed runner capability gate and configuration drift
+
+Local unmerged slice based on 14e20da52107160d1a77bfa8e74ef2368ff22cf7.
+CapabilityVerifier authenticates a bounded independent assessor profile scoped
+to runner UUID, backend, exact OCI image, immutable runtime configuration digest,
+origin, policy and freshness. Twenty-two evidenced controls and conservative
+enforced limits must pass; unknown/failed/missing controls, test-only evidence and
+excessive caps deny. Successful capability validation cannot authorize execution.
+The existing synthetic M0 adapter and probe remain intact; no dispatcher or
+production assessor key is added. See docs/runner-admission.md for threat impact,
+resource choices, attestation limitations and the required external evidence.
+
+Initial red collection failed before implementation. The first full suite passed
+630 tests, but review identified missing runtime-configuration binding: the new
+regression failed with DID NOT RAISE. Adding a required signed configuration hash
+and trusted expected hash corrected it. Final unit acceptance passed 97 tests;
+the final complete suite passed 631 tests including 93 PostgreSQL scenarios in
+81.85s, exit 0. One upstream AnyIO deprecation warning remains.
+
+Ruff check, format (99 files), strict mypy (56 sources), lock validation
+(66 packages), final wheel build, diff whitespace and targeted secret scan
+(zero findings) passed. Dependency inputs remain unchanged; the prior
+m2-dispatch-reservation-dependency-audit.json (zero known vulnerabilities) is reused
+and is not presented as a fresh scan. Commands, exit codes, failed regression,
+source hashes and actual reports: docs/evidence/m2-runner-admission-checks.json.
+
+M2 remains partial. Production assessor/key provisioning, artifact resolution,
+actual runtime configuration verification, live capability assessment, controlled
+submission and genuine baseline/patch replay remain pending. Provider/alternative
+remote-runner evidence is required to enable repository execution; the M0 smoke
+cannot waive missing image/resource/filesystem/retention controls. No cloud
+credentials, provider execution, charges or remote writes were used.
