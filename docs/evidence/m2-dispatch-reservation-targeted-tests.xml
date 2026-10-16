@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="7" time="6.751" timestamp="2026-10-16T09:26:49.780737+05:30" hostname="dhanu"><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_concurrent_replay" time="0.832" /><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_rollback" time="0.483"><failure message="psycopg.errors.UndefinedColumn: column &quot;kind&quot; does not exist">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+
+    def test_dispatch_reservation_rollback(store: Store) -&gt; None:
+        journal, lease, owner, run, action, _, _, _ = baseline_journal_fixture(store)
+        journal.record_action(lease, owner, action, expected_version=0)
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+&gt;           conn.execute(
+                "ALTER TABLE run_events ADD CONSTRAINT reject_reservation "
+                "CHECK(kind&lt;&gt;'BUDGET_RESERVED') NOT VALID"
+            )
+
+tests\integration\test_postgres.py:1868: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Connection [BAD] at 0x26e15776600&gt;
+query = "ALTER TABLE run_events ADD CONSTRAINT reject_reservation CHECK(kind&lt;&gt;'BUDGET_RESERVED') NOT VALID"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -&gt; Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.UndefinedColumn: column "kind" does not exist
+
+.venv\Lib\site-packages\psycopg\connection.py:269: UndefinedColumn</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_denied[cancel]" time="0.247"><failure message="TypeError: Object of type UUID is not JSON serializable">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+fault = 'cancel'
+
+    @pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+    def test_dispatch_reservation_denied(store: Store, fault: str) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        if fault == "completed":
+            journal.retain(
+                lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            if fault == "expired":
+                conn.execute(
+                    "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+                    "WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            data = run.model_dump()
+            if fault == "cancel":
+                data["cancellation_requested"] = True
+            if fault == "budget":
+                data["remaining_budget"]["sandbox_commands"] = 0
+&gt;           conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+            )
+
+tests\integration\test_postgres.py:1907: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\psycopg\connection.py:267: in execute
+    return cur.execute(query, params, prepare=prepare)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\cursor.py:93: in execute
+    self._conn.wait(
+.venv\Lib\site-packages\psycopg\connection.py:453: in wait
+    return waiting.wait(gen, self.pgconn.socket, interval=interval)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\waiting.py:254: in wait_select
+    s = gen.send(ready)
+        ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:194: in _execute_gen
+    pgq = self._convert_query(query, params)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:453: in _convert_query
+    pgq.convert(query, params)
+.venv\Lib\site-packages\psycopg\_queries.py:95: in convert
+    self.dump(vars)
+.venv\Lib\site-packages\psycopg\_queries.py:106: in dump
+    self.params = self._tx.dump_sequence(params, self._want_formats)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg_binary/_psycopg/transform.pyx:351: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+psycopg_binary/_psycopg/transform.pyx:402: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+.venv\Lib\site-packages\psycopg\types\json.py:220: in dump
+    if isinstance((data := dumps(obj)), str):
+                           ^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.encoder.JSONEncoder object at 0x0000026E0E1C6540&gt;
+o = UUID('d6780da8-5ef4-4ca4-b6c3-2ae81af1b435')
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+&gt;       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type UUID is not JSON serializable
+
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:180: TypeError</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_denied[expired]" time="0.555"><failure message="TypeError: Object of type UUID is not JSON serializable">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+fault = 'expired'
+
+    @pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+    def test_dispatch_reservation_denied(store: Store, fault: str) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        if fault == "completed":
+            journal.retain(
+                lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            if fault == "expired":
+                conn.execute(
+                    "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+                    "WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            data = run.model_dump()
+            if fault == "cancel":
+                data["cancellation_requested"] = True
+            if fault == "budget":
+                data["remaining_budget"]["sandbox_commands"] = 0
+&gt;           conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+            )
+
+tests\integration\test_postgres.py:1907: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\psycopg\connection.py:267: in execute
+    return cur.execute(query, params, prepare=prepare)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\cursor.py:93: in execute
+    self._conn.wait(
+.venv\Lib\site-packages\psycopg\connection.py:453: in wait
+    return waiting.wait(gen, self.pgconn.socket, interval=interval)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\waiting.py:234: in wait_select
+    s = next(gen)
+        ^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:194: in _execute_gen
+    pgq = self._convert_query(query, params)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:453: in _convert_query
+    pgq.convert(query, params)
+.venv\Lib\site-packages\psycopg\_queries.py:95: in convert
+    self.dump(vars)
+.venv\Lib\site-packages\psycopg\_queries.py:106: in dump
+    self.params = self._tx.dump_sequence(params, self._want_formats)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg_binary/_psycopg/transform.pyx:351: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+psycopg_binary/_psycopg/transform.pyx:402: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+.venv\Lib\site-packages\psycopg\types\json.py:220: in dump
+    if isinstance((data := dumps(obj)), str):
+                           ^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.encoder.JSONEncoder object at 0x0000026E0E1C6540&gt;
+o = UUID('47ed13bd-060e-4aaf-9329-0e87e42a7c40')
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+&gt;       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type UUID is not JSON serializable
+
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:180: TypeError</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_denied[stale]" time="0.590"><failure message="TypeError: Object of type UUID is not JSON serializable">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+fault = 'stale'
+
+    @pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+    def test_dispatch_reservation_denied(store: Store, fault: str) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        if fault == "completed":
+            journal.retain(
+                lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            if fault == "expired":
+                conn.execute(
+                    "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+                    "WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            data = run.model_dump()
+            if fault == "cancel":
+                data["cancellation_requested"] = True
+            if fault == "budget":
+                data["remaining_budget"]["sandbox_commands"] = 0
+&gt;           conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+            )
+
+tests\integration\test_postgres.py:1907: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\psycopg\connection.py:267: in execute
+    return cur.execute(query, params, prepare=prepare)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\cursor.py:93: in execute
+    self._conn.wait(
+.venv\Lib\site-packages\psycopg\connection.py:453: in wait
+    return waiting.wait(gen, self.pgconn.socket, interval=interval)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\waiting.py:254: in wait_select
+    s = gen.send(ready)
+        ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:194: in _execute_gen
+    pgq = self._convert_query(query, params)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:453: in _convert_query
+    pgq.convert(query, params)
+.venv\Lib\site-packages\psycopg\_queries.py:95: in convert
+    self.dump(vars)
+.venv\Lib\site-packages\psycopg\_queries.py:106: in dump
+    self.params = self._tx.dump_sequence(params, self._want_formats)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg_binary/_psycopg/transform.pyx:351: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+psycopg_binary/_psycopg/transform.pyx:402: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+.venv\Lib\site-packages\psycopg\types\json.py:220: in dump
+    if isinstance((data := dumps(obj)), str):
+                           ^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.encoder.JSONEncoder object at 0x0000026E0E1C6540&gt;
+o = UUID('d39d22cb-5764-48d8-abc4-5eb46f9ccb0a')
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+&gt;       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type UUID is not JSON serializable
+
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:180: TypeError</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_denied[budget]" time="0.477"><failure message="TypeError: Object of type UUID is not JSON serializable">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+fault = 'budget'
+
+    @pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+    def test_dispatch_reservation_denied(store: Store, fault: str) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        if fault == "completed":
+            journal.retain(
+                lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            if fault == "expired":
+                conn.execute(
+                    "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+                    "WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            data = run.model_dump()
+            if fault == "cancel":
+                data["cancellation_requested"] = True
+            if fault == "budget":
+                data["remaining_budget"]["sandbox_commands"] = 0
+&gt;           conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+            )
+
+tests\integration\test_postgres.py:1907: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\psycopg\connection.py:267: in execute
+    return cur.execute(query, params, prepare=prepare)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\cursor.py:93: in execute
+    self._conn.wait(
+.venv\Lib\site-packages\psycopg\connection.py:453: in wait
+    return waiting.wait(gen, self.pgconn.socket, interval=interval)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\waiting.py:254: in wait_select
+    s = gen.send(ready)
+        ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:194: in _execute_gen
+    pgq = self._convert_query(query, params)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:453: in _convert_query
+    pgq.convert(query, params)
+.venv\Lib\site-packages\psycopg\_queries.py:95: in convert
+    self.dump(vars)
+.venv\Lib\site-packages\psycopg\_queries.py:106: in dump
+    self.params = self._tx.dump_sequence(params, self._want_formats)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg_binary/_psycopg/transform.pyx:351: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+psycopg_binary/_psycopg/transform.pyx:402: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+.venv\Lib\site-packages\psycopg\types\json.py:220: in dump
+    if isinstance((data := dumps(obj)), str):
+                           ^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.encoder.JSONEncoder object at 0x0000026E0E1C6540&gt;
+o = UUID('7377ce5b-4a4f-42df-9810-3a8ee073e672')
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+&gt;       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type UUID is not JSON serializable
+
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:180: TypeError</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_dispatch_reservation_denied[completed]" time="0.301"><failure message="TypeError: Object of type UUID is not JSON serializable">store = &lt;services.persistence.store.Store object at 0x0000026E153C7710&gt;
+fault = 'completed'
+
+    @pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+    def test_dispatch_reservation_denied(store: Store, fault: str) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        if fault == "completed":
+            journal.retain(
+                lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            if fault == "expired":
+                conn.execute(
+                    "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+                    "WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            data = run.model_dump()
+            if fault == "cancel":
+                data["cancellation_requested"] = True
+            if fault == "budget":
+                data["remaining_budget"]["sandbox_commands"] = 0
+&gt;           conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+            )
+
+tests\integration\test_postgres.py:1907: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\psycopg\connection.py:267: in execute
+    return cur.execute(query, params, prepare=prepare)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\cursor.py:93: in execute
+    self._conn.wait(
+.venv\Lib\site-packages\psycopg\connection.py:453: in wait
+    return waiting.wait(gen, self.pgconn.socket, interval=interval)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\waiting.py:254: in wait_select
+    s = gen.send(ready)
+        ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:194: in _execute_gen
+    pgq = self._convert_query(query, params)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\psycopg\_cursor_base.py:453: in _convert_query
+    pgq.convert(query, params)
+.venv\Lib\site-packages\psycopg\_queries.py:95: in convert
+    self.dump(vars)
+.venv\Lib\site-packages\psycopg\_queries.py:106: in dump
+    self.params = self._tx.dump_sequence(params, self._want_formats)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg_binary/_psycopg/transform.pyx:351: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+psycopg_binary/_psycopg/transform.pyx:402: in psycopg_binary._psycopg.Transformer.dump_sequence
+    ???
+.venv\Lib\site-packages\psycopg\types\json.py:220: in dump
+    if isinstance((data := dumps(obj)), str):
+                           ^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.encoder.JSONEncoder object at 0x0000026E0E1C6540&gt;
+o = UUID('ea097cc7-6835-42ed-bb84-e62ce2474ef1')
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+&gt;       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type UUID is not JSON serializable
+
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\json\encoder.py:180: TypeError</failure></testcase></testsuite></testsuites>
