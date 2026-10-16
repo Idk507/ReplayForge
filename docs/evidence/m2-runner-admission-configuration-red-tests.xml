@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.322" timestamp="2026-10-16T09:48:51.527833+05:30" hostname="dhanu"><testcase classname="tests.unit.test_runner_admission" name="test_runtime_configuration_mismatch_is_denied" time="0.008"><failure message="Failed: DID NOT RAISE &lt;class 'services.runner.admission.AdmissionDenied'&gt;">tests\unit\test_runner_admission.py:227: in test_runtime_configuration_mismatch_is_denied
+    with pytest.raises(AdmissionDenied, match="CAPABILITY_BINDING_DENIED"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'services.runner.admission.AdmissionDenied'&gt;</failure></testcase></testsuite></testsuites>
