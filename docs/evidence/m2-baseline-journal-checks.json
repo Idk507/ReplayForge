@@ -1,0 +1,120 @@
+{
+  "checks": [
+    {
+      "exit_code": 1,
+      "command": "uv run pytest -q tests/unit/test_baseline_journal.py --tb=short (before implementation)",
+      "collection_errors": 1
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run pytest -q tests/unit/test_baseline_journal.py --tb=short",
+      "passed": 1
+    },
+    {
+      "exit_code": 0,
+      "seconds": 75.55,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-baseline-journal-tests.xml",
+      "postgres_scenarios": 70,
+      "passed": 501
+    },
+    {
+      "reason": "completion receipt incorrectly required new-command budget; corrected without weakening planning budget",
+      "failed": 1,
+      "exit_code": 1,
+      "command": "PYTEST_ADDOPTS=-k test_baseline_journal_retention_after_budget_exhaustion; uv run python -m scripts.test_postgres --evidence-name m2-baseline-journal-budget-red-tests.xml",
+      "seconds": 3.52,
+      "deselected": 501
+    },
+    {
+      "postgres_scenarios": 71,
+      "warnings": 1,
+      "exit_code": 0,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-baseline-journal-final-tests.xml",
+      "seconds": 68.28,
+      "passed": 502
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff format --check .",
+      "files": 92
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run mypy",
+      "source_files": 54
+    },
+    {
+      "exit_code": 0,
+      "command": "uv lock --check",
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel (rebuilt after fix)",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-baseline-journal-dependency-audit.json",
+      "known_vulnerabilities": 0
+    },
+    {
+      "exit_code": 0,
+      "scope": "targeted final files only",
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/persistence/baseline.py migrations/versions/0007_baseline_journal.py tests/unit/test_baseline_journal.py tests/integration/test_postgres.py",
+      "findings": 0
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "b7171a11b61dbe038bd727f709e4310f9d2ba1d158ce36749a931b763a0e7056",
+      "path": "docs/evidence/m2-baseline-journal-tests.xml"
+    },
+    {
+      "sha256": "f875c7af1197eda24095f6a13fef0bf73575ccc703acde419d3eb55636342ad8",
+      "path": "docs/evidence/m2-baseline-journal-budget-red-tests.xml"
+    },
+    {
+      "sha256": "a866cf955eb2a329f18e73fcc4fad0854b6ab846f646c2a6c19b91e10d28031b",
+      "path": "docs/evidence/m2-baseline-journal-final-tests.xml"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m2-baseline-journal-dependency-audit.json"
+    },
+    {
+      "sha256": "f2b700ef202f5361e6141771b6846d11f10d4ab93fc6ae5b0499a84c6d4b4ca4",
+      "path": "docs/evidence/m2-baseline-journal-final-secret-scan.json"
+    },
+    {
+      "sha256": "e69c993be03c8125132ba6bb5dc3019d8cef217757069efef44582a95262bde4",
+      "path": "services/persistence/baseline.py"
+    },
+    {
+      "sha256": "631018b0211f27274ac1960a713f7d9ec92ab16e591e4a184ce4b49c4c6bce12",
+      "path": "migrations/versions/0007_baseline_journal.py"
+    },
+    {
+      "sha256": "4ae34be6ad665779318278b3b1b265ca4785f0c18a26241cdab34af9b069aab5",
+      "path": "tests/unit/test_baseline_journal.py"
+    },
+    {
+      "sha256": "52a76a9a05fd3ea9c4f39a25664da5b857a42e66bcc4c88020385085efa8fcd3",
+      "path": "tests/integration/test_postgres.py"
+    }
+  ],
+  "source_state": "local baseline journal migration/adapter/tests; prior work preserved",
+  "source_head": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "observed_date": "2026-10-15",
+  "limitations": [
+    "Synthetic checkpoint seeded by disposable migration role; no runtime reproduction scheduler proof",
+    "No raw JUnit retention, actual dispatch, atomic budget debit or PATCHING transition",
+    "Historical checksum reads are not current signer-policy verification",
+    "No provider operation reconciliation, production signer, runner capability admission or artifact materialization",
+    "Expiry is not deletion; no public action SSE API",
+    "M0/M1/M2 partial; no cloud credentials/calls this turn"
+  ]
+}
