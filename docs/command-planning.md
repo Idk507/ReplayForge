@@ -39,7 +39,9 @@ results/artifacts. The declared image hash alone is not verified identity. A
 planning-time budget check is not an atomic reservation. No permission to run
 repository code on the API or Windows host is introduced.
 
-No result means no claim that reproduction passed or failed. JUnit parsing,
-baseline failure specificity, skip/count validation, patch admission/application,
+No result means no claim that reproduction passed or failed. Bounded unauthenticated
+JUnit inspection and skip/count checks now exist (baseline-inspection.md); this
+does not establish runner origin or authorize patching. Authenticated baseline
+failure specificity, remote patch application,
 clean replay, stage scheduling and signed evidence remain pending. Existing M0
 remote smoke remains synthetic-only; production runner admission stays closed.
