@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="3.482" timestamp="2026-10-15T23:21:50.972755+05:30" hostname="dhanu"><testcase classname="tests.integration.test_postgres" name="test_baseline_journal_retention_after_budget_exhaustion" time="0.921"><failure message="services.runner.commands.CommandPolicyError: COMMAND_BINDING_DENIED">store = &lt;services.persistence.store.Store object at 0x0000022564EEB020&gt;
+
+    def test_baseline_journal_retention_after_budget_exhaustion(store: Store) -&gt; None:
+        from psycopg.types.json import Jsonb
+    
+        journal, lease, owner, run, action, signed, xml, verifier = (
+            baseline_journal_fixture(store)
+        )
+        journal.record_action(lease, owner, action, expected_version=0)
+        # Simulate the final dispatch debit without claiming external execution.
+        run = run.model_copy(
+            update={
+                "version": 1,
+                "remaining_budget": run.remaining_budget.model_copy(
+                    update={"sandbox_commands": 0}
+                ),
+            }
+        )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "UPDATE runs SET checkpoint=%s,version=1 WHERE id=%s",
+                (Jsonb(run.model_dump(mode="json")), run.run_id),
+            )
+&gt;       journal.retain(
+            lease, owner, action.execution_id, signed, xml, verifier, expected_version=1
+        )
+
+tests\integration\test_postgres.py:1814: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\persistence\baseline.py:202: in retain
+    plan_pytest(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = TestCommandRequest(run_id=UUID('022af3af-58a5-4776-bb88-5126074882bf'), repository_id=UUID('76885266-3a58-49b1-8da7-9a...ase='BASELINE', patch_ref=None, reproduction_path='tests/test_regression.py', test_paths=('tests/test_regression.py',))
+run = RunState(schema_version='1.0', run_id=UUID('022af3af-58a5-4776-bb88-5126074882bf'), incident_id=UUID('6203b706-7df5-43...emaining_budget=Budget(model_calls=15, sandbox_commands=0, research_searches=2, patch_attempts=3), failure_reason=None)
+grant = RepositoryGrant(repository_id=UUID('76885266-3a58-49b1-8da7-9a89bbe1298c'), owner_id=UUID('fdc94be6-6003-40bc-b684-52a...approved_paths=('tests/',), consent=True, private=False, private_access_approved=False, policy_version='repository-v1')
+caller = UUID('fdc94be6-6003-40bc-b684-52a2c76df5f4')
+
+    def plan_pytest(
+        request: TestCommandRequest, run: RunState, grant: RepositoryGrant, caller: UUID
+    ) -&gt; TestCommandPlan:
+        """Bind a fixed command to consent/checkpoint; reserve nothing and run nothing.
+    
+        Future dispatch must recheck live cancellation, reserve command budget,
+        validate artifacts and independently admit its remote runner capabilities.
+        """
+        request = TestCommandRequest.model_validate(request.model_dump())
+        run = RunState.model_validate(run.model_dump())
+        if not admit(grant, caller, run.repository_id, run.source_commit).allowed:
+            raise CommandPolicyError("COMMAND_SCOPE_DENIED")
+        if any(not allowed_entry(grant, path, "100644") for path in request.test_paths):
+            raise CommandPolicyError("COMMAND_PATH_DENIED")
+        if (
+            request.run_id != run.run_id
+            or request.repository_id != run.repository_id
+            or request.source_commit != run.source_commit
+            or request.source_manifest_ref != run.source_manifest_ref
+            or request.reproduction_test_ref != run.reproduction_test_ref
+            or run.cancellation_requested
+            or run.remaining_budget.sandbox_commands &lt; 1
+        ):
+&gt;           raise CommandPolicyError("COMMAND_BINDING_DENIED")
+E           services.runner.commands.CommandPolicyError: COMMAND_BINDING_DENIED
+
+services\runner\commands.py:43: CommandPolicyError</failure></testcase></testsuite></testsuites>
