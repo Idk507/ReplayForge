@@ -1,0 +1,87 @@
+{
+  "observed_date": "2026-10-16",
+  "base_commit": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "working_tree": "local unmerged changes",
+  "passed": 534,
+  "postgres_scenarios": 93,
+  "pytest_seconds": 84.23,
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_operation_records.py --junitxml=docs/evidence/m2-operation-records-red-tests.xml --tb=short",
+      "exit_code": 1,
+      "collection_errors": 1,
+      "reason": "intentional red: module not implemented"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_operation_records.py --junitxml=docs/evidence/m2-operation-records-unit-tests.xml",
+      "exit_code": 0,
+      "passed": 10
+    },
+    {
+      "command": "PYTEST_ADDOPTS=-k operation_journal; uv run python -m scripts.test_postgres --evidence-name m2-operation-journal-targeted-tests.xml",
+      "exit_code": 0,
+      "passed": 13,
+      "deselected": 519,
+      "seconds": 12.88
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-operation-journal-final-tests.xml",
+      "exit_code": 0,
+      "passed": 534,
+      "seconds": 84.23
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 97
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "sources": 55
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/persistence/operations.py migrations/versions/0009_operation_records.py tests/unit/test_operation_records.py tests/integration/test_operation_journal.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "findings": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "dependency_audit": {
+    "status": "REUSED_UNCHANGED_DEPENDENCIES",
+    "artifact": "m2-dispatch-reservation-dependency-audit.json",
+    "known_vulnerabilities": 0
+  },
+  "sha256": {
+    "services/persistence/operations.py": "0246cd34ce7fb81f22749ff2e0035ccf846634f73a49dffe6fae0c816e713da5",
+    "migrations/versions/0009_operation_records.py": "54e392ea6e8d8ddebdb31879c8d79074c13ca1c5a640e2965b81934221ab08a4",
+    "tests/unit/test_operation_records.py": "1f03bec64a9be5296e0549c2b028815b1d14145d29b03a68319bc0b2ab4d8e8a",
+    "tests/integration/test_operation_journal.py": "23f3f3fdcf8ff6bd718bdef42ceca59f76fd96886830d4cd401653540f1883bb",
+    "tests/integration/test_postgres.py": "6f134c1ea8225a26d54781562b501a09693c63104726097cd1412f6f6c30580a"
+  },
+  "limitations": [
+    "All operation assertions are UNVERIFIED_ADAPTER_INPUT",
+    "No network submission, polling, dispatch permit or exactly-once external effect",
+    "No state promotion or executable baseline/patch acceptance",
+    "Cleanup after lease completion and physical purge pending",
+    "One upstream AnyIO deprecation warning",
+    "UI absent; UI checks not applicable",
+    "No provider credentials, charges or remote writes"
+  ]
+}
