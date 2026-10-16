@@ -84,3 +84,8 @@ tests are separate. Terminal compute does not prove image/log deletion.
 M0 full isolation/cleanup and the M2 production runner remain open. Backend extension requires provider
 capability evidence or an alternative remote Linux runner, not relaxing these
 requirements. See ADR-009 and the implementation log for actual local checks.
+
+The pure signed capability gate is now implemented in services/runner/admission.py
+and documented in runner-admission.md. It never infers capabilities from this
+smoke report. No production assessment/key is provisioned and repository dispatch
+remains disabled; local synthetic signer tests do not close the live matrix.
