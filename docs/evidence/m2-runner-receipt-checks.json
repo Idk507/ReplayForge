@@ -1,0 +1,94 @@
+{
+  "limitations": [
+    "Temporary test signer and TEST_TRANSPORT only; no production runner identity",
+    "No durable action/receipt consumption or one-use claim; exact-action repeat verification allowed",
+    "Signature proves configured signer claims, not workload truth/capabilities",
+    "No PATCHING transition or artifact persistence/materialization",
+    "M0/M1/M2 partial; no provider credentials/calls this turn"
+  ],
+  "artifacts": [
+    {
+      "path": "docs/evidence/m2-runner-receipt-tests.xml",
+      "sha256": "482289c93ecc93fde9f586dd7962d6e392fdd05ec96e125b4f61e0ae5b98d8e1"
+    },
+    {
+      "path": "docs/evidence/m2-runner-receipt-dependency-audit.json",
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e"
+    },
+    {
+      "path": "docs/evidence/m2-runner-receipt-secret-scan.json",
+      "sha256": "b404d280b07372eaa57c6a7ab32f2309f423552b6acdd4b51d7b77a00154e417"
+    },
+    {
+      "path": "services/runner/receipts.py",
+      "sha256": "71e8637aaf233735c61e11df8f32a1150843152872c02eae736203dbcdf79cb3"
+    },
+    {
+      "path": "tests/unit/test_runner_receipts.py",
+      "sha256": "0bdc2824dfcf8dd3e3eac87d3a96e470df5ba61a9be877f388a9285a196294cf"
+    }
+  ],
+  "observed_date": "2026-10-15",
+  "source_state": "local receipt verifier and report binding; prior changes preserved",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_receipts.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1
+    },
+    {
+      "reason": "duplicate now helper argument; fixed before acceptance",
+      "command": "first receipt test implementation",
+      "failed": 2,
+      "passed": 14
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_receipts.py --tb=short",
+      "exit_code": 0,
+      "passed": 22
+    },
+    {
+      "exit_code": 0,
+      "seconds": 145.71,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-runner-receipt-tests.xml",
+      "warnings": 1,
+      "passed": 491,
+      "postgres_scenarios": 61
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "files": 89,
+      "exit_code": 0
+    },
+    {
+      "source_files": 53,
+      "command": "uv run mypy",
+      "exit_code": 0
+    },
+    {
+      "command": "uv lock --check",
+      "packages": 66,
+      "exit_code": 0
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-runner-receipt-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    {
+      "scope": "targeted files only",
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/runner/receipts.py tests/unit/test_runner_receipts.py",
+      "findings": 0,
+      "exit_code": 0
+    }
+  ],
+  "source_head": "14e20da52107160d1a77bfa8e74ef2368ff22cf7"
+}
