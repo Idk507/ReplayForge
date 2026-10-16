@@ -49,6 +49,13 @@ def store() -> Store:
             sql.SQL("GRANT SELECT,INSERT,UPDATE ON runs,job_leases TO {}").format(role)
         )
         conn.execute(sql.SQL("GRANT SELECT,INSERT ON run_events TO {}").format(role))
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON baseline_actions,baseline_receipts,"
+                "baseline_action_events,baseline_dispatch_intents,"
+                "baseline_operation_records TO {}"
+            ).format(role)
+        )
     return Store(dsn)
 
 
@@ -1508,6 +1515,412 @@ def test_worker_cli_rejects_migration_role_before_loader(
     )
     assert run_worker.main() == 2
     assert json.loads(capsys.readouterr().out)["error_class"] == "WORKER_ROLE_DENIED"
+
+
+def baseline_journal_fixture(store: Store):
+    import hashlib
+    from datetime import UTC, datetime
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from psycopg.types.json import Jsonb
+
+    from services.persistence.baseline import BaselineAction, BaselineJournal
+    from services.runner.baseline import FailureExpectation
+    from services.runner.commands import plan_pytest
+    from services.runner.receipts import (
+        ExecutionReceipt,
+        ReceiptVerifier,
+        SignedReceipt,
+        canonical,
+        plan_ref,
+    )
+    from tests.unit.test_baseline_inspection import XML
+    from tests.unit.test_command_policy import inputs
+
+    run, grant, owner, request = inputs()
+    initial = RunState(
+        run_id=run.run_id,
+        incident_id=run.incident_id,
+        repository_id=run.repository_id,
+        source_commit=run.source_commit,
+        policy_version=run.policy_version,
+        trace_id=run.trace_id,
+    )
+    Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]).register_repository(grant)
+    store.create(initial, owner, uuid4(), "a" * 64)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+        conn.execute(
+            "UPDATE job_leases SET status='queued' WHERE run_id=%s", (run.run_id,)
+        )
+    lease = store.claim(uuid4())
+    assert lease is not None
+    action = BaselineAction(
+        execution_id=uuid4(),
+        plan=plan_pytest(request, run, grant, owner),
+        source_tree_ref="sha256:" + "e" * 64,
+        expected=FailureExpectation(
+            test_name="test_duplicate", assertion_marker="RF_DUPLICATE_TRANSACTION"
+        ),
+    )
+    key = Ed25519PrivateKey.generate()
+    payload = ExecutionReceipt(
+        execution_id=action.execution_id,
+        run_id=run.run_id,
+        plan_ref=plan_ref(action.plan),
+        source_tree_ref=action.source_tree_ref,
+        final_tree_ref=action.source_tree_ref,
+        junit_ref="sha256:" + hashlib.sha256(XML).hexdigest(),
+        origin="TEST_TRANSPORT",
+        observed_at=datetime.now(UTC),
+        exit_code=1,
+        terminal=True,
+        timed_out=False,
+    )
+    signed = SignedReceipt(payload=payload, key_id="test", signature="0" * 128)
+    signed = signed.model_copy(
+        update={"signature": key.sign(canonical(signed, unsigned=True)).hex()}
+    )
+    return (
+        BaselineJournal(store),
+        lease,
+        owner,
+        run,
+        action,
+        signed,
+        XML,
+        ReceiptVerifier({"test": key.public_key()}, origin="TEST_TRANSPORT"),
+    )
+
+
+def test_baseline_journal_restart_replay_owner_and_permissions(store: Store) -> None:
+    from services.persistence.baseline import BaselineJournal
+
+    journal, lease, owner, run, action, signed, xml, verifier = (
+        baseline_journal_fixture(store)
+    )
+    ref = journal.record_action(lease, owner, action, expected_version=0)
+    assert journal.record_action(lease, owner, action, expected_version=0) == ref
+    restart = BaselineJournal(Store(store.dsn))
+    assert restart.action(action.execution_id, owner) == action
+    receipt_ref = restart.retain(
+        lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+    )
+    assert (
+        restart.retain(
+            lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+        )
+        == receipt_ref
+    )
+    retained = restart.receipt(action.execution_id, owner)
+    assert retained.result.status == "MATCHED_SIGNED_REPORT"
+    assert retained.result.can_authorize_patching is False
+    assert Store(store.dsn).get(run.run_id, owner) == run
+    for method in (restart.action, restart.receipt):
+        with pytest.raises(StoreError, match="NOT_FOUND"):
+            method(action.execution_id, uuid4())
+    with psycopg.connect(store.dsn) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM baseline_action_events WHERE execution_id=%s",
+            (action.execution_id,),
+        ).fetchone() == (2,)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute("DELETE FROM baseline_receipts")
+
+
+@pytest.mark.parametrize("case", ["version", "lease", "conflict", "report"])
+def test_baseline_journal_rejects_stale_conflicting_and_tampered_inputs(
+    store: Store, case: str
+) -> None:
+    from services.runner.receipts import ReceiptDenied
+
+    journal, lease, owner, _, action, signed, xml, verifier = baseline_journal_fixture(
+        store
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+    if case == "version":
+        with pytest.raises(StoreError, match="STALE_VERSION"):
+            journal.retain(
+                lease,
+                owner,
+                action.execution_id,
+                signed,
+                xml,
+                verifier,
+                expected_version=1,
+            )
+    elif case == "lease":
+        with psycopg.connect(store.dsn) as conn:
+            conn.execute(
+                """UPDATE job_leases
+                SET leased_until=clock_timestamp()-interval '1 second'
+                WHERE run_id=%s""",
+                (lease.run_id,),
+            )
+        with pytest.raises(StoreError, match="LEASE_LOST"):
+            journal.retain(
+                lease,
+                owner,
+                action.execution_id,
+                signed,
+                xml,
+                verifier,
+                expected_version=0,
+            )
+    elif case == "conflict":
+        with pytest.raises(StoreError, match="BASELINE_CONFLICT"):
+            journal.record_action(
+                lease,
+                owner,
+                action.model_copy(update={"execution_id": uuid4()}),
+                expected_version=0,
+            )
+    else:
+        with pytest.raises(ReceiptDenied):
+            journal.retain(
+                lease,
+                owner,
+                action.execution_id,
+                signed,
+                xml + b"x",
+                verifier,
+                expected_version=0,
+            )
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        journal.receipt(action.execution_id, owner)
+
+
+def test_baseline_journal_receipt_audit_rollback(store: Store) -> None:
+    journal, lease, owner, _, action, signed, xml, verifier = baseline_journal_fixture(
+        store
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            """ALTER TABLE baseline_action_events ADD CONSTRAINT reject_receipt_event
+            CHECK (kind<>'RECEIPT_RETAINED') NOT VALID"""
+        )
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE"):
+            journal.retain(
+                lease,
+                owner,
+                action.execution_id,
+                signed,
+                xml,
+                verifier,
+                expected_version=0,
+            )
+        with pytest.raises(StoreError, match="NOT_FOUND"):
+            journal.receipt(action.execution_id, owner)
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "ALTER TABLE baseline_action_events "
+                "DROP CONSTRAINT reject_receipt_event"
+            )
+
+
+@pytest.mark.parametrize("kind", ["expiry", "tamper"])
+def test_baseline_journal_retention_and_integrity(store: Store, kind: str) -> None:
+    journal, lease, owner, _, action, signed, xml, verifier = baseline_journal_fixture(
+        store
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+    journal.retain(
+        lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        if kind == "expiry":
+            conn.execute(
+                """UPDATE baseline_actions
+                SET expires_at=clock_timestamp()-interval '1 second'
+                WHERE execution_id=%s""",
+                (action.execution_id,),
+            )
+        else:
+            conn.execute(
+                "UPDATE baseline_receipts SET payload=%s WHERE execution_id=%s",
+                (b"tampered", action.execution_id),
+            )
+    with pytest.raises(
+        StoreError, match="NOT_FOUND" if kind == "expiry" else "BASELINE_INTEGRITY"
+    ):
+        journal.receipt(action.execution_id, owner)
+
+
+def test_baseline_journal_concurrent_replay_is_single_record(store: Store) -> None:
+    journal, lease, owner, _, action, signed, xml, verifier = baseline_journal_fixture(
+        store
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(
+                lambda _: journal.record_action(
+                    lease, owner, action, expected_version=0
+                ),
+                range(2),
+            )
+        )
+    assert results[0] == results[1]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        receipts = list(
+            pool.map(
+                lambda _: journal.retain(
+                    lease,
+                    owner,
+                    action.execution_id,
+                    signed,
+                    xml,
+                    verifier,
+                    expected_version=0,
+                ),
+                range(2),
+            )
+        )
+    assert receipts[0] == receipts[1]
+    with psycopg.connect(store.dsn) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM baseline_action_events WHERE execution_id=%s",
+            (action.execution_id,),
+        ).fetchone() == (2,)
+
+
+def test_baseline_journal_retention_after_budget_exhaustion(store: Store) -> None:
+    from psycopg.types.json import Jsonb
+
+    journal, lease, owner, run, action, signed, xml, verifier = (
+        baseline_journal_fixture(store)
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+    # Simulate the final dispatch debit without claiming external execution.
+    run = run.model_copy(
+        update={
+            "version": 1,
+            "remaining_budget": run.remaining_budget.model_copy(
+                update={"sandbox_commands": 0}
+            ),
+        }
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s,version=1 WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    journal.retain(
+        lease, owner, action.execution_id, signed, xml, verifier, expected_version=1
+    )
+    assert (
+        journal.receipt(action.execution_id, owner).result.status
+        == "MATCHED_SIGNED_REPORT"
+    )
+    assert store.get(run.run_id, owner).remaining_budget.sandbox_commands == 0
+    from services.runner.commands import CommandPolicyError
+
+    with pytest.raises(CommandPolicyError):
+        journal.record_action(
+            lease,
+            owner,
+            action.model_copy(update={"execution_id": uuid4()}),
+            expected_version=1,
+        )
+
+
+def test_dispatch_reservation_concurrent_replay(store: Store) -> None:
+    journal, lease, owner, run, action, signed, xml, verifier = (
+        baseline_journal_fixture(store)
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+
+    def reserve() -> int:
+        return journal.reserve_dispatch(
+            lease, owner, action.execution_id, expected_version=0
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert list(pool.map(lambda _: reserve(), range(2))) == [1, 1]
+    updated = store.get(run.run_id, owner)
+    assert updated.version == 1
+    assert (
+        updated.remaining_budget.sandbox_commands
+        == run.remaining_budget.sandbox_commands - 1
+    )
+    journal.retain(
+        lease, owner, action.execution_id, signed, xml, verifier, expected_version=1
+    )
+    assert reserve() == 1
+    with pytest.raises(StoreError, match="BASELINE_CONFLICT"):
+        journal.reserve_dispatch(lease, owner, action.execution_id, expected_version=1)
+    with pytest.raises(StoreError, match="LEASE_LOST"):
+        journal.reserve_dispatch(
+            lease, uuid4(), action.execution_id, expected_version=0
+        )
+
+
+def test_dispatch_reservation_rollback(store: Store) -> None:
+    journal, lease, owner, run, action, _, _, _ = baseline_journal_fixture(store)
+    journal.record_action(lease, owner, action, expected_version=0)
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "ALTER TABLE run_events ADD CONSTRAINT reject_reservation "
+            "CHECK(event_type<>'BUDGET_RESERVED') NOT VALID"
+        )
+    try:
+        with pytest.raises(StoreError, match="DB_FAILURE_23514"):
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+        assert store.get(run.run_id, owner) == run
+    finally:
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute("ALTER TABLE run_events DROP CONSTRAINT reject_reservation")
+
+
+@pytest.mark.parametrize("fault", ["cancel", "expired", "stale", "budget", "completed"])
+def test_dispatch_reservation_denied(store: Store, fault: str) -> None:
+    from psycopg.types.json import Jsonb
+
+    journal, lease, owner, run, action, signed, xml, verifier = (
+        baseline_journal_fixture(store)
+    )
+    journal.record_action(lease, owner, action, expected_version=0)
+    if fault == "completed":
+        journal.retain(
+            lease, owner, action.execution_id, signed, xml, verifier, expected_version=0
+        )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        if fault == "expired":
+            conn.execute(
+                "UPDATE job_leases SET leased_until="
+                "clock_timestamp()-interval '1 second' "
+                "WHERE run_id=%s",
+                (run.run_id,),
+            )
+        data = run.model_dump(mode="json")
+        if fault == "cancel":
+            data["cancellation_requested"] = True
+        if fault == "budget":
+            data["remaining_budget"]["sandbox_commands"] = 0
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s", (Jsonb(data), run.run_id)
+        )
+    with pytest.raises((StoreError, BudgetError)):
+        journal.reserve_dispatch(
+            lease,
+            owner,
+            action.execution_id,
+            expected_version=1 if fault == "stale" else 0,
+        )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM baseline_dispatch_intents WHERE execution_id=%s",
+            (action.execution_id,),
+        ).fetchone() == (0,)
 
 
 def test_migration_downgrade_and_reapply(store: Store) -> None:
