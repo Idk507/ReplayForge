@@ -1,0 +1,101 @@
+{
+  "observed_date": "2026-10-16",
+  "base_commit": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "working_tree": "local unmerged changes",
+  "passed": 631,
+  "postgres_scenarios": 93,
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_admission.py --junitxml=docs/evidence/m2-runner-admission-red-tests.xml --tb=short",
+      "exit_code": 1,
+      "collection_errors": 1,
+      "reason": "intentional red before module implementation"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_admission.py --junitxml=docs/evidence/m2-runner-admission-unit-tests.xml",
+      "exit_code": 0,
+      "passed": 89
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_admission.py --junitxml=docs/evidence/m2-runner-admission-final-unit-tests.xml",
+      "exit_code": 0,
+      "passed": 96
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-runner-admission-tests.xml",
+      "exit_code": 0,
+      "passed": 630,
+      "seconds": 80.44
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_admission.py -k runtime_configuration_mismatch --junitxml=docs/evidence/m2-runner-admission-configuration-red-tests.xml --tb=short",
+      "exit_code": 1,
+      "failed": 1,
+      "deselected": 96,
+      "reason": "configuration drift not bound; fixed before final acceptance"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_runner_admission.py --junitxml=docs/evidence/m2-runner-admission-configuration-tests.xml --tb=short",
+      "exit_code": 0,
+      "passed": 97
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-runner-admission-final-tests.xml",
+      "exit_code": 0,
+      "passed": 631,
+      "seconds": 81.85
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 99
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "sources": 56
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 66
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/runner/admission.py tests/unit/test_runner_admission.py",
+      "exit_code": 0,
+      "findings": 0,
+      "artifact": "m2-runner-admission-final-secret-scan.json"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "dependency_audit": {
+    "status": "REUSED_UNCHANGED_DEPENDENCIES",
+    "artifact": "m2-dispatch-reservation-dependency-audit.json",
+    "known_vulnerabilities": 0
+  },
+  "sha256": {
+    "services/runner/admission.py": "f19339e214b2ba0c5e3635eaa11fd0974a8e7c9a7be79bf125b852f8dd1aaba1",
+    "tests/unit/test_runner_admission.py": "04d4886a5177efe13f14bb06032a31b04ed5d4b021b5ab1d2f63ce0cd0650840"
+  },
+  "limitations": [
+    "Ephemeral synthetic signer tests do not establish real capability facts",
+    "No production assessor/key or artifact resolution",
+    "CAPABILITY_REQUIREMENTS_MET cannot authorize execution",
+    "Actual runtime configuration/image verification pending",
+    "No controlled dispatcher or genuine baseline/patch replay",
+    "One upstream AnyIO deprecation warning",
+    "UI absent; UI checks not applicable",
+    "No cloud credentials, provider calls, charges or remote writes"
+  ]
+}
