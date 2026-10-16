@@ -1,0 +1,95 @@
+{
+  "observed_date": "2026-10-15",
+  "artifacts": [
+    {
+      "sha256": "85cc34d993b169e3f4045149651031920334d898bab9fb696494a431293304c1",
+      "path": "docs/evidence/m2-patch-admission-tests.xml"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m2-patch-admission-dependency-audit.json"
+    },
+    {
+      "sha256": "38ec613eda795db8627c16e7d9eb8439871abd14c35ad23d826a688905103e9b",
+      "path": "docs/evidence/m2-patch-admission-secret-scan.json"
+    },
+    {
+      "sha256": "00ea883870f632cfacf0d7128778f9825d246c856046978c8c1bee9061d72f7f",
+      "path": "services/runner/patches.py"
+    },
+    {
+      "sha256": "348a11048fc6358fea8ecd45266dfec14fd2ed6833102e42e1e14f420bf77b19",
+      "path": "tests/unit/test_patch_admission.py"
+    }
+  ],
+  "limitations": [
+    "Pure admission only: no filesystem/process/provider operations",
+    "Modify-only LF Python src/app subset; unsupported formats denied",
+    "No hunk context matching or file existence proof; remote git apply --check mandatory",
+    "Artifact refs not proof of baseline validity; no atomic budget reservation",
+    "Runner admission and real baseline/candidate/clean replay remain pending",
+    "M0/M1/M2 partial; no provider credentials or calls this turn"
+  ],
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_patch_admission.py --tb=short (before implementation)",
+      "exit_code": 1,
+      "collection_errors": 1
+    },
+    {
+      "errors": 2,
+      "command": "initial adversarial pytest invocation before short parameter IDs",
+      "passed": 18,
+      "result": "oversized automatic IDs caused harness errors; explicit short IDs fixed without weakening assertions"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_patch_admission.py --tb=short",
+      "exit_code": 0,
+      "passed": 30
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-patch-admission-tests.xml",
+      "passed": 447,
+      "warnings": 1,
+      "seconds": 63.18,
+      "postgres_scenarios": 61
+    },
+    {
+      "exit_code": 0,
+      "command": "uv run ruff check ."
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 85
+    },
+    {
+      "command": "uv run mypy",
+      "exit_code": 0,
+      "source_files": 51
+    },
+    {
+      "command": "uv lock --check",
+      "exit_code": 0,
+      "packages": 66
+    },
+    {
+      "exit_code": 0,
+      "command": "uv build --wheel"
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-patch-admission-dependency-audit.json",
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    {
+      "scope": "targeted files only",
+      "findings": 0,
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/runner/patches.py tests/unit/test_patch_admission.py",
+      "exit_code": 0
+    }
+  ],
+  "source_head": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "source_state": "local patch admission slice; prior implementations preserved"
+}
