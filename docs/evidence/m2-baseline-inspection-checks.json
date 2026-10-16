@@ -1,0 +1,88 @@
+{
+  "source_state": "local baseline inspection; existing patch changes preserved",
+  "limitations": [
+    "Unauthenticated XML inspection only, even when assertion marker matches",
+    "No baseline-result setter, graph transition or patch authority",
+    "No signed/correlated runner receipt, materialization or genuine reproduction",
+    "No repository execution, provider credentials/calls or remote writes",
+    "M0/M1/M2 remain partial"
+  ],
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_baseline_inspection.py --tb=short (before implementation)",
+      "collection_errors": 1,
+      "exit_code": 1
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_baseline_inspection.py --tb=short",
+      "passed": 22,
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "warnings": 1,
+      "postgres_scenarios": 61,
+      "passed": 469,
+      "seconds": 70.48,
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-baseline-inspection-tests.xml"
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run ruff format --check .",
+      "exit_code": 0,
+      "files": 87
+    },
+    {
+      "command": "uv run mypy",
+      "source_files": 52,
+      "exit_code": 0
+    },
+    {
+      "command": "uv lock --check",
+      "packages": 66,
+      "exit_code": 0
+    },
+    {
+      "command": "uv build --wheel",
+      "exit_code": 0
+    },
+    {
+      "command": "uvx pip-audit==2.9.0 -r docs/evidence/m1-encrypted-snapshot-audit-requirements.txt --no-deps --disable-pip --format json --output docs/evidence/m2-baseline-inspection-dependency-audit.json",
+      "known_vulnerabilities": 0,
+      "exit_code": 0
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files services/runner/baseline.py tests/unit/test_baseline_inspection.py",
+      "scope": "targeted files only",
+      "exit_code": 0,
+      "findings": 0
+    }
+  ],
+  "source_head": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "observed_date": "2026-10-15",
+  "artifacts": [
+    {
+      "sha256": "1fd88a06f0feafaa615914ad2517dde3e623b231112c99e259c1b79189c3a140",
+      "path": "docs/evidence/m2-baseline-inspection-tests.xml"
+    },
+    {
+      "sha256": "0a5dcaa4930653bac057f712c88e19ecf2416e30bd238705da745cb166014b2e",
+      "path": "docs/evidence/m2-baseline-inspection-dependency-audit.json"
+    },
+    {
+      "sha256": "3bc7cd0274ed2d6a23a696448c3607f9b67a7fa3e807320e4287ee03c1b64a46",
+      "path": "docs/evidence/m2-baseline-inspection-secret-scan.json"
+    },
+    {
+      "sha256": "88d4036baa5fce129aac69265b0c5e506a1c9399e90fdc9fa544bc8ecaa44332",
+      "path": "services/runner/baseline.py"
+    },
+    {
+      "sha256": "46a943e51f5c6cba53d9818af9b25db683a707715f9fc6a91723f9732bb3502f",
+      "path": "tests/unit/test_baseline_inspection.py"
+    }
+  ]
+}
