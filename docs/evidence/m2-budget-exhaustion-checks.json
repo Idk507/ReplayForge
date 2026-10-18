@@ -1,0 +1,59 @@
+{
+  "observed_date": "2026-10-16",
+  "base_commit": "14e20da52107160d1a77bfa8e74ef2368ff22cf7",
+  "working_tree": "local unmerged changes",
+  "scope": "durable count, active-time and estimated-spend budgets",
+  "checks": [
+    {
+      "command": "uv run pytest -q tests/unit/test_budget.py --tb=short",
+      "exit_code": 1,
+      "failed": 3,
+      "reason": "intentional red test before time/spend budget fields existed"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_budget.py tests/unit/test_run_state.py --tb=short",
+      "exit_code": 0,
+      "passed": 42
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-budget-exhaustion-tests.xml",
+      "exit_code": 1,
+      "passed": 636,
+      "failed": 1,
+      "reason": "migration downgrade rejected its new historical event value; corrected by using the established STAGE_CHANGED audit event"
+    },
+    {
+      "command": "uv run python -m scripts.test_postgres --evidence-name m2-budget-exhaustion-final-tests.xml",
+      "exit_code": 0,
+      "passed": 638,
+      "seconds": 83.55,
+      "postgres_scenarios": 95,
+      "warning": "upstream AnyIO BlockingPortal deprecation"
+    },
+    {
+      "command": "uv run ruff check . && uv run ruff format --check . && uv run mypy && uv lock --check && uv build --wheel",
+      "exit_code": 0,
+      "ruff_files": 99,
+      "mypy_sources": 56,
+      "locked_packages": 66
+    },
+    {
+      "command": "uvx detect-secrets==1.5.0 scan --all-files packages/contracts/budget.py packages/contracts/run.py packages/policies/budget.py packages/policies/transitions.py services/persistence/store.py tests/unit/test_budget.py tests/integration/test_postgres.py",
+      "exit_code": 0,
+      "artifact": "m2-budget-exhaustion-secret-scan.json",
+      "findings": 0
+    }
+  ],
+  "limitations": [
+    "Budget values are per-checkpoint remaining limits, not billing records or verified provider prices.",
+    "No remote sandbox, inference, GitHub, or other provider call was made.",
+    "The baseline dispatch path still requires a future controlled submission controller to atomically declare provider cost and time before external work."
+  ],
+  "source_sha256": {
+    "packages/contracts/budget.py": "76863940eb55d251193fed6955bef89f21163814e43784646e19d9722dcd2e84",
+    "packages/contracts/run.py": "4bb08f71c6c1514c981d94fe49cc3ae7b70ea66a6f3afa90cfa72df82dfa0193",
+    "packages/policies/budget.py": "e707d924c9e1547bbae911c674ededb7b197e1121d238b20b477fec2ab34e91",
+    "packages/policies/transitions.py": "aba87b8443bfeb60294c50e39d4a77cf798229238d36091cd9b8cf6748b30ed2",
+    "services/persistence/store.py": "0b0af05ba9a08ccc6c401c216dcca7b9eb2b5d7793bacfaa7fa3490a0247cd6b"
+  }
+}
