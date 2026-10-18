@@ -19,7 +19,7 @@ from packages.contracts.incident import IncidentReport
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
 from packages.contracts.source import SealedSnapshot, SourceManifest
-from packages.policies.budget import consume
+from packages.policies.budget import BudgetError, consume
 from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import TERMINAL, transition
 
@@ -734,7 +734,7 @@ class Store:
             return Lease.model_validate(row)
 
     def reserve(
-        self, lease: Lease, resource: str, *, expected_version: int
+        self, lease: Lease, resource: str, *, amount: int = 1, expected_version: int
     ) -> RunState:
         """Persist an action debit and audit event before any caller dispatch.
 
@@ -742,6 +742,7 @@ class Store:
         or dispatch retry. Exactly-once external effects need their own ledger.
         """
         lease = Lease.model_validate(lease.model_dump())
+        exhausted = False
         with self._connection() as conn:
             row = conn.execute(
                 "SELECT checkpoint FROM runs WHERE id=%s FOR UPDATE", (lease.run_id,)
@@ -759,19 +760,35 @@ class Store:
                 raise StoreError("STALE_VERSION")
             if state.current_stage in TERMINAL or state.cancellation_requested:
                 raise StoreError("RUN_STOPPED")
-            data = state.model_dump()
-            data.update(
-                remaining_budget=consume(state.remaining_budget, resource).model_dump(),
-                version=state.version + 1,
-            )
-            updated = RunState.model_validate(data)
-            conn.execute(
-                "UPDATE runs SET checkpoint=%s,version=%s WHERE id=%s",
-                (
-                    Jsonb(updated.model_dump(mode="json")),
-                    updated.version,
-                    updated.run_id,
-                ),
-            )
-            self._event(conn, updated, "BUDGET_RESERVED")
-            return updated
+            try:
+                remaining = consume(state.remaining_budget, resource, amount)
+            except BudgetError as error:
+                if str(error) != "BUDGET_EXHAUSTED":
+                    raise StoreError(str(error)) from None
+                exhausted = True
+                state = RunState.model_validate(
+                    {**state.model_dump(), "failure_reason": "BUDGET_EXHAUSTED"}
+                )
+                updated = transition(
+                    state, Stage.INCONCLUSIVE, expected_version=state.version
+                )
+                self._save(conn, updated)
+                conn.execute(
+                    "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
+                    (updated.run_id,),
+                )
+                # The durable failure reason is in the checkpoint. Reuse the
+                # established stage-transition event so old databases remain
+                # downgrade-compatible with their historical audit rows.
+                self._event(conn, updated, "STAGE_CHANGED")
+            else:
+                data = state.model_dump()
+                data.update(
+                    remaining_budget=remaining.model_dump(), version=state.version + 1
+                )
+                updated = RunState.model_validate(data)
+                self._save(conn, updated)
+                self._event(conn, updated, "BUDGET_RESERVED")
+        if exhausted:
+            raise StoreError("BUDGET_EXHAUSTED")
+        return updated
