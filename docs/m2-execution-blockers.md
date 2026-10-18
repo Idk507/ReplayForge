@@ -1,0 +1,55 @@
+# M2 execution acceptance blockers
+
+Observed 2026-10-18; local base ffcafe2fae11648f3390a647201da4df9a3cffd2.
+
+M2 is incomplete. Successful model JSON generation, fixture-only historical
+sandbox results, and local contract tests are separate observations. They do
+not establish an integrated admitted repair run.
+
+Credential update: with explicit user authorization, the local `.env` was read
+in memory and a read-only whoami call returned HTTP 200. Current sandbox access
+is working; missing process environment is no longer an external access blocker.
+Observed effective limits include 50 concurrent instances, 3600-second maximum
+execution timeout and a 12 GiB maximum layer allowance. These maxima are not
+ReplayForge's requested limits. This response did not expose CPU, memory, PID,
+read-only-root or retention controls. Sanitized evidence:
+`docs/evidence/m2-env-effective-limits.json`. No credential value was retained.
+
+## Concrete runner compatibility gap
+
+The installed contree-sdk 0.3.6 ImageLike.run signature offers no networking
+argument. The current SDK adapter therefore cannot demonstrate that it applies
+the required network-disabled setting on every preparation and test operation.
+Nebius documents networking as enabled by default and requires
+`networking.enabled=false` on every relevant spawn to remove the guest interface.
+The fixed M0 probe uses a separate path; its evidence does not admit repository
+execution through the SDK adapter.
+
+References checked:
+- https://docs.tokenfactory.nebius.com/sandboxes/operate/security-and-data-handling
+- https://docs.tokenfactory.nebius.com/sandboxes/operate/limits-retention-and-usage
+- Local installed SDK: contree_sdk/sdk/objects/image_like/_base.py, run signature.
+
+Next execution work must implement a supported interface that actually sets
+the required configuration, record immutable image and operation identities,
+and obtain independently assessed capability evidence and a trusted signing
+identity. Do not generate invented PASS evidence or substitute unit-test keys.
+CPU/memory/process/filesystem and retention controls remain unverified under
+runner-admission-v1. Provider documentation directs customers to confirm
+required retention/deletion guarantees with the Sandboxes team.
+
+## Integration work still required
+
+The explicit triage controller loads owner-scoped persisted context, reserves
+one inference attempt, performs a single request and atomically retains the
+validated reproduction. It is not yet connected to the polling worker's full
+agent graph. Exact model/request identity and estimated spend/time reservations
+also remain incomplete. Provider failures leave sticky uncertain intent and
+must not be retried blindly.
+
+Beyond triage, M2 requires admitted remote baseline submission, signed report
+acceptance by the reducer, generated patch retention/application, candidate
+execution and independently correlated replay. The current low-level SDK
+fixture adapter must not be wired around the capability gate to manufacture
+this acceptance. Cloud-call authorization does not supply missing provider
+controls or prove runtime evidence.
