@@ -74,6 +74,7 @@ class RunState(BaseModel):
             "LEASE_EXHAUSTED",
             "SOURCE_REJECTED",
             "SOURCE_UNAVAILABLE",
+            "BUDGET_EXHAUSTED",
         ]
         | None
     ) = None
