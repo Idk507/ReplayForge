@@ -1,0 +1,25 @@
+{
+  "hypotheses": [
+    {
+      "claim": "The CheckoutService.complete method lacks idempotency protection, causing duplicate charges on repeated calls with the same checkout_id.",
+      "supporting_refs": [
+        "source_app_checkout_py"
+      ],
+      "uncertainty": "LOW"
+    },
+    {
+      "claim": "The test expects exactly one charge after two identical complete() calls, but the current implementation produces two charges due to missing deduplication logic.",
+      "supporting_refs": [
+        "source_app_checkout_py",
+        "test_contract"
+      ],
+      "uncertainty": "LOW"
+    }
+  ],
+  "reproduction": {
+    "target_path": "tests/test_checkout_idempotency.py",
+    "behavior": "Two consecutive calls to CheckoutService.complete with identical checkout_id and amount_cents result in two Charge records instead of one.",
+    "failure_signature": "AssertionError: RF_DUPLICATE_TRANSACTION",
+    "test_source": "import unittest\nfrom app.checkout import CheckoutGateway, CheckoutService\n\nclass TestCheckoutIdempotency(unittest.TestCase):\n    def test_complete_charges_once_on_retry(self):\n        gateway = CheckoutGateway()\n        service = CheckoutService(gateway)\n        service.complete('id_123', 500)\n        service.complete('id_123', 500)\n        self.assertEqual(len(gateway.charges), 1, msg='RF_DUPLICATE_TRANSACTION')\n"
+  }
+}
