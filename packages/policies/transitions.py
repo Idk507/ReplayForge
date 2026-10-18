@@ -24,7 +24,7 @@ EDGES: dict[Stage, frozenset[Stage]] = {
     Stage.COLLECTING: frozenset(
         {Stage.TRIAGING, Stage.POLICY_BLOCKED, Stage.INCONCLUSIVE}
     ),
-    Stage.TRIAGING: frozenset({Stage.REPRODUCING}),
+    Stage.TRIAGING: frozenset({Stage.REPRODUCING, Stage.INCONCLUSIVE}),
     Stage.REPRODUCING: frozenset({Stage.PATCHING, Stage.INCONCLUSIVE}),
     Stage.PATCHING: frozenset({Stage.VERIFYING, Stage.INCONCLUSIVE}),
     Stage.VERIFYING: frozenset(
