@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-10-16",
+  "status": "CLEAN_REPLAY_PASS",
+  "evidence_origin": "REMOTE_SERVICE",
+  "image": "python:3.12-slim",
+  "workspace_sha256": "24346b807fb5c3e577ce7519a783aa32b99f094f5fef65f4f0c240c02d1479bc",
+  "command": ["python", "-m", "unittest", "discover", "-s", "visible_tests"],
+  "exit_code": 0,
+  "duration_seconds": 3.187,
+  "truncated": false,
+  "limitations": [
+    "The image is a provider tag, not a verified OCI SHA256 digest.",
+    "The replay was submitted through the direct SDK adapter, outside the durable operation journal.",
+    "The deterministic verifier and hidden-oracle isolation are not implemented, so this result cannot set VERIFIED."
+  ]
+}
