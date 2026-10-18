@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-10-16",
+  "status": "CANDIDATE_TESTED",
+  "evidence_origin": "REMOTE_SERVICE",
+  "image": "python:3.12-slim",
+  "workspace_sha256": "24346b807fb5c3e577ce7519a783aa32b99f094f5fef65f4f0c240c02d1479bc",
+  "runs": [
+    {"suite": "visible_tests", "exit_code": 0, "duration_seconds": 3.718, "truncated": false},
+    {"suite": "oracle", "exit_code": 0, "duration_seconds": 3.953, "truncated": false}
+  ],
+  "limitations": [
+    "Candidate is a synthetic local fixture copy, not a Git-applied patch in a pinned repository checkout.",
+    "The oracle is stored in the same local workspace and is not yet hidden from a model context.",
+    "Image identity is a provider tag, not a verified OCI SHA256 digest.",
+    "No independent clean replay, durable operation journal, deterministic verifier, approval, or GitHub PR was exercised."
+  ]
+}
