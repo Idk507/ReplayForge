@@ -1309,3 +1309,536 @@ submission and genuine baseline/patch replay remain pending. Provider/alternativ
 remote-runner evidence is required to enable repository execution; the M0 smoke
 cannot waive missing image/resource/filesystem/retention controls. No cloud
 credentials, provider execution, charges or remote writes were used.
+
+## 2026-10-16 — Durable time and estimated-spend budget exhaustion
+
+Each run checkpoint now carries bounded remaining action counts, 900 seconds of
+active execution time and 2,000,000 USD micro-units of estimated spend. The
+generic trusted reservation path accepts only positive integer quantities. Once
+a resource is already exhausted, it atomically stores `BUDGET_EXHAUSTED`, moves
+the run to `INCONCLUSIVE`, finishes the worker lease and emits the existing
+stage-transition audit event. This prevents a caller from treating a denied
+reservation as a retryable provider action. Legacy checkpoint JSON remains
+readable because the new fields have conservative defaults.
+
+An initial PostgreSQL acceptance run found that adding a new event type broke
+migration downgrade in databases containing that event. The final design keeps
+the durable failure reason in the checkpoint and uses `STAGE_CHANGED`, preserving
+the established reversible event schema. The final disposable-PostgreSQL suite
+passed 638 tests including 95 PostgreSQL scenarios in 83.55 seconds; focused
+unit tests, Ruff, formatting, strict mypy, lock validation, wheel build and a
+targeted secret scan passed. Evidence: `m2-budget-exhaustion-checks.json`.
+
+M2 stays partial: amounts are run-level declared caps, not verified provider
+prices. A future controlled submission controller must bind actual provider
+cost/time estimates and reserve them with dispatch intent before remote work.
+No provider credential, cloud operation, charge or remote write was used.
+
+## 2026-10-16 — Live checkout baseline reproduction
+
+The synthetic checkout-retry fixture was materialized through the Contree SDK
+into one disposable `python:3.12-slim` sandbox and run with standard-library
+unittest. It exited 1 after 3.766 seconds with the intended behavioral failure:
+the retry assertion observed two charges where one was required. The source
+workspace digest is `c4264ba39327b109942fff18c7fb9cd55966a511269d0a6553fbfeb632d60209`.
+The full structured evidence and limitations are recorded in
+`m2-checkout-baseline-live.json`.
+
+This validates baseline reproduction only. Image identity remains a provider tag,
+the direct adapter call is not yet recorded in the durable operation journal, and
+no candidate patch, oracle run, clean replay, GitHub operation or PR occurred.
+
+## 2026-10-16 — Live candidate regression and oracle checks
+
+A minimal candidate copy records completed checkout IDs before charging. Two
+separate disposable Nebius sandboxes ran the visible unittest regression and
+the oracle unittest; both returned exit code 0 in 3.718 and 3.953 seconds.
+The candidate workspace digest is
+`24346b807fb5c3e577ce7519a783aa32b99f094f5fef65f4f0c240c02d1479bc`.
+Evidence and limitations are recorded in `m2-checkout-candidate-live.json`.
+
+The candidate is an explicit fixture copy, not a model-generated Git-applied
+patch. The oracle remains locally visible, clean replay and deterministic gates
+are absent, and the direct SDK calls do not yet create durable operation records.
+
+## 2026-10-16 — Live clean replay
+
+A third, fresh disposable Nebius sandbox replayed the candidate visible
+regression and returned exit code 0 in 3.187 seconds with the same candidate
+workspace digest. Evidence is recorded in `m2-checkout-clean-replay-live.json`.
+This is repeatable execution evidence only: it cannot set `VERIFIED` until
+durable operation correlation, verified image identity, hidden-oracle isolation
+and deterministic gates are implemented.
+
+## 2026-10-17 — Deterministic verifier binding checks
+
+The local deterministic gate evaluator now accepts only typed runner/verifier
+observations and requires each mandatory gate to agree on one workspace digest,
+immutable source commit and candidate patch digest. Missing, failing, duplicate
+or mixed observations fail closed as `INCONCLUSIVE` or `NOT_VERIFIED`; a model
+origin is rejected by the input contract. Evidence manifests are rebuilt from
+the supplied bytes before they are trusted, so a changed artifact name or byte
+payload fails verification.
+
+`uv run pytest -q` passed with 571 tests passed and 95 skipped (exit 0).
+`uv run ruff format --check services/verifier tests/unit/test_verifier_gates.py
+tests/unit/test_evidence_manifest.py`, `uv run ruff check` on the same paths,
+and `uv run mypy services/verifier` also passed (exit 0). One upstream AnyIO
+deprecation warning was reported. This is offline evidence only: runner
+receipts, durable artifact storage/access control and the clean-replay inputs
+are not yet wired to these gates, so M3 remains incomplete. No provider call,
+cloud charge or remote write was made.
+
+## 2026-10-17 — Bounded live Nemotron triage attempt
+
+One authorized, no-retry Nemotron request used a 4 KB-bounded synthetic checkout
+fixture context with a 600-token response cap. The Token Factory endpoint
+responded, but its completion did not validate against ReplayForge's strict
+`TriageProposal` schema, so the gateway returned `TRIAGE_SCHEMA_INVALID` after
+3.719 seconds. The sanitized response metadata is retained in
+`m2-live-triage-attempt.json`; neither the prompt nor completion content nor any
+credential was written to disk or logs.
+
+This is a safe rejection, not a generated reproduction candidate. The M2
+Nemotron/reproduction acceptance remains incomplete. No remote write or sandbox
+execution occurred, and no retry was attempted to avoid unneeded provider cost.
+
+## 2026-10-17 — Triage prompt contract hardening
+
+The bounded triage gateway now sends an application-owned system instruction
+before its JSON-encoded evidence. It defines the exact `TriageProposal` shape,
+prohibits Markdown and extra keys, requires a `tests/*.py` reproduction path,
+and states that the model must treat all supplied context as untrusted evidence.
+The typed gateway return is now `TriageProposal`; it still has no retry logic and
+does not retain prompt, completion, or credentials.
+
+Focused gateway/parser/contract checks passed (13 tests), including a prompt
+injection case that proves untrusted incident text cannot replace the system
+schema. The complete local suite passed with 572 tests passed and 95 skipped;
+Ruff formatting/check and strict mypy for the affected modules passed. This did
+not invoke a provider, execute a sandbox, or make a remote write. The live M2
+reproduction acceptance remains pending a separately authorized retry.
+
+## 2026-10-17 — Reproduction-test artifact contract
+
+`ReproductionProposal` now carries bounded Python `test_source` in addition to
+its target path, behavior, and expected failure signature. The control plane
+only parses the source with `ast.parse`, rejects NUL and malformed syntax, and
+computes a SHA-256 content identity for later remote-runner admission. It does
+not execute, import, or otherwise evaluate model-proposed code on the Windows
+control plane.
+
+Focused repair-contract, parser, and gateway checks passed (15 tests). The
+complete local suite passed with 574 tests passed and 95 skipped. Ruff check,
+format, strict mypy, and whitespace validation passed. This prepares the M2
+live acceptance but does not satisfy it: an authorized model call must still
+return a schema-valid artifact, then an admitted remote runner must execute it.
+No provider call, cloud charge, sandbox execution, or remote write occurred.
+
+## 2026-10-17 — Second bounded live reproduction attempt
+
+One authorized no-retry Nemotron call used the hardened schema and asked for a
+syntactically valid regression-test artifact for the synthetic checkout fixture.
+The endpoint responded, but the completion again failed the strict proposal
+contract after 3.765 seconds. The sanitized metadata is retained in
+`m2-live-triage-reproduction-attempt.json`; prompt, completion, and credentials
+were not retained. No test artifact was accepted, no sandbox ran, and no remote
+write occurred. M2 acceptance remains incomplete.
+
+## 2026-10-17 — Provider structured-output compatibility finding
+
+A third authorized no-retry call returned no usable text content and was safely
+classified as `TRIAGE_OUTPUT_SIZE` after 3.719 seconds. ReplayForge's parser
+now distinguishes empty/non-text, malformed JSON, non-object JSON, missing
+required fields, and invalid contracts without retaining provider text. The
+Token Factory documentation index advertises structured JSON support, but this
+model/request combination did not yield content with the provider-side
+`response_format` flag. The gateway therefore relies on its application-owned
+JSON instruction and local Pydantic validation instead of that flag. This does
+not relax the schema or permit malformed output.
+
+The subsequent normal chat-completion retry also returned no usable text after
+3.203 seconds (`m2-live-triage-normal-chat-attempt.json`). After four bounded,
+no-retry live attempts, ReplayForge stops rather than spending credits on blind
+retries. No candidate was accepted or executed. Further live generation needs a
+provider response-shape investigation or a confirmed compatible Nemotron model
+route; the M2 task remains blocked and unchecked.
+
+## 2026-10-17 — Triage completion-envelope validation
+
+The triage gateway now accepts a response only when the provider choice has
+`finish_reason == "stop"` and a string final-content field. Length-limited
+choices, missing content, non-string content, and malformed choice envelopes
+fail closed with distinct sanitized errors before any model text reaches the
+proposal parser. This prevents an incomplete generation from being misreported
+as a schema-valid repair artifact.
+
+Focused triage checks passed (21 tests), including each malformed envelope
+case. The complete local suite passed with 580 tests passed and 95 skipped;
+Ruff formatting/check, strict mypy, and whitespace validation passed. No
+provider call, sandbox execution, remote write, or cloud charge occurred.
+
+## 2026-10-17 — Documented strict structured-output request
+
+The triage gateway now requests the documented named `json_schema` wrapper
+whose strict schema is generated from the local frozen `TriageProposal` model.
+It also sends `store: false`, matching the Token Factory chat-completion API
+example. Local Pydantic validation remains mandatory after the response is
+received. The provider documentation says structured output support varies by
+model, so this configured Nemotron model has not been marked compatible without
+a separately authorized, single live capability test.
+
+Focused triage gateway/parser/contract tests passed (22 tests). The complete
+local suite passed with 581 tests passed and 95 skipped. Ruff formatting/check
+and mypy for `packages` and `services` passed; `git diff --check` passed. No
+provider call, sandbox execution, remote write, or cloud charge occurred. The
+M2 real-inference acceptance remains unchecked because no runnable candidate
+has been observed.
+
+## 2026-10-17 — Strict-schema live capability attempt
+
+One newly authorized, no-retry request used the documented named strict
+JSON-schema format with `store: false` and a tiny synthetic checkout-retry
+context. The configured `nvidia/nemotron-3-super-120b-a12b` endpoint responded
+after 5.172 seconds, but its choice did not finish with `stop`; the gateway
+therefore rejected it as `TRIAGE_OUTPUT_INCOMPLETE`. Sanitized metadata is in
+`m2-live-triage-strict-schema-attempt.json`. The prompt, completion, generated
+test source, and credential were not retained.
+
+No candidate was accepted, no sandbox ran, and no remote write occurred. The
+M2 acceptance remains unchecked. A further capability attempt requires a fresh
+authorization because it would incur additional inference usage.
+
+After the attempt, `uv run pytest -q` passed with 581 tests passed and 95
+skipped. Ruff formatting/check, mypy for `packages` and `services`, whitespace
+validation, and a source secret scan passed; the scan explicitly excludes the
+intentional `synthetic-api-key` redaction fixture. One upstream AnyIO
+deprecation warning was reported.
+
+## 2026-10-18 — Endpoint-compatible triage JSON mode
+
+Review of the Token Factory endpoint reference found that its current
+`chat/completions` request schema lists only `json_object` and `text` response
+formats. That conflicts with the separate structured-output guide, which shows
+`json_schema` examples for other model families and advises checking a model's
+JSON-mode capability. ReplayForge is pinned to a Nemotron model with no verified
+JSON-schema capability, so the triage adapter now requests `json_object` and
+keeps the application-owned prompt plus local frozen `TriageProposal` validation
+as the strict acceptance boundary. The prior `json_schema` request was removed
+before any further live call.
+
+Focused gateway/parser/contract tests passed (22 tests). Ruff formatting/check,
+mypy for the affected files, and whitespace validation passed. This is an
+offline compatibility correction; it does not make the M2 model-generation
+acceptance complete and does not consume provider usage.
+
+The complete local suite then passed with 581 tests passed and 95 skipped. One
+upstream AnyIO deprecation warning was reported.
+
+## 2026-10-18 — JSON-object live capability attempt
+
+### Baseline-correlated patch controller
+
+Added `run_patch` to services/orchestrator/repair_flow.py. It reads the current
+owner-scoped checkpoint, retained baseline receipt and action, requires their
+canonical digest to equal baseline_result_ref, and checks remote origin plus
+run/repository/commit/source-manifest/reproduction/plan bindings. TEST_TRANSPORT
+evidence is rejected before reservation or network access. PATCHING must already
+be established by the trusted reducer; this controller cannot open that stage.
+
+Only persisted sanitized app/src Python context is loaded. Conflicting duplicate
+paths and oversized contexts fail before model reservation. After a single
+sticky reservation the gateway makes at most one request and the patch journal
+re-admits/retains its result. Re-entry at VERIFYING checks the retained artifact
+and returns without submitting again. Caller-supplied failure prose is not used;
+the bounded failure marker comes from the retained baseline action.
+
+Four contract tests use explicitly synthetic signers, service ports and HTTP
+responses (not live remote claims). They cover success/restart reconciliation,
+test-origin denial, wrong baseline reference and wrong source commit, including
+zero requests/reservations on rejection. `uv run pytest -q`: 609 passed,
+103 PostgreSQL-dependent skips, one upstream warning, exit 0. Ruff check/format,
+mypy packages/services and whitespace validation passed. The prior real DB
+journal suite remains 708 passed; no persistence schema was changed here.
+No provider call, cloud charge or remote write occurred. M2 remains partial:
+the controller cannot replace missing admitted runner/baseline reducer evidence,
+exact spend/request binding, remote git-apply and candidate replay.
+
+### Durable one-shot patch attempt lifecycle
+
+Final full disposable local PostgreSQL suite: 708 passed, zero skips, one
+upstream AnyIO deprecation warning in 84.31 seconds, exit 0. Evidence:
+`m2-patch-journal-final-tests.xml`. Migration downgrade/reapply passed.
+Repository-wide Ruff check/format, mypy packages/services and whitespace
+validation passed. These are local persistence/contract results, not live
+generated-patch application acceptance.
+
+Added migration `0012` and `services/persistence/patch.py`. A live owner-scoped
+lease, exact checkpoint version, current consent and PATCHING evidence bindings
+are mandatory. Reservation atomically debits one model call, increments version,
+stores uncertain submission intent and emits BUDGET_RESERVED. Existing intent
+denies a second submission even after restart. This conservative first version
+supports one patch inference attempt per run; failed/unknown outcomes are not
+refunded or resubmitted.
+
+Retention revalidates the actual proposal and deterministic diff admission,
+requires an exact file-claim match and the reserved checkpoint version, and
+commits bounded canonical bytes, a patch-attempt reference, one patch-attempt
+debit, VERIFYING stage and event together. Reads verify owner, seven-day expiry,
+canonical checksum, actual diff hash and checkpoint/source/baseline/test
+bindings. Neither stage transition nor retention is evidence of application,
+remote execution or a verified repair. Runtime roles get SELECT/INSERT only.
+
+Focused disposable PostgreSQL tests: two passed, proving restart read,
+duplicate denial without a second debit, and candidate/checkpoint rollback when
+the event write fails. Evidence: `m2-patch-journal-focused.xml`. No cloud call,
+secret loading or remote write occurred. Exact model request/spend/time binding,
+full patch-controller integration and admitted runner dispatch remain pending.
+Base commit ffcafe2fae11648f3390a647201da4df9a3cffd2; uncommitted local work.
+
+### Bounded patch-proposal gateway
+
+Added the closed PatchProposal contract and packages/providers/patch.py.
+The single-call gateway requires PATCHING, consent, baseline/reproduction/source
+references and patch budget; admits only bounded sanitized app/src Python
+context. Model output must be complete JSON matching the contract, then pass
+the existing deterministic modify-only diff broker. Claimed paths must match
+the parsed diff and belong to the supplied context. Test modifications, extra
+fields, malformed diffs and truncation are denied. This code never applies a
+patch, runs code, advances a run or verifies a repair.
+
+The gateway uses the already live-tested non-reasoning bounded profile:
+1200 max_completion_tokens, reasoning_effort=none, JSON-object, store=false,
+no redirects/proxy inheritance and no retries. Response bytes are bounded while
+streaming. Exact route/configuration is revalidated before attaching the key.
+Reference: https://docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion.
+
+Focused patch generation/admission: 37 passed. Full offline pytest: 605 passed,
+101 PostgreSQL-dependent skips, one upstream AnyIO warning, exit 0. Repository
+Ruff check/format, mypy packages/services and whitespace checks passed. No new
+provider call was made: a live patch request must follow a genuine admitted
+baseline, not fabricated source/baseline references. The gateway still needs
+durable patch-model reservation, result retention and reducer/runner wiring;
+M2 is not complete. Base ffcafe2fae11648f3390a647201da4df9a3cffd2; uncommitted.
+
+### Explicit local credential loading and account limit discovery
+
+The user explicitly authorized reading the workspace `.env`, including newly
+added Tavily configuration. Credentials were read in memory only, without shell
+evaluation or printing values. Presence of Nebius key, project identity and
+Tavily key was confirmed; Tavily validity was not tested or claimed.
+A single read-only Sandboxes whoami request returned HTTP 200. Sanitized limit
+metadata is in `m2-env-effective-limits.json`. The previously missing process
+configuration no longer blocks authenticated sandbox API access. This request
+started no compute and made no remote mutation. CPU/memory/PID/filesystem and
+retention evidence is not established by the returned account limit map.
+
+### Network-disabled REST test request
+
+Added `services/runner/rest_plan.py` to serialize a revalidated, fixed
+TestCommandPlan into the documented REST spawn fields. Every constructed
+request explicitly sets networking.enabled=false, shell=false, preserve_env=false,
+non-root IDs, disposable execution, bounded output/layer bytes and the exact
+application pytest argv/environment/cwd/timeout. It does not submit requests,
+claim image UUID is an OCI digest, or confer execution authority. Six negative
+and positive tests pass, including forged argv/environment/shell/timeouts/cwd.
+Source: https://docs.tokenfactory.nebius.com/sandboxes/operate/security-and-data-handling.
+
+Attempted the documented account-effective limit discovery without starting
+compute. The current process lacked required sandbox credential/project
+configuration, so no HTTP request was sent. Sanitized NOT_RUN evidence is
+`m2-effective-limit-discovery.json`. This is a real external configuration
+blocker for live acceptance; earlier successful sessions do not establish
+credentials in this current process. No secret was printed or copied.
+
+`uv run pytest -q`: 598 passed, 101 skipped (PostgreSQL not configured for this
+ordinary offline invocation), one upstream warning, exit 0. Repository-wide
+Ruff check/format and mypy passed. Last real PostgreSQL run remains 693 passed
+in `m2-triage-controller-final-tests.xml`; the REST builder adds six pure tests
+and does not alter persistence. M2 remains incomplete pending configured live
+runner assessment, image binding, admission and baseline/patch dispatch.
+
+### Controlled triage orchestration
+
+Final full disposable-PostgreSQL rerun: 693 passed, zero skips, one upstream
+AnyIO warning in 99.88 seconds, exit 0. Evidence:
+`m2-triage-controller-final-tests.xml`. Repository-wide Ruff lint/format, mypy
+packages/services and whitespace checks passed. Base commit:
+`ffcafe2fae11648f3390a647201da4df9a3cffd2`; work remains local/uncommitted.
+
+Added `services/orchestrator/repair_flow.py`. The controller revalidates the
+provider destination/configuration, loads owner-scoped persisted context,
+checks source identity and bounded encoded input size before reservation,
+reserves a sticky model-call intent, makes one gateway request and atomically
+retains the reproduction. Re-entering after successful retention validates and
+returns the checkpoint without another request. Provider failure leaves the
+uncertain intent and debit intact; restart cannot submit again.
+
+Two real local PostgreSQL tests with an explicitly fake HTTP transport passed
+in isolation (`m2-triage-controller-focused.xml`): success/retention/restart and
+503/uncertain-intent/restart, with exactly one request and one debit in each.
+The first full run had one unrelated statement-timeout failure in an existing
+operation-journal test, preserved in `m2-triage-controller-tests.xml`; no timeout
+or quality threshold was relaxed. A clean full rerun follows below.
+
+Reviewed current official Nebius sandbox security/limits guidance and installed
+SDK signature. The SDK 0.3.6 run interface lacks a networking argument, although
+provider networking defaults to enabled. Required per-operation network denial
+cannot be asserted for this adapter. Concrete execution and integration gaps
+are recorded in `docs/m2-execution-blockers.md`. No paid provider call was made;
+missing capability evidence must not be replaced by fabricated signatures.
+
+### Sticky inference intent and atomic model-call debit
+
+Validation: disposable local PostgreSQL full suite passed 691 tests, zero skips,
+one upstream AnyIO warning, in 77.21 seconds, exit 0. Actual evidence:
+`m2-triage-intent-tests.xml`. Tests cover restart duplicate denial with no second
+debit, reservation-to-candidate handoff and event-failure rollback of budget,
+checkpoint and intent. Migration downgrade/reapply passed. Repository-wide
+Ruff check/format, mypy packages/services and whitespace validation passed.
+Base commit `ffcafe2fae11648f3390a647201da4df9a3cffd2`; local uncommitted work.
+
+Added migration `0011` and `ReproductionJournal.reserve_inference`. Under a live
+owner-scoped lease and exact checkpoint version, TRIAGING with context and
+source-manifest bindings may reserve one model-call unit. The run version,
+budget, append-only uncertain intent and BUDGET_RESERVED event commit together.
+The journal stores only attempt ID and a digest of immutable source/context
+references, never prompt bodies, completions, reasoning or credentials.
+
+An existing intent denies new submission as TRIAGE_SUBMISSION_UNCERTAIN even
+after process restart. A lost response is deliberately not retried or refunded.
+The reservation does not prove provider submission or return an execution
+permission. Reproduction retention can use the new checkpoint version after a
+successful separately controlled call. Model route/payload binding, priced
+spend/time reservation and full orchestrator dispatch wiring remain pending.
+No new cloud call was needed for this persistence-only change.
+
+### Transactional reproduction retention
+
+Final disposable local PostgreSQL acceptance: 689 passed, zero skips, one
+upstream AnyIO warning, in 81.98 seconds (exit 0), including migration downgrade
+and reapply. Evidence: `m2-reproduction-journal-final-tests.xml`. Repository-wide
+`ruff check .`, `ruff format --check .`, `mypy packages services` and whitespace
+validation passed. M2 stays partial pending model dispatch reconciliation,
+runner admission and the fully correlated baseline/patch execution cycle.
+
+Added migration `0010` and `ReproductionJournal` to retain bounded canonical
+candidate bytes with a seven-day expiry. A live owner-scoped worker lease and
+exact checkpoint version are required. Repository consent and proposal/source
+bindings are revalidated before artifact insertion. The reference, transition
+from TRIAGING to REPRODUCING, version increment and public metadata event commit
+in the same transaction. Restart reads check expiry, owner, digest, canonical
+bytes, current checkpoint identity and current consent. Runtime privileges are
+SELECT/INSERT only for the new artifact table; no public source route was added.
+
+The first real PostgreSQL run found an incorrect join to `runs.repository_id`;
+repository identity lives in checkpoint JSON. Corrected the join to the existing
+schema. Initial failure evidence remains in `m2-reproduction-journal-tests.xml`.
+Tests exercise restart reads, wrong-owner denial, stale write denial, and event
+failure rollback of both candidate bytes and checkpoint. No provider usage or
+remote write was performed. Base commit:
+`ffcafe2fae11648f3390a647201da4df9a3cffd2`; changes remain uncommitted.
+
+### Immutable reproduction handoff
+
+Added `services/orchestrator/reproduction.py`: canonical content-addressed
+reproduction envelopes bind generated source to a run, repository, immutable
+source commit, source manifest and exact context references. Binding/loading
+revalidates current repository consent, approved test path, stage and
+cancellation. A load additionally requires the checkpoint's exact reproduction
+artifact reference and canonical retained bytes. It does not execute code,
+write storage, mutate checkpoints or grant runner permission.
+
+Eight offline tests cover round trip, unchanged input checkpoint, source/run/
+context/manifest mutation, cancellation, wrong stage, tampering, wrong owner
+and missing checkpoint reference. `uv run pytest -q`: 592 passed, 95 skipped,
+one upstream AnyIO deprecation warning, exit 0. Repository-wide `ruff check .`,
+`ruff format --check .`, and `mypy packages services` passed, exit 0. Base commit
+`ffcafe2fae11648f3390a647201da4df9a3cffd2`; work remains uncommitted.
+
+M2 is NOT complete: transactional proposal retention/checkpoint reduction,
+durable model dispatch reconciliation, live runner capability evidence and
+production assessor/signer provisioning, remote submission controller,
+signed baseline reducer acceptance, model patch generation/application and
+fully correlated candidate replay remain outstanding. The production
+capability evidence/signing identity are external prerequisites; unit-test
+keys and fabricated PASS claims must never enable this path. No additional
+inference, sandbox call, remote write or cloud charge occurred in this slice.
+
+### Runner preparation failure barrier
+
+Inspection of the next reproduction-execution dependency found that upload,
+clone and checkout exit codes were ignored. Tests could therefore run against
+an absent or wrong workspace. Added a preparation barrier after each command:
+nonzero exit raises sanitized `WORKSPACE_PREPARATION_FAILED` and no test
+dispatch occurs. Three negative regression cases failed before the change
+(clone failure, checkout failure, upload failure) and passed afterward.
+The full offline suite passed: 584 passed, 95 skipped, one upstream AnyIO
+warning (`uv run pytest -q`, exit 0). No provider request or cloud charge was
+made. This barrier does not establish remote teardown or authorize execution.
+M2 remains incomplete pending durable candidate storage and admitted remote
+execution of a generated reproduction. Base commit:
+`ffcafe2fae11648f3390a647201da4df9a3cffd2`; changes are uncommitted.
+
+### Successful documented-profile validation (follow-up)
+
+The user authorized a live test after documentation/reference review. One
+no-retry request through `request_triage` used the revised request profile:
+`reasoning_effort: none`, `max_completion_tokens: 1200`, JSON-object mode,
+and `store: false`. Only a tiny synthetic Checkout class and incident were
+provided; no repository or hidden oracle was supplied. Observed HTTP 200,
+`finish_reason: stop`, 240 prompt tokens, 199 completion tokens, 439 total,
+2.078 seconds, and no reasoning content. Local Pydantic and Python AST
+validation accepted the proposal. Sanitized evidence:
+`docs/evidence/m2-live-triage-reasoning-diagnostic.json`.
+
+This proves the revised profile can return a completed schema-valid candidate
+on the configured Nebius Nemotron route. It supports, but cannot retroactively
+prove, the reasoning-budget explanation of earlier calls. NVIDIA's reference
+implementation documents thinking controls; the Nebius endpoint documents the
+top-level `reasoning_effort` option used here. The NVIDIA-specific chat-template
+extension was not copied into the Nebius request without compatibility evidence.
+References: https://docs.nvidia.com/nim/large-language-models/2.0.4/turbo/get-started-nemotron-3-super-120b-a12b.html
+and https://docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion.
+
+The generated source was kept only in memory, hashed and discarded; it was not
+executed. Therefore this is generation/parse acceptance only, not an observed
+behavioral baseline failure or runnable-candidate acceptance. M2 stays open.
+
+Follow-up diagnosis: the request left reasoning effort at the provider default
+while limiting generated output to 600 tokens. NVIDIA documents this as a
+reasoning model, and Nebius documents a completion budget shared by visible and
+reasoning tokens. This is a plausible cause of empty/incomplete output, not a
+confirmed explanation of the historical calls: their sanitized evidence did not
+retain exact finish reasons or token counts. Changing JSON formats alone did
+not resolve those calls.
+
+The adapter now explicitly requests `reasoning_effort: none` and
+`max_completion_tokens: 1200`, removing the ambiguous `max_tokens` setting.
+This is a bounded request-profile correction; provider/model support remains
+unverified until a live call. No reasoning content is consumed as final output.
+The payload regression failed before this change and passed afterward. Full
+`uv run pytest -q`: 581 passed, 95 skipped, one upstream warning, exit 0.
+Affected-file Ruff check, format check and mypy passed, exit 0. Build base:
+`ffcafe2fae11648f3390a647201da4df9a3cffd2`; changes remain local/uncommitted.
+No additional provider request or charge occurred during this diagnosis.
+Sources: https://docs.tokenfactory.nebius.com/api-reference/inference/create-chat-completion
+and https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-super-120b-a12b.
+
+One newly authorized, no-retry inference request used the endpoint-compatible
+`json_object` format, the bounded synthetic checkout-retry context, and
+`store: false`. It returned after 4.421 seconds but did not have a completed
+final choice, so the gateway rejected it as `TRIAGE_OUTPUT_INCOMPLETE`.
+Sanitized metadata is stored in `m2-live-triage-json-object-attempt.json`; no
+prompt, completion, candidate source, or credential was persisted. No sandbox
+or repository operation occurred.
+
+The triage gateway now separately reports a provider `finish_reason` of
+`length` as `TRIAGE_OUTPUT_LIMIT`; other non-`stop` values remain
+`TRIAGE_OUTPUT_INCOMPLETE`. The recorded attempt predated that diagnostic, so
+its exact finish reason is intentionally unknown rather than inferred. Focused
+gateway/parser/contract tests passed (22 tests), Ruff formatting/check and mypy
+for the affected files passed. No further inference retry was made.
+
+The complete local suite passed with 581 tests passed and 95 skipped. One
+upstream AnyIO deprecation warning was reported.
