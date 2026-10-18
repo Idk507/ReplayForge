@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-10-16",
+  "status": "BASELINE_REPRODUCED",
+  "evidence_origin": "REMOTE_SERVICE",
+  "image": "python:3.12-slim",
+  "workspace_sha256": "c4264ba39327b109942fff18c7fb9cd55966a511269d0a6553fbfeb632d60209",
+  "command": ["python", "-m", "unittest", "discover", "-s", "visible_tests"],
+  "exit_code": 1,
+  "duration_seconds": 3.766,
+  "truncated": false,
+  "failure_signature": "AssertionError: 2 != 1",
+  "limitations": [
+    "The image is a provider tag, not a verified OCI SHA256 digest.",
+    "No independent capability attestation or durable operation journal is bound to this direct adapter run.",
+    "This proves only the synthetic checkout fixture baseline; it does not verify a patch or clean replay."
+  ]
+}
