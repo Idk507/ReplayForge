@@ -14,6 +14,8 @@ from packages.policies.budget import BudgetError, consume
         ("sandbox_commands", 20),
         ("research_searches", 2),
         ("patch_attempts", 3),
+        ("execution_seconds", 900),
+        ("estimated_spend_microusd", 2_000_000),
     ],
 )
 def test_exact_limit_then_denial(resource: str, limit: int) -> None:
@@ -38,11 +40,21 @@ def test_unknown_resource_and_construct_bypass_fail() -> None:
         consume(Budget.model_construct(model_calls=-1), "model_calls")
 
 
+def test_time_and_spend_reservations_are_integer_bounded() -> None:
+    budget = Budget()
+    reserved = consume(budget, "execution_seconds", 60)
+    reserved = consume(reserved, "estimated_spend_microusd", 125_000)
+    assert reserved.execution_seconds == 840
+    assert reserved.estimated_spend_microusd == 1_875_000
+
+
 @pytest.mark.parametrize(
     "values",
     [
         {"model_calls": -1},
         {"research_searches": 3},
+        {"execution_seconds": 901},
+        {"estimated_spend_microusd": 2_000_001},
         {"model_calls": True},
         {"shell": 1},
     ],
