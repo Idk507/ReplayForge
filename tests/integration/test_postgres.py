@@ -50,6 +50,17 @@ def store() -> Store:
         )
         conn.execute(sql.SQL("GRANT SELECT,INSERT ON run_events TO {}").format(role))
         conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON reproduction_artifacts TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON triage_intents TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON patch_intents,patch_candidates TO {}"
+            ).format(role)
+        )
+        conn.execute(
             sql.SQL(
                 "GRANT SELECT,INSERT ON baseline_actions,baseline_receipts,"
                 "baseline_action_events,baseline_dispatch_intents,"
@@ -57,6 +68,279 @@ def store() -> Store:
             ).format(role)
         )
     return Store(dsn)
+
+
+def reproduction_setup(store: Store):
+    from psycopg.types.json import Jsonb
+
+    from tests.unit.test_reproduction_handoff import fixture
+
+    run, grant, proposal = fixture()
+    admin = Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"])
+    admin.register_repository(grant)
+    initial = RunState(
+        **{
+            k: getattr(run, k)
+            for k in (
+                "run_id",
+                "incident_id",
+                "repository_id",
+                "source_commit",
+                "policy_version",
+                "trace_id",
+            )
+        }
+    )
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    store.create(initial, grant.owner_id, uuid4(), "a" * 64)
+    lease = store.claim(uuid4())
+    assert lease is not None
+    with psycopg.connect(admin.dsn) as conn:
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    return run, grant, proposal, lease
+
+
+def test_reproduction_atomic_restart_and_scope(store: Store) -> None:
+    from services.persistence.reproduction import ReproductionJournal
+
+    run, grant, proposal, lease = reproduction_setup(store)
+    journal = ReproductionJournal(store)
+    updated = journal.retain(lease, grant.owner_id, proposal, expected_version=0)
+    assert updated.current_stage == Stage.REPRODUCING
+    assert updated.version == 1
+    recovered = ReproductionJournal(Store(store.dsn)).get(run.run_id, grant.owner_id)
+    assert recovered.proposal == proposal
+    assert recovered.artifact_ref() == updated.reproduction_test_ref
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        journal.get(run.run_id, uuid4())
+    with pytest.raises(StoreError, match="STALE_VERSION"):
+        journal.retain(lease, grant.owner_id, proposal, expected_version=0)
+    assert store.events(run.run_id, grant.owner_id)[-1].stage == Stage.REPRODUCING
+
+
+def test_reproduction_event_failure_rolls_back_artifact(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.persistence.reproduction import ReproductionJournal
+
+    run, grant, proposal, lease = reproduction_setup(store)
+
+    def fail(*args: object) -> None:
+        raise RuntimeError("synthetic event failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Store, "_event", fail)
+        with pytest.raises(RuntimeError, match="synthetic event failure"):
+            ReproductionJournal(store).retain(
+                lease, grant.owner_id, proposal, expected_version=0
+            )
+    assert store.get(run.run_id, grant.owner_id) == run
+    with psycopg.connect(store.dsn) as conn:
+        assert (
+            conn.execute(
+                "SELECT 1 FROM reproduction_artifacts WHERE run_id=%s", (run.run_id,)
+            ).fetchone()
+            is None
+        )
+    ReproductionJournal(store).retain(
+        lease, grant.owner_id, proposal, expected_version=0
+    )
+
+
+def test_triage_intent_debits_once_and_blocks_restart_retry(store: Store) -> None:
+    from services.persistence.reproduction import ReproductionJournal
+
+    run, grant, proposal, lease = reproduction_setup(store)
+    attempt, version = ReproductionJournal(store).reserve_inference(
+        lease, grant.owner_id, expected_version=0
+    )
+    assert version == 1
+    after = store.get(run.run_id, grant.owner_id)
+    assert after.remaining_budget.model_calls == run.remaining_budget.model_calls - 1
+    restarted = ReproductionJournal(Store(store.dsn))
+    with pytest.raises(StoreError, match="TRIAGE_SUBMISSION_UNCERTAIN"):
+        restarted.reserve_inference(lease, grant.owner_id, expected_version=version)
+    assert store.get(run.run_id, grant.owner_id) == after
+    assert store.events(run.run_id, grant.owner_id)[-1].event_type == "BUDGET_RESERVED"
+    with psycopg.connect(store.dsn) as conn:
+        assert conn.execute(
+            "SELECT attempt_id FROM triage_intents WHERE run_id=%s", (run.run_id,)
+        ).fetchone() == (attempt,)
+    updated = restarted.retain(
+        lease, grant.owner_id, proposal, expected_version=version
+    )
+    assert updated.current_stage == Stage.REPRODUCING
+
+
+def test_triage_intent_event_failure_rolls_back_budget(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.persistence.reproduction import ReproductionJournal
+
+    run, grant, _, lease = reproduction_setup(store)
+
+    def fail(*args: object) -> None:
+        raise RuntimeError("synthetic event failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Store, "_event", fail)
+        with pytest.raises(RuntimeError, match="synthetic event failure"):
+            ReproductionJournal(store).reserve_inference(
+                lease, grant.owner_id, expected_version=0
+            )
+    assert store.get(run.run_id, grant.owner_id) == run
+    with psycopg.connect(store.dsn) as conn:
+        assert (
+            conn.execute(
+                "SELECT 1 FROM triage_intents WHERE run_id=%s", (run.run_id,)
+            ).fetchone()
+            is None
+        )
+
+
+@pytest.mark.parametrize("provider_fails", [False, True])
+def test_triage_controller_recovery_never_repeats_inference(
+    store: Store, provider_fails: bool
+) -> None:
+    import hashlib
+
+    import httpx
+    from psycopg.types.json import Jsonb
+
+    from packages.contracts.context import ContextBundle
+    from packages.providers.nebius import NebiusConfig, ProbeError
+    from services.orchestrator.repair_flow import run_triage
+    from tests.unit.test_triage_gateway import response_for_any_context
+
+    run, grant, _, lease = reproduction_setup(store)
+    bundle = ContextBundle(
+        source_commit=run.source_commit, sanitized_errors="synthetic duplicate charge"
+    )
+    payload = Store._context_payload(bundle)
+    digest = hashlib.sha256(payload).hexdigest()
+    run = run.model_copy(update={"context_refs": ("sha256:" + digest,)})
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "INSERT INTO context_artifacts(run_id,digest,payload) VALUES (%s,%s,%s)",
+            (run.run_id, digest, payload),
+        )
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    calls = 0
+
+    def request(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503) if provider_fails else response_for_any_context()
+
+    config = NebiusConfig.from_env({"NEBIUS_API_KEY": "test-secret"})
+    transport = httpx.MockTransport(request)
+    if provider_fails:
+        with pytest.raises(ProbeError, match="M_UNAVAILABLE"):
+            run_triage(store, lease, grant.owner_id, config, transport=transport)
+        with pytest.raises(StoreError, match="TRIAGE_SUBMISSION_UNCERTAIN"):
+            run_triage(
+                Store(store.dsn), lease, grant.owner_id, config, transport=transport
+            )
+    else:
+        completed = run_triage(
+            store, lease, grant.owner_id, config, transport=transport
+        )
+        assert completed.current_stage == Stage.REPRODUCING
+        assert (
+            run_triage(
+                Store(store.dsn), lease, grant.owner_id, config, transport=transport
+            )
+            == completed
+        )
+    assert calls == 1
+    assert store.get(run.run_id, grant.owner_id).remaining_budget.model_calls == 14
+
+
+def patch_setup(store: Store):
+    from psycopg.types.json import Jsonb
+
+    from packages.contracts.repair import PatchProposal
+    from tests.unit.test_patch_admission import DIFF
+
+    run, grant, _, lease = reproduction_setup(store)
+    grant = grant.model_copy(update={"approved_paths": ("src/", "tests/")})
+    run = run.model_copy(
+        update={
+            "current_stage": Stage.PATCHING,
+            "baseline_result_ref": "sha256:" + "d" * 64,
+            "reproduction_test_ref": "sha256:" + "e" * 64,
+        }
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+        conn.execute(
+            "UPDATE repository_grants SET grant_json=%s WHERE id=%s",
+            (Jsonb(grant.model_dump(mode="json")), grant.repository_id),
+        )
+    proposal = PatchProposal(
+        unified_diff=DIFF,
+        files_changed=("src/a.py",),
+        justification="synthetic",
+        expected_test_delta="assertion passes",
+        risk_notes="not executed",
+    )
+    return run, grant, proposal, lease
+
+
+def test_patch_journal_reserve_retain_restart_and_duplicate_denial(
+    store: Store,
+) -> None:
+    from services.persistence.patch import PatchJournal
+
+    run, grant, proposal, lease = patch_setup(store)
+    journal = PatchJournal(store)
+    _, version = journal.reserve(lease, grant.owner_id, expected_version=0)
+    with pytest.raises(StoreError, match="PATCH_SUBMISSION_UNCERTAIN"):
+        PatchJournal(Store(store.dsn)).reserve(
+            lease, grant.owner_id, expected_version=version
+        )
+    updated = journal.retain(lease, grant.owner_id, proposal, expected_version=version)
+    assert updated.current_stage == Stage.VERIFYING
+    assert updated.remaining_budget.model_calls == 14
+    assert updated.remaining_budget.patch_attempts == 2
+    recovered = PatchJournal(Store(store.dsn)).get(run.run_id, grant.owner_id)
+    assert recovered.proposal == proposal
+    assert recovered.admission.patch_ref == updated.patch_attempt_refs[-1]
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        journal.get(run.run_id, uuid4())
+
+
+def test_patch_journal_event_failure_rolls_back_candidate(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.persistence.patch import PatchJournal
+
+    run, grant, proposal, lease = patch_setup(store)
+    journal = PatchJournal(store)
+    _, version = journal.reserve(lease, grant.owner_id, expected_version=0)
+    before = store.get(run.run_id, grant.owner_id)
+
+    def fail(*args: object) -> None:
+        raise RuntimeError("synthetic event failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Store, "_event", fail)
+        with pytest.raises(RuntimeError, match="synthetic event failure"):
+            journal.retain(lease, grant.owner_id, proposal, expected_version=version)
+    assert store.get(run.run_id, grant.owner_id) == before
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        journal.get(run.run_id, grant.owner_id)
+    journal.retain(lease, grant.owner_id, proposal, expected_version=version)
 
 
 def new_state() -> RunState:
@@ -326,9 +610,34 @@ def test_persistent_budget_reservation_and_expired_heartbeat(store: Store) -> No
         Store(store.dsn).get(state.run_id, owner).remaining_budget.research_searches
         == 0
     )
-    with pytest.raises(BudgetError):
+    with pytest.raises(StoreError, match="BUDGET_EXHAUSTED"):
         store.reserve(lease, "research_searches", expected_version=2)
-    assert store.get(state.run_id, owner).version == result.version
+    exhausted = store.get(state.run_id, owner)
+    assert exhausted.version == result.version + 1
+    assert exhausted.current_stage == Stage.INCONCLUSIVE
+    assert exhausted.failure_reason == "BUDGET_EXHAUSTED"
+    assert store.events(state.run_id, owner)[-1].event_type == "STAGE_CHANGED"
+
+
+@pytest.mark.parametrize(
+    ("resource", "amount"),
+    [("execution_seconds", 900), ("estimated_spend_microusd", 2_000_000)],
+)
+def test_time_and_spend_budget_exhaustion_closes_run(
+    store: Store, resource: str, amount: int
+) -> None:
+    with psycopg.connect(store.dsn) as conn:
+        conn.execute("UPDATE job_leases SET status='done'")
+    owner, state = uuid4(), new_state()
+    store.create(state, owner, uuid4(), "b" * 64)
+    lease = store.claim(uuid4())
+    assert lease is not None
+    time_reserved = store.reserve(lease, resource, amount=amount, expected_version=0)
+    with pytest.raises(StoreError, match="BUDGET_EXHAUSTED"):
+        store.reserve(lease, resource, expected_version=time_reserved.version)
+    exhausted = store.get(state.run_id, owner)
+    assert exhausted.current_stage == Stage.INCONCLUSIVE
+    assert getattr(exhausted.remaining_budget, resource) == 0
     with psycopg.connect(store.dsn) as conn:
         conn.execute(
             """UPDATE job_leases SET leased_until=
