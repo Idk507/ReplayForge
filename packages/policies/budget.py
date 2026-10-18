@@ -10,7 +10,8 @@ class BudgetError(Exception):
 def consume(budget: Budget, resource: str, amount: int = 1) -> Budget:
     """Debit attempted work; failed provider calls must not refund attempts.
 
-    This does not authorize execution, enforce spend/time or persist counters.
+    This does not authorize execution or persist counters. Time and spend are
+    integer units in the checkpoint and use the same fail-closed debit rule.
     Concurrent workers require a database transaction around the updated state.
     """
     budget = Budget.model_validate(budget.model_dump())
