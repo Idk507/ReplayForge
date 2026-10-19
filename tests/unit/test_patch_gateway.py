@@ -11,7 +11,8 @@ from tests.unit.test_patch_admission import DIFF, context
 
 
 @pytest.mark.parametrize(
-    "fault", [None, "test_change", "file_claim", "truncated", "extra", "http"]
+    "fault",
+    [None, "test_change", "file_claim", "truncated", "extra", "http", "no_newline"],
 )
 def test_patch_generation_admits_only_exact_allowed_diff(fault: str | None) -> None:
     calls = 0
@@ -39,6 +40,8 @@ def test_patch_generation_admits_only_exact_allowed_diff(fault: str | None) -> N
         }
         if fault == "extra":
             proposal["command"] = "forbidden"
+        if fault == "no_newline":
+            proposal["replacements"] = {"src/a.py": "x=2"}
         return httpx.Response(
             200,
             json={
@@ -65,7 +68,7 @@ def test_patch_generation_admits_only_exact_allowed_diff(fault: str | None) -> N
             transport=httpx.MockTransport(respond),
         )
 
-    if fault:
+    if fault and fault != "no_newline":
         with pytest.raises(ProbeError):
             invoke()
     else:

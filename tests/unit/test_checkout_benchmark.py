@@ -60,10 +60,22 @@ def test_fixed_fixture_request_is_network_disabled_and_one_shot() -> None:
         client.close()
 
 
-def test_fixture_rejects_non_fixture_patch_before_network() -> None:
+def test_fixture_rejects_non_fixture_patch_before_network(caplog) -> None:
     client = backend(lambda request: pytest.fail("forbidden network"))
     try:
         with pytest.raises(RunnerError, match="FIXTURE_PATCH_PATH_DENIED"):
             client.start_checkout(proposal(), DIFF)
+        assert '"policy_decision": "FIXTURE_PATCH_PATH_DENIED"' in caplog.text
+    finally:
+        client.close()
+
+
+def test_fixture_rejects_arbitrary_command_before_network(caplog) -> None:
+    client = backend(lambda request: pytest.fail("forbidden network"))
+    try:
+        with pytest.raises(RunnerError, match="FIXTURE_COMMAND_DENIED"):
+            client.start_checkout(proposal(), command_id="sh -c arbitrary")
+        assert '"policy_decision": "FIXTURE_COMMAND_DENIED"' in caplog.text
+        assert "sh -c arbitrary" not in caplog.text
     finally:
         client.close()

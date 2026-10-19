@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-19T04:57:06.437413+00:00",
+  "scope": "M2_FIXED_FIXTURE_EXIT_ONLY",
+  "acceptance": {
+    "status": "M2_FIXTURE_ACCEPTED",
+    "failed_checks": [],
+    "evidence_origin": "RETAINED_FIXTURE_OBSERVATIONS",
+    "can_authorize_verification": false,
+    "can_authorize_execution": false
+  },
+  "production_m2_complete": false,
+  "cloud_calls_this_attempt": 0,
+  "artifacts": {
+    "docs/evidence/m2-checkout-e2e/report.json": "sha256:860bf2208742bbf21936f46aadd02d26ae95e72099ad73547177306ddeee8749",
+    "docs/evidence/m2-checkout-e2e/triage.json": "sha256:a8e6e4d016a603a69ea674c859e24cef11bb5391662b949e3c3b49ee40a7f165",
+    "docs/evidence/m2-checkout-e2e/patch.json": "sha256:81c9810ca12ac9d5ff7bc3a86e595d14266bbc19f5253f5b4d730938bacf4099"
+  }
+}

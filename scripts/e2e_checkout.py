@@ -15,6 +15,7 @@ from packages.providers.patch import request_patch
 from packages.providers.triage import request_triage
 from services.runner.checkout_benchmark import fixture_source, run_checkout
 from services.runner.remote import SandboxConfig
+from services.verifier.checkout import inspect_checkout
 
 
 def main() -> int:
@@ -30,8 +31,14 @@ def main() -> int:
     output = Path("docs/evidence/m2-checkout-e2e")
     if args.resume_baseline:
         prior = json.loads((output / "report.json").read_text())
-        with (output / "report-before-resume.json").open(
-            "x", encoding="utf-8"
+        if (
+            prior.get("status") != "INCONCLUSIVE"
+            or "candidate" in prior
+            or "clean_replay" in prior
+        ):
+            parser.error("resume requires an inconclusive baseline-only attempt")
+        with (output / f"report-before-resume-{uuid4()}.json").open(
+            "x", encoding="utf-8", newline="\n"
         ) as saved:
             json.dump(prior, saved, indent=2)
     else:
@@ -70,7 +77,7 @@ def main() -> int:
 
     def save() -> None:
         (output / "report.json").write_text(
-            json.dumps(report, indent=2) + "\n", encoding="utf-8"
+            json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n"
         )
 
     save()
@@ -112,7 +119,7 @@ def main() -> int:
         if "RF_DUPLICATE_TRANSACTION" not in test.test_source:
             raise ValueError("MISSING_BEHAVIOR_MARKER")
         (output / "triage.json").write_text(
-            proposal.model_dump_json(indent=2), encoding="utf-8"
+            proposal.model_dump_json(indent=2), encoding="utf-8", newline="\n"
         )
         report["model"] = model.model
         report["test_sha256"] = test.test_source_sha256()
@@ -161,7 +168,7 @@ def main() -> int:
             owner,
         )
         (output / "patch.json").write_text(
-            patch.model_dump_json(indent=2), encoding="utf-8"
+            patch.model_dump_json(indent=2), encoding="utf-8", newline="\n"
         )
         report["patch_ref"] = admission.patch_ref
         for phase in ("candidate", "clean_replay"):
@@ -184,6 +191,9 @@ def main() -> int:
             or candidate["tree"] != replay["tree"]
         ):
             raise ValueError("TREE_MISMATCH")
+        acceptance = inspect_checkout(report, proposal, patch)
+        if acceptance.status != "M2_FIXTURE_ACCEPTED":
+            raise ValueError("FIXTURE_ACCEPTANCE_FAILED")
         report["status"] = "FIXTURE_REPAIR_PASSED"
     except Exception as error:
         # Stable class only. Provider payload/source/credential text is excluded.

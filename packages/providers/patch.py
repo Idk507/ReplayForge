@@ -130,8 +130,12 @@ def request_patch(
             raise ProbeError("PATCH_FILE_CLAIM_MISMATCH")
         diff_parts = []
         for path, replacement in sorted(response_files.replacements.items()):
-            if not replacement.endswith("\n") or len(replacement.encode()) > 12000:
-                raise ProbeError("PATCH_OUTPUT_DENIED")
+            # JSON strings commonly omit the final newline. Normalize it before
+            # constructing hunks; never delegate diff line counts to the model.
+            if not replacement.endswith("\n"):
+                replacement += "\n"
+            if len(replacement.encode()) > 12000:
+                raise ProbeError("PATCH_REPLACEMENT_LIMIT")
             delta = "".join(
                 difflib.unified_diff(
                     sources[path].splitlines(keepends=True),
@@ -141,7 +145,7 @@ def request_patch(
                 )
             )
             if not delta:
-                raise ProbeError("PATCH_OUTPUT_DENIED")
+                raise ProbeError("PATCH_EMPTY")
             diff_parts.append(f"diff --git a/{path} b/{path}\n" + delta)
         proposal = PatchProposal(
             unified_diff="".join(diff_parts),
@@ -165,7 +169,9 @@ def request_patch(
         ) <= set(sources):
             raise ProbeError("PATCH_FILE_CLAIM_MISMATCH")
         return proposal, admission
-    except (ValidationError, PatchDenied):
-        raise ProbeError("PATCH_OUTPUT_DENIED") from None
+    except ValidationError:
+        raise ProbeError("PATCH_OUTPUT_SCHEMA") from None
+    except PatchDenied:
+        raise ProbeError("PATCH_DIFF_DENIED") from None
     except httpx.HTTPError:
         raise ProbeError("PATCH_PROVIDER_UNAVAILABLE") from None
