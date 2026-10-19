@@ -1,12 +1,14 @@
 """Bounded Nebius triage request; callers choose when a billable call is allowed."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 import httpx
 
+from packages.contracts.inference import RequestIdentity
 from packages.contracts.repair import TriageProposal
 from packages.providers.nebius import MAX_RESPONSE_BYTES, NebiusConfig, ProbeError
+from packages.providers.request_identity import prepare_request
 from services.orchestrator.triage import TriageError, parse_triage_response
 
 TRIAGE_SYSTEM_PROMPT = (
@@ -58,6 +60,7 @@ def request_triage(
     context: Mapping[str, str],
     *,
     transport: httpx.BaseTransport | None = None,
+    before_submit: Callable[[RequestIdentity], None] | None = None,
 ) -> TriageProposal:
     """Issue one schema-constrained request for a small sanitized context.
 
@@ -89,19 +92,23 @@ def request_triage(
         "store": False,
         "response_format": triage_response_format(),
     }
+    config, wire_body, identity = prepare_request(config, payload)
+    if before_submit is not None:
+        before_submit(identity)
     try:
         with (
             httpx.Client(
                 base_url=config.base_url,
                 headers={
-                    "Authorization": f"Bearer {config.api_key.get_secret_value()}"
+                    "Authorization": f"Bearer {config.api_key.get_secret_value()}",
+                    "Content-Type": "application/json",
                 },
                 timeout=httpx.Timeout(30, connect=10),
                 follow_redirects=False,
                 trust_env=False,
                 transport=transport,
             ) as client,
-            client.stream("POST", "chat/completions", json=payload) as response,
+            client.stream("POST", "chat/completions", content=wire_body) as response,
         ):
             if response.status_code in {401, 403}:
                 raise ProbeError("M_AUTH")
@@ -109,10 +116,12 @@ def request_triage(
                 raise ProbeError("M_RATE_LIMIT")
             if response.status_code != 200 or 300 <= response.status_code < 400:
                 raise ProbeError("M_UNAVAILABLE")
-            raw = response.read()
-            if len(raw) > MAX_RESPONSE_BYTES:
-                raise ProbeError("M_RESPONSE_TOO_LARGE")
-        content = _completion_content(raw)
+            raw = bytearray()
+            for chunk in response.iter_bytes():
+                if len(raw) + len(chunk) > MAX_RESPONSE_BYTES:
+                    raise ProbeError("M_RESPONSE_TOO_LARGE")
+                raw.extend(chunk)
+        content = _completion_content(bytes(raw))
         return parse_triage_response(content)
     except TriageError as exc:
         raise ProbeError(exc.code) from None

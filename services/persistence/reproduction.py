@@ -6,10 +6,10 @@ from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
+from packages.contracts.inference import ModelDispatch
 from packages.contracts.repair import ReproductionProposal
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
-from packages.policies.budget import consume
 from packages.policies.repository import admit
 from packages.policies.transitions import transition
 from services.orchestrator.reproduction import (
@@ -17,6 +17,7 @@ from services.orchestrator.reproduction import (
     bind_reproduction,
     load_reproduction,
 )
+from services.persistence.model_budget import debit_model, reservation_transaction
 from services.persistence.store import Lease, Store, StoreError
 
 
@@ -27,7 +28,12 @@ class ReproductionJournal:
         self._store = store
 
     def reserve_inference(
-        self, lease: Lease, owner: UUID, *, expected_version: int
+        self,
+        lease: Lease,
+        owner: UUID,
+        *,
+        expected_version: int,
+        dispatch: ModelDispatch | None = None,
     ) -> tuple[UUID, int]:
         """Persist uncertain intent and debit before a caller submits inference.
 
@@ -36,7 +42,9 @@ class ReproductionJournal:
         from blind retries. No raw prompt or credentials are retained here.
         """
         lease = Lease.model_validate(lease.model_dump())
-        with self._store._connection() as conn:
+        if dispatch is not None:
+            dispatch = ModelDispatch.model_validate(dispatch.model_dump())
+        with reservation_transaction(self._store) as conn:
             row = conn.execute(
                 "SELECT checkpoint FROM runs WHERE id=%s AND owner_id=%s FOR UPDATE",
                 (lease.run_id, owner),
@@ -93,17 +101,25 @@ class ReproductionJournal:
             data = run.model_dump()
             data.update(
                 version=run.version + 1,
-                remaining_budget=consume(
-                    run.remaining_budget, "model_calls"
+                remaining_budget=debit_model(
+                    self._store, conn, run, dispatch
                 ).model_dump(),
             )
             updated = RunState.model_validate(data)
             attempt = uuid4()
             conn.execute(
                 "INSERT INTO triage_intents "
-                "(run_id,attempt_id,context_digest,from_version,to_version) "
-                "VALUES (%s,%s,%s,%s,%s)",
-                (run.run_id, attempt, fingerprint, run.version, updated.version),
+                "(run_id,attempt_id,context_digest,from_version,to_version,"
+                "dispatch_json) "
+                "VALUES (%s,%s,%s,%s,%s,%s)",
+                (
+                    run.run_id,
+                    attempt,
+                    fingerprint,
+                    run.version,
+                    updated.version,
+                    Jsonb(dispatch.model_dump(mode="json")) if dispatch else None,
+                ),
             )
             conn.execute(
                 "UPDATE runs SET checkpoint=%s,version=%s WHERE id=%s",
