@@ -2393,6 +2393,7 @@ def test_dispatch_reservation_concurrent_replay(store: Store) -> None:
         assert list(pool.map(lambda _: reserve(), range(2))) == [1, 1]
     updated = store.get(run.run_id, owner)
     assert updated.version == 1
+    assert updated.remaining_budget.execution_seconds == 840
     assert (
         updated.remaining_budget.sandbox_commands
         == run.remaining_budget.sandbox_commands - 1
@@ -2407,6 +2408,84 @@ def test_dispatch_reservation_concurrent_replay(store: Store) -> None:
         journal.reserve_dispatch(
             lease, uuid4(), action.execution_id, expected_version=0
         )
+
+
+@pytest.mark.parametrize(
+    "seconds,audit_fails", [(0, False), (59, False), (60, False), (59, True)]
+)
+def test_dispatch_reserves_full_planned_timeout_or_closes_run(
+    store: Store, seconds: int, audit_fails: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from psycopg.types.json import Jsonb
+
+    journal, lease, owner, run, action, _, _, _ = baseline_journal_fixture(store)
+    journal.record_action(lease, owner, action, expected_version=0)
+    run = run.model_copy(
+        update={
+            "remaining_budget": run.remaining_budget.model_copy(
+                update={"execution_seconds": seconds}
+            )
+        }
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    if audit_fails:
+
+        def fail(*args, **kwargs):
+            raise StoreError("AUDIT_FAILURE")
+
+        monkeypatch.setattr(Store, "_event", fail)
+    if seconds < 60:
+        with pytest.raises(
+            StoreError, match="AUDIT_FAILURE" if audit_fails else "BUDGET_EXHAUSTED"
+        ):
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+        if audit_fails:
+            assert store.get(run.run_id, owner) == run
+            return
+        closed = store.get(run.run_id, owner)
+        assert closed.current_stage == Stage.INCONCLUSIVE
+        assert closed.failure_reason == "BUDGET_EXHAUSTED"
+        assert closed.remaining_budget == run.remaining_budget
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT status,token FROM job_leases WHERE run_id=%s", (run.run_id,)
+            ).fetchone() == ("done", None)
+            assert conn.execute(
+                "SELECT count(*) FROM baseline_dispatch_intents WHERE execution_id=%s",
+                (action.execution_id,),
+            ).fetchone() == (0,)
+    else:
+        assert (
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+            == 1
+        )
+        updated = store.get(run.run_id, owner)
+        assert updated.remaining_budget.execution_seconds == 0
+        assert (
+            updated.remaining_budget.sandbox_commands
+            == run.remaining_budget.sandbox_commands - 1
+        )
+        assert (
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+            == 1
+        )
+        assert store.get(run.run_id, owner) == updated
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT reserved_seconds FROM baseline_dispatch_intents "
+                "WHERE execution_id=%s",
+                (action.execution_id,),
+            ).fetchone() == (60,)
 
 
 def test_dispatch_reservation_rollback(store: Store) -> None:

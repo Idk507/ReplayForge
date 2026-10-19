@@ -12,9 +12,9 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, ValidationError
 from packages.contracts.execution import TestCommandPlan
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import ArtifactID, RunState, Stage
-from packages.policies.budget import consume
 from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import transition
+from services.persistence.model_budget import debit_baseline, reservation_transaction
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.baseline import FailureExpectation
 from services.runner.commands import plan_pytest
@@ -265,7 +265,7 @@ class BaselineJournal:
     def reserve_dispatch(
         self, lease: Lease, owner: UUID, execution_id: UUID, *, expected_version: int
     ) -> int:
-        """Atomically debit one command and journal intent; never dispatch.
+        """Atomically debit one command and its planned duration; never dispatch.
 
         A replay reconciles the existing reservation under a live lease. It is
         not permission to resubmit an external operation with unknown outcome.
@@ -273,7 +273,7 @@ class BaselineJournal:
         lease = Lease.model_validate(lease.model_dump())
         if type(expected_version) is not int or expected_version < 0:
             raise StoreError("STALE_VERSION")
-        with self._store._connection() as conn:
+        with reservation_transaction(self._store) as conn:
             row = conn.execute(
                 "SELECT checkpoint FROM runs WHERE id=%s AND owner_id=%s FOR UPDATE",
                 (lease.run_id, owner),
@@ -337,17 +337,23 @@ class BaselineJournal:
                 raise StoreError("BASELINE_ALREADY_COMPLETED")
             data = run.model_dump()
             data.update(
-                remaining_budget=consume(
-                    run.remaining_budget, "sandbox_commands"
+                remaining_budget=debit_baseline(
+                    self._store, conn, run, action.plan
                 ).model_dump(),
                 version=run.version + 1,
             )
             updated = RunState.model_validate(data)
             conn.execute(
                 "INSERT INTO baseline_dispatch_intents "
-                "(execution_id,action_digest,from_version,to_version) "
-                "VALUES (%s,%s,%s,%s)",
-                (execution_id, row["digest"], run.version, updated.version),
+                "(execution_id,action_digest,from_version,to_version,reserved_seconds) "
+                "VALUES (%s,%s,%s,%s,%s)",
+                (
+                    execution_id,
+                    row["digest"],
+                    run.version,
+                    updated.version,
+                    action.plan.timeout_seconds,
+                ),
             )
             conn.execute(
                 "UPDATE runs SET checkpoint=%s,version=%s WHERE id=%s",

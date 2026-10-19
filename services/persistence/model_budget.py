@@ -1,4 +1,4 @@
-"""Commit request-bound reservations or durable exhaustion before network I/O."""
+"""Commit requested-work reservations or durable exhaustion before network I/O."""
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import psycopg
 
 from packages.contracts.budget import Budget
+from packages.contracts.execution import TestCommandPlan
 from packages.contracts.inference import ModelDispatch
 from packages.contracts.run import RunState, Stage
 from packages.policies.budget import BudgetError, consume
@@ -41,17 +42,48 @@ def debit_model(
     if dispatch is None:
         return consume(run.remaining_budget, "model_calls")
     dispatch = ModelDispatch.model_validate(dispatch.model_dump())
+    return _debit(
+        store,
+        conn,
+        run,
+        (
+            ("model_calls", 1),
+            ("execution_seconds", dispatch.request.timeout_seconds),
+            ("estimated_spend_microusd", dispatch.cost.estimated_spend_microusd),
+        ),
+    )
+
+
+def debit_baseline(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    plan: TestCommandPlan,
+) -> Budget:
+    """Reserve the immutable plan's full requested duration with its command."""
+    plan = TestCommandPlan.model_validate(plan.model_dump())
+    return _debit(
+        store,
+        conn,
+        run,
+        (("sandbox_commands", 1), ("execution_seconds", plan.timeout_seconds)),
+    )
+
+
+def _debit(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    resources: tuple[tuple[str, int], ...],
+) -> Budget:
     try:
-        remaining = consume(run.remaining_budget, "model_calls")
-        remaining = consume(
-            remaining, "execution_seconds", dispatch.request.timeout_seconds
-        )
-        return consume(
-            remaining,
-            "estimated_spend_microusd",
-            dispatch.cost.estimated_spend_microusd,
-        )
-    except BudgetError:
+        remaining = run.remaining_budget
+        for resource, amount in resources:
+            remaining = consume(remaining, resource, amount)
+        return remaining
+    except BudgetError as error:
+        if str(error) != "BUDGET_EXHAUSTED":
+            raise
         state = RunState.model_validate(
             {**run.model_dump(), "failure_reason": "BUDGET_EXHAUSTED"}
         )

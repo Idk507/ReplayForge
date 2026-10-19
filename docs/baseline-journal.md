@@ -100,6 +100,34 @@ retained as rejected inspections using their actual exit code. They cannot
 match a behavioral baseline and close with INVALID_REPRODUCTION. Direct
 assertion receipt verification retains its stricter exit-1 requirement.
 
+## Requested execution-time reservation
+
+New baseline dispatch intents atomically reserve one sandbox command and the
+immutable plan's full timeout (currently 60 seconds). Migration 0014 retains
+that amount as reserved_seconds alongside the action digest and version range.
+The action digest already binds the plan and its timeout; a caller cannot
+supply a cheaper duration independently. This reserves requested process time,
+not measured provider usage or sandbox pricing.
+
+If command count or remaining execution time is insufficient, the transaction
+instead commits INCONCLUSIVE/BUDGET_EXHAUSTED and completes the lease. No intent
+or partial resource debit survives. Failed budget/audit writes roll back. A
+concurrent or restart replay returns the original reservation version and never
+charges time twice, even when the original reservation used the last second.
+
+Historical intents have NULL reserved_seconds. Reads/reconciliation preserve
+that history without inventing an earlier time debit. Neither legacy nor new
+reservation metadata grants execution authority or permits resubmitting an
+operation with unknown outcome. Capability assessment, owned operation recovery,
+actual elapsed-time/usage reconciliation and cloud authorization remain separate.
+
+The shared reservation transaction is also used by model requests. It commits
+only recognized budget exhaustion as a terminal outcome; other budget errors
+propagate instead of being mislabeled as exhaustion. No runtime DB grants or
+execution command templates were broadened. Migration downgrade removes the
+new duration metadata and requires the same audit/data review as other schema
+rollbacks.
+
 This adds no signing authority, cloud dispatch or capability waiver. Tests use
 ephemeral synthetic signing keys, including REMOTE_SERVICE-shaped contract
 inputs; they are explicitly not evidence that a production signer exists.
