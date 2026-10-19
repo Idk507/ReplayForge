@@ -108,6 +108,18 @@ tests (`m2-patch-journal-final-tests.xml`). This does not complete the gate:
 model request/spend/time binding, controller integration, admitted remote patch
 application and the correlated baseline/candidate replay remain pending.
 
+### Baseline timeout reservation evidence — 2026-10-19
+
+- [x] Reserve the baseline command's full planned timeout atomically with its command count. Commit `6f18eb2`; migration 0014 records `reserved_seconds`, preserving historical unknown values as NULL. Insufficient time closes INCONCLUSIVE without a partial debit or dispatch intent; duplicate reconciliation does not debit twice, and audit failure rolls back.
+
+Validation: `m2-sandbox-time-postgres.xml` records **769 passed, zero skips**,
+one upstream warning, 105.71 seconds, exit 0. Focused checks: 29 passed;
+pre-fix regression: 3 failed (`m2-sandbox-time-red.xml.gz`, lossless capture).
+Ruff lint/format (146 files), strict mypy (77 files), diff checks and targeted
+credential-value scanning passed. No cloud calls or remote writes occurred.
+This closes requested-time reservation only; assessed runner/collector signing,
+general dispatch, worker integration and measured usage reconciliation remain open.
+
 ## M3 — Oct 21–23: Verification and experience
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
 - [ ] Implement mandatory deterministic gate evaluator. Acceptance: fabricated model claim cannot set VERIFIED.

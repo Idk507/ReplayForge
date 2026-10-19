@@ -1989,3 +1989,40 @@ HTTPX timeout reservations are not absolute wall-clock enforcement. Production
 runner admission/dispatch, measured elapsed-time/usage reconciliation and full
 worker integration remain open. See inference-reservations.md for the internal
 caller contract and migration/rollback limits.
+
+## 2026-10-19 — Baseline command timeout reservation
+
+Base 672fc4f; implementation commit 6f18eb2 on codex/m2-checkout-closure.
+Inspected operating documents, actual baseline persistence, plans, budgets and
+related tests. Found that baseline dispatch reserved one command but ignored
+the immutable 60-second plan timeout. Three PostgreSQL regressions failed
+before the fix, including acceptance with insufficient remaining seconds.
+
+Baseline reservation now debits command count and the complete planned timeout
+atomically through the shared reservation transaction. Migration 0014 adds
+bounded reserved_seconds metadata; historical records remain NULL rather than
+claiming earlier time accounting. Exhaustion durably closes INCONCLUSIVE and
+releases the lease without partial debits or an intent. Audit failure rolls
+back; existing intent reconciliation neither resubmits nor debits again.
+Added exhaustion, exact-boundary, audit-rollback and concurrent accounting
+assertions. This metadata grants no execution authority.
+
+Actual validation: focused PostgreSQL tests **29 passed**, exit 0. Final full
+scripts.test_postgres disposable-database harness: **769 passed, zero skips**,
+one existing upstream AnyIO warning, 105.71 seconds, exit 0, captured in
+evidence/m2-sandbox-time-postgres.xml. The harness migrated through 0014,
+exercised downgrade/reapply and removed its task-owned DB/roles. Local admin
+credentials were supplied only in memory. The three-failure red XML was
+archived losslessly as evidence/m2-sandbox-time-red.xml.gz; decompressed bytes
+were checked against the original capture. Focused evidence is retained too.
+Ruff check, Ruff format --check (146 files), strict mypy (77 files), Git diff
+checks and targeted configured-secret-value scanning of seven changed files
+passed. Dependencies and UI were unchanged; no broader readiness claim.
+
+No inference, sandbox submission, remote write, push, merge or deployment was
+performed. Pre-existing untracked files were preserved. Fixed-fixture M2
+acceptance remains distinct from full production M2: trusted assessed runner
+capabilities/signing, general admission-gated dispatch, polling-worker
+integration and actual elapsed-time/usage reconciliation remain outstanding.
+The next critical-path prerequisite is the assessed runner/collector setup;
+its missing evidence cannot be replaced by synthetic test signatures.
