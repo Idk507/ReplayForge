@@ -1842,3 +1842,101 @@ for the affected files passed. No further inference retry was made.
 
 The complete local suite passed with 581 tests passed and 95 skipped. One
 upstream AnyIO deprecation warning was reported.
+
+## 2026-10-19 — Fixed checkout repair acceptance
+
+Base `9696f99557615d531970c3ab0b7c0982011311d1`, local changes, no merge.
+Read architecture, operating contracts, milestone acceptance and actual runner,
+gateway and saved failed-attempt evidence. The gateway regression for complete
+replacement source without a final newline failed before the correction
+(`1 failed, 7 passed`) and passed afterward. Normalize the newline before
+constructing deterministic hunks; retain strict broker path/size/schema checks.
+Use distinct sanitized rejection codes instead of one undiagnosable error.
+
+Authorized command `uv run python -m scripts.e2e_checkout --live --env-file .env
+--resume-baseline` exited 0, `FIXTURE_REPAIR_PASSED`. One inference and two small
+disposable VM submissions, no retries, baseline/test reused from saved evidence.
+Baseline exit 1; Git-applied inferred candidate and fresh replay exit 0 with
+matching source/test and candidate tree identities. Artifact digest and three
+distinct operation IDs checked offline, exit 0. Earlier failures preserved.
+See `m2-checkout-acceptance.md` and `evidence/m2-checkout-e2e/report.json`.
+
+Added safe path/command denial audits before network submission and tests;
+guarded resume against completed/partially executed candidates; fixed Windows
+evidence LF serialization. Offline suite: 613 passed, 103 PostgreSQL skipped,
+one upstream AnyIO deprecation warning, exit 0. Two later CLI resume regression
+cases passed. Ruff check, format (136 files), mypy (72 core/script files) and
+git diff --check exited 0. Checkout evidence scan against configured secret
+values passed across six files without printing values. No new dependency or
+UI change; dependency vulnerability/UI checks were not rerun.
+
+The standalone fixed-fixture M2 exit demonstration passes. General repository
+runner admission remains blocked on real capability/signing evidence; durable
+worker graph integration is still implementation work. No VERIFIED verdict,
+production readiness, hidden-oracle or PR acceptance is claimed.
+
+Final local PostgreSQL acceptance: the existing `scripts.test_postgres` harness
+created task-owned random database/roles, applied migrations, ran the whole suite
+and cleaned up. `m2-checkout-postgres-tests.xml`: **718 passed, zero skipped**, one
+upstream warning, 90.66 seconds, exit 0. Administrator credential supplied only
+in memory; no database or role outside this disposable test scope was altered.
+
+## 2026-10-19 — M2 acceptance integrity and durable baseline reduction
+
+Read AGENTS.md, Architecture.md, instructions.md, milestones.md, todo.md and the
+runner/receipt/journal/controller implementations and tests. Base remains
+9696f99557615d531970c3ab0b7c0982011311d1 plus prior local work. No external writes,
+inference or sandbox submissions were made in this attempt. Existing real live
+fixture evidence was reused rather than spending to reproduce the same result.
+
+Implemented `BaselineJournal.accept`: fence owner/live lease/version, require
+matching command reservation and retained receipt, check current consent and
+source/test/run bindings, reauthenticate the actual report under configured
+trusted keys, and atomically advance PATCHING or close invalid reproduction as
+INCONCLUSIVE. Transition and audit rollback together. The trusted continuation
+invokes the existing one-shot patch controller only after acceptance and skips
+acceptance on a resumed later-stage checkpoint. This does not add a production
+signing identity or bypass the runner capability gate.
+
+Root-cause correction found during review: receipt inspection had hardcoded
+assertion exit 1, preventing authentic syntax/setup exit 2 from being retained
+and classified. Both new exit 0/2 tests failed before the correction. Signature
+authentication now precedes inspection of the actual exit; rejected outcomes
+can close INCONCLUSIVE, while direct assertion receipt verification still
+requires exit 1. No signature, scope, freshness or correlation check was removed.
+
+Added an offline M2 fixture consistency evaluator and CLI. It checks original
+identities, fixed patch scope, patch/test digests, separate operation IDs,
+terminal outcomes and candidate/replay tree equality. It returns
+M2_FIXTURE_ACCEPTED with verification/execution authority explicitly false.
+Digest/source/tree/image/operation/outcome tampering and missing tests are
+negative cases. Invalid generated syntax returns INCONCLUSIVE before dispatch.
+
+Pinned Git source-file LF handling and disabled evidence byte rewriting so
+source and evidence checksums survive Windows/Linux checkout. Existing captured
+artifact bytes were not rewritten. Targeted configured-credential-value scan
+passed without outputting credential values. Dependency and UI code are
+unchanged; full vulnerability/UI/readiness checks were not run or claimed.
+
+The fixed-fixture M2 exit gate passes from real retained evidence. Full
+production M2 remains open: a real assessed runner/collector and trusted key
+configuration, generic dispatch/polling integration, and complete model
+spend/time/request binding remain required. Production VERIFIED, hidden-oracle
+acceptance, approval, PR publication and deployment are not asserted.
+
+Final validation after the exit-code correction: **746 passed, zero skipped**,
+one upstream AnyIO deprecation warning, 92.23s, exit 0. Invoked the existing
+`scripts.test_postgres` harness with evidence-name
+`m2-closure-exit-handling-postgres.xml`; supplied the previously authorized local
+PostgreSQL credential in memory. Its task-owned disposable DB/roles were removed.
+Ruff check/format (140 files), strict mypy (74 modules), Git diff checks, offline
+acceptance and committed artifact-byte checksum comparison all passed, exit 0.
+Captured evidence and fixture-byte Git attributes preserve checksums across
+platforms; CRLF evidence is retained verbatim and reviewed with cr-at-eol handling.
+
+Local commits: `15d131e` records baseline acceptance/continuation and real exit
+classification; `7cf4349` records fixture acceptance/integrity and real saved
+artifacts. Branch `codex/m2-checkout-closure`; no push or merge. The pre-existing
+untracked `.env.example` was not modified or staged. Three fixed-fixture tracker
+items are now checked against committed executable evidence. Broader production
+items remain open rather than being silently redefined as complete.

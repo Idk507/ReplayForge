@@ -2,7 +2,12 @@
 
 Observed 2026-10-18; local base ffcafe2fae11648f3390a647201da4df9a3cffd2.
 
-M2 is incomplete. Successful model JSON generation, fixture-only historical
+Update 2026-10-19: the standalone fixed-fixture contingency now passes real
+inferred regression, baseline failure, inferred Git-applied patch and fresh
+candidate/clean replay. See `m2-checkout-acceptance.md`. The production and
+durable-worker limitations below still apply; credentials are working.
+
+Broader M2 integration is incomplete. Successful model JSON generation, fixture-only historical
 sandbox results, and local contract tests are separate observations. They do
 not establish an integrated admitted repair run.
 
@@ -48,8 +53,17 @@ also remain incomplete. Provider failures leave sticky uncertain intent and
 must not be retried blindly.
 
 Beyond triage, M2 requires admitted remote baseline submission, signed report
-acceptance by the reducer, generated patch retention/application, candidate
+delivery to the reducer, generated patch retention/application, candidate
 execution and independently correlated replay. The current low-level SDK
 fixture adapter must not be wired around the capability gate to manufacture
 this acceptance. Cloud-call authorization does not supply missing provider
 controls or prove runtime evidence.
+
+Update 2026-10-19: transactional reducer acceptance is now implemented as
+`BaselineJournal.accept`, with command-reservation, current-grant, signature,
+report-byte, owner/lease/version and rollback checks. Its trusted continuation
+calls the existing one-shot patch controller only after acceptance; an invalid
+reproduction terminates INCONCLUSIVE. These are executable local contract
+tests, not a production signing deployment. The polling worker remains
+collection-only; no generic execution or paid inference is silently enabled.
+The standalone real fixture artifacts pass the offline M2 acceptance checker.

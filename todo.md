@@ -44,14 +44,52 @@ checkbox is completed by these offline tests.
 **Gate:** fixture run reaches TRIAGING with durable trace and controlled outcome.
 
 ## M2 — Oct 17–20: Real execution and repair
-- [~] SandboxBackend remains fixed M0-probe-only. Signed runner/image/runtime-configuration capability gate now passes 22-control missing/failure/unknown checks, limits, forgery, origin, freshness and configuration-drift tests (m2-runner-admission-checks.json: 631 tests, 93 PostgreSQL cases). No execution permission is issued. Production assessor/key, real capability evidence, complete remote adapter and API/metadata denial acceptance remain pending.
+- [~] SandboxBackend supports the fixed probe and separate fixed-checkout contingency runner; real inferred baseline, Git-applied candidate and clean replay have passed. The general repository capability gate still requires 22 assessed controls (m2-runner-admission-checks.json). Production assessor/key, real capability evidence, complete general adapter and API/metadata denial acceptance remain pending.
 - [~] Fixed pytest-file command planning and typed bindings now pass offline injection/scope/artifact/stage/budget tests (m2-command-plan-checks.json: 417 tests total). Plans cannot authorize execution. Strict modify-only Python unified-diff admission now passes source/baseline/test binding, path, format and size negatives (m2-patch-admission-checks.json: 447 tests, 61 PostgreSQL cases). Remote dispatch, git apply --check/application and executable evidence remain pending; atomic baseline reservations are evidenced below.
-- [~] Checkout-retry synthetic fixture now fails in one live disposable Nebius sandbox run with `AssertionError: 2 != 1` (3.766s, workspace SHA-256 `c4264ba…d60209`; m2-checkout-baseline-live.json). The separate oracle exists locally but has not yet run from an isolated hidden context; patch/replay acceptance remains pending.
-- [ ] Nemotron hypothesis/repro generation with schema validation. Acceptance: real inference creates a runnable test candidate.
+- [x] Fixed checkout baseline: the real inferred regression failed for duplicate charging on the original fixture commit in a remote sandbox, with no setup error. Original source/tree and unchanged test identities are captured in m2-checkout-e2e/report.json and committed in 7cf4349. Hidden-oracle evaluation is not claimed.
+- [x] Nemotron hypothesis/repro generation with schema validation: real inference generated the runnable checkout regression, which failed for the intended duplicate-charge assertion remotely. Real inferred patch applied with git apply and passed in two fresh executions with unchanged test/source identities (2026-10-19, m2-checkout-e2e/report.json; committed 7cf4349). This is fixture acceptance, not a production VERIFIED verdict.
 - [~] Bounded unauthenticated JUnit inspection now rejects setup/import/syntax/skip/count/hash/target mismatches and qualifies an exact assertion marker (m2-baseline-inspection-checks.json: 469 tests, 61 PostgreSQL cases). Explicit Ed25519 receipt signature/correlation and actual-report binding now pass offline forgery/freshness/execution/tree/origin negatives (m2-runner-receipt-checks.json: 491 tests). A match still cannot authorize PATCHING; Append-only baseline action/receipt journal now passes restart, concurrent replay, owner/lease/version, retention, rollback and exhausted-budget evidence tests (m2-baseline-journal-checks.json: 502 tests, 71 PostgreSQL cases). Atomic baseline intent + one-command debit, version increment and budget audit now pass concurrent replay, rollback, owner, cancellation, lease, version, budget and completed-action tests (m2-dispatch-reservation-checks.json: 509 tests, 78 PostgreSQL cases). Bounded unverified provider-operation recovery metadata now passes restart, concurrent replay, unique operation binding, owner/lease/version/cancellation, zero-budget, rollback, permission and corruption checks (m2-operation-journal-checks.json: 534 tests, 93 PostgreSQL cases). No external dispatch is enabled. Production signer, live provider lookup/polling and submission controller, reducer acceptance, live runner admission and genuine baseline failure remain pending.
-- [~] A minimal synthetic candidate checkout that deduplicates completed checkout IDs passed the visible regression (3.718s) and local oracle (3.953s) in separate disposable Nebius sandboxes; m2-checkout-candidate-live.json. It is not yet a Git-applied patch in an isolated hidden-oracle workflow, so full acceptance remains pending.
+- [x] Fixed checkout inferred candidate: allowed-path diff checked/applied with git, then passed the unchanged regression in separate candidate and clean-replay sandboxes; tree identities match. Committed patch/test/report artifacts: 7cf4349, m2-checkout-e2e/. Scope is the fixed visible fixture; hidden-oracle/holdout acceptance is not claimed.
 - [~] Action ceilings plus durable 900-second active-time and $2 estimated-spend budgets now validate and fail closed. A further reservation after exhaustion atomically records `BUDGET_EXHAUSTED`, transitions the run to `INCONCLUSIVE`, and closes its lease; 638 local tests, including 95 PostgreSQL scenarios, passed (m2-budget-exhaustion-checks.json). Provider price declaration and dispatch-time reservation remain pending, so no external action is enabled.
 **Gate:** actual buggy fixture transitions through reproduced failure into candidate tested patch.
+
+Fixture-contingency gate observed on 2026-10-19: generated regression baseline
+exit 1, inferred Git-applied candidate exit 0, independent clean replay exit 0.
+All three use the same source commit and test digest; candidate/replay tree
+hashes match. See `docs/m2-checkout-acceptance.md` and
+`docs/evidence/m2-checkout-e2e/report.json`. Path/command denials prevent network
+submission and emit sanitized audit records. This completes the standalone
+fixed-fixture M2 exit demonstration, not general repository or durable worker
+acceptance. Production capability/signing evidence and graph integration remain
+open; no VERIFIED verdict or PR authorization is issued.
+Final full local suite with disposable PostgreSQL: 718 passed, zero skips,
+one upstream warning (`m2-checkout-postgres-tests.xml`); lint, format and strict
+types passed. At that observation the new work was uncommitted; the closure
+commits below now retain the fixture implementation and its artifacts.
+
+Closure update (2026-10-19): `uv run python -m scripts.check_checkout` now
+independently checks the saved real fixture artifacts and returns
+`M2_FIXTURE_ACCEPTED`, exit 0, without cloud use. Digest/source/image/tree and
+operation-ID tampering, absent tests, setup faults and terminal-state changes
+are rejected. The CLI produces INCONCLUSIVE for invalid generated syntax before
+sandbox dispatch. Transactional baseline acceptance and its continuation into
+the one-shot patch controller are implemented; reserved, freshly authenticated
+remote evidence is required, and invalid reproduction closes INCONCLUSIVE.
+No synthetic contract signature is claimed as live production evidence.
+
+**Current boundary:** the fixed-fixture M2 exit criteria pass. Full production
+M2 remains open: actual capability/signing evidence, generic remote dispatch,
+its polling-worker integration, and model spend/time/request binding are not
+provided by the fixture contingency. Do not promote those items to complete
+or manufacture a production VERIFIED verdict. The next deployable/demo work
+is M3 evidence presentation; the next general-runner prerequisite is a trusted
+assessed runner/collector configuration.
+
+Closure validation: **746 passed, zero skips**, one upstream warning, 92.23s
+(`m2-closure-exit-handling-postgres.xml`); Ruff lint/format and strict mypy passed.
+Local commits: `15d131e` (durable baseline reduction/continuation and actual
+process-exit classification), `7cf4349` (fixture admission/integrity checks and
+captured live evidence). No push, merge, deployment or cloud call this attempt.
 
 Local M2 persistence evidence (2026-10-18): one-shot patch inference reservation
 and admitted-candidate retention now pass real disposable PostgreSQL restart,
