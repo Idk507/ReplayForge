@@ -2172,3 +2172,33 @@ still requires a genuinely assessed runner, independently observed collector
 facts and deployed signing identity, followed by admitted baseline/candidate and
 worker integration. This closes report delivery/recovery plumbing, not those
 external runtime facts. Details and rollback/privacy limits: baseline-delivery.md.
+
+## 2026-10-19 — Close the written fixed-fixture M2 exit
+
+Base cad94a3. Re-read milestones.md, the actual fixture verifier and CLI/policy
+tests, acceptance documentation and tracker rather than inferring status from
+checkboxes. The original M2 exit is specifically the checkout fixture failure
+and inferred candidate execution, with source/tree identity, audited forbidden
+paths/commands and invalid-syntax rejection. These criteria are already met;
+the prior broad production-M2 wording was obscuring the completed milestone
+exit. No original acceptance condition or mandatory production gate changed.
+
+Actual commands: uv run python -m scripts.check_checkout returned
+M2_FIXTURE_ACCEPTED, exit 0. uv run pytest -q
+tests/unit/test_checkout_acceptance.py tests/unit/test_checkout_benchmark.py
+tests/unit/test_checkout_cli.py --junitxml=docs/evidence/m2-final-exit-tests.xml
+passed **18 tests, zero skips**, 0.30 seconds, exit 0. Ruff check, Ruff format
+--check (152 files), strict mypy (79 files) and staged diff checks passed.
+Compared the three live artifact bytes against both m2-closure-acceptance.json
+and git show HEAD:path; all checksums and bytes match. Wrote m2-final-exit.json
+mapping each written criterion to its actual evidence and provenance. The prior
+802-test PostgreSQL result belongs to the unchanged implementation and was not
+rerun for this documentation-only closure.
+
+No cloud calls, new live inference, remote writes, deployment or merge occurred.
+M2_FIXED_FIXTURE_EXIT_COMPLETE is a scoped milestone result, not VERIFIED or
+general-repository execution authority. The ledger explicitly records
+production_m2_complete=false. Production runner/signing, full graph and measured
+usage tasks stay open; their checkboxes were not promoted. Proceed to M3 trust
+and UI within the existing fixed-fixture contingency, showing actual statuses
+and limitations. Existing untracked user files remain untouched.

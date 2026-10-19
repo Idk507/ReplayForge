@@ -44,6 +44,15 @@ checkbox is completed by these offline tests.
 **Gate:** fixture run reaches TRIAGING with durable trace and controlled outcome.
 
 ## M2 — Oct 17–20: Real execution and repair
+
+**Written milestone exit: COMPLETE for the existing fixed-checkout contingency
+(2026-10-19).** Every criterion in milestones.md's M2 acceptance section is
+mapped to observed evidence in `docs/evidence/m2-final-exit.json`. The current
+exit run passed 18 tests with zero skips and verified committed live-artifact
+checksums. This does **not** close the broader production implementation rows
+below, authorize arbitrary repositories, or issue VERIFIED. Proceed to M3
+evidence presentation/trust work within the explicit fixture boundary.
+
 - [~] SandboxBackend supports the fixed probe and separate fixed-checkout contingency runner; real inferred baseline, Git-applied candidate and clean replay have passed. The general repository capability gate still requires 22 assessed controls (m2-runner-admission-checks.json). Production assessor/key, real capability evidence, complete general adapter and API/metadata denial acceptance remain pending.
 - [~] Fixed pytest-file command planning and typed bindings now pass offline injection/scope/artifact/stage/budget tests (m2-command-plan-checks.json: 417 tests total). Plans cannot authorize execution. Strict modify-only Python unified-diff admission now passes source/baseline/test binding, path, format and size negatives (m2-patch-admission-checks.json: 447 tests, 61 PostgreSQL cases). Remote dispatch, git apply --check/application and executable evidence remain pending; atomic baseline reservations are evidenced below.
 - [x] Fixed checkout baseline: the real inferred regression failed for duplicate charging on the original fixture commit in a remote sandbox, with no setup error. Original source/tree and unchanged test identities are captured in m2-checkout-e2e/report.json and committed in 7cf4349. Hidden-oracle evaluation is not claimed.

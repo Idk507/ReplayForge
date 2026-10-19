@@ -1,5 +1,34 @@
 # Checkout fixture acceptance — 19 October 2026
 
+## Final milestone exit review
+
+The written M2 acceptance section in milestones.md is satisfied under the
+already documented trusted fixed-fixture contingency. Its six requirements
+are: intended duplicate-charge baseline failure, an inferred allowed-path patch,
+recorded source/tree identities, a separate passing patched execution, audited
+path/command denial, and invalid generated syntax ending INCONCLUSIVE.
+`evidence/m2-final-exit.json` maps all six to retained live observations or the
+specific offline negative contracts; their provenance is kept separate.
+
+Revalidation on 2026-10-19: scripts.check_checkout returned M2_FIXTURE_ACCEPTED,
+exit 0. The checkout acceptance, benchmark-policy and CLI test files passed
+18 tests, zero skips, in 0.30 seconds; see m2-final-exit-tests.xml. Ruff lint,
+format (152 files) and strict mypy (79 files) passed. The report/triage/patch
+bytes match both the original checksum ledger and their committed Git blobs.
+No fresh inference, sandbox or GitHub call was needed. The prior unchanged
+implementation's full disposable PostgreSQL suite passed 802 tests; it was not
+rerun for this evidence/documentation-only closure.
+
+This closes the **documented M2 fixture milestone**, not all production-runner
+implementation. The remaining production checklist entries stay open; no
+acceptance test was removed, weakened or moved to manufacture a pass. Earlier
+paragraphs below describe historical observations and their validation counts.
+Production collector deployment, assessed isolation, generic execution, full
+worker graph and usage reconciliation are still incomplete. M3 work may now
+present the real fixture outcome with those limitations; VERIFIED and PR
+authority remain disabled until their own mandatory gates are met.
+
+
 The fixed-fixture contingency in todo.md now has a real inferred regression,
 observed behavioral baseline failure, real inferred application patch, Git patch
 application, passing candidate and passing clean replay in separate disposable
