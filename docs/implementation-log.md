@@ -2026,3 +2026,53 @@ capabilities/signing, general admission-gated dispatch, polling-worker
 integration and actual elapsed-time/usage reconciliation remain outstanding.
 The next critical-path prerequisite is the assessed runner/collector setup;
 its missing evidence cannot be replaced by synthetic test signatures.
+
+## 2026-10-19 — Durable known-operation read-only recovery
+
+Base dbda202; implementation commit b4c9b9b on codex/m2-checkout-closure.
+Read AGENTS, Architecture, instructions, milestones, tracker, active admission,
+operation and baseline contracts, worker and tests; inspected recent commits.
+The standalone fixed-fixture M2 exit is already evidenced. Production execution
+is still blocked on real assessed runner controls and collector signing.
+Implemented the next independent integration prerequisite: reconnecting durable
+known-operation history to the existing bounded REST status reader.
+
+The explicit controller validates owner, active lease, action/run identity and
+transport provenance before HTTP. It reads only the persisted operation UUID,
+checks provider/image identities, rechecks the fence after I/O and appends
+terminal metadata through the existing journal transaction. It performs no
+POST/DELETE, automatic retry, cancellation, refund or stage promotion. Pending
+operations remain pending; restart after terminal persistence performs no GET.
+No raw provider output appears in the returned metadata. Custom HTTP transports
+stay TEST_TRANSPORT; real adapter metadata is explicitly unverified. A service
+SUCCESS state cannot become a signed passing test report.
+
+Official Nebius execution-lifecycle and choose-an-interface documentation were
+checked online before implementation; URLs and semantics are recorded in
+operation-recovery.md. No credentials were sent during that research.
+Initial red evidence records six missing-module failures, demonstrating the
+absent feature rather than an existing runtime regression. Initial focused
+tests also exposed a test-fixture error: a repeated operation UUID correctly
+violated the journal's uniqueness constraint. Unique per-case IDs fixed the
+fixture; the production uniqueness constraint was preserved.
+
+Focused PostgreSQL/synthetic-HTTP checks: 15 passed, exit 0. Added four further
+lease-loss/version-change/database-rollback/provenance cases. Final full command
+used scripts.test_postgres with --evidence-name m2-operation-recovery-postgres.xml,
+supplying the authorized local PostgreSQL password only in memory: **788 passed,
+zero skipped**, one existing upstream AnyIO warning, 148.40 seconds, exit 0.
+Task-owned disposable database/roles were removed by the harness. Evidence:
+evidence/m2-operation-recovery-postgres.xml; focused XML and lossless gzip red
+capture retained separately. Ruff lint/format (148 files), strict mypy
+(78 files), staged diff checks and targeted credential-value scanning (six
+changed files plus final suite XML) passed. Offline scripts.check_checkout
+still returns M2_FIXTURE_ACCEPTED, exit 0, with execution/verification authority
+false. Dependencies/UI were unchanged; full deployment-readiness is not claimed.
+
+No cloud API request, inference, remote write, push, merge or deployment occurred.
+Existing untracked .env.example and m2-baseline-checkpoint-red.xml were preserved.
+M2's fixture contingency passes; broad production M2 remains incomplete.
+Next: obtain independently assessed runner configuration/control evidence and
+trusted collector signing, then wire admission-gated submission, signed result
+collection, candidate/replay and the polling worker. This controller supplies
+recovery plumbing only and cannot manufacture those external prerequisites.
