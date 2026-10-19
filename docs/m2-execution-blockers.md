@@ -69,3 +69,12 @@ reproduction terminates INCONCLUSIVE. These are executable local contract
 tests, not a production signing deployment. The polling worker remains
 collection-only; no generic execution or paid inference is silently enabled.
 The standalone real fixture artifacts pass the offline M2 acceptance checker.
+
+Known-operation reconciliation update (2026-10-19): the explicit internal
+`recover_baseline_operation` controller now connects owner-scoped durable
+operation history to one bounded REST status read and a fenced terminal append.
+Unknown submission remains sticky, transport faults do not trigger resubmission,
+and production admission/signing is not bypassed. See `operation-recovery.md`.
+This is tested with real PostgreSQL and mocked HTTP; no live operation was
+queried during this increment. General submission, signed report collection,
+candidate/replay integration and polling-worker scheduling remain open.
