@@ -2076,3 +2076,49 @@ Next: obtain independently assessed runner configuration/control evidence and
 trusted collector signing, then wire admission-gated submission, signed result
 collection, candidate/replay and the polling worker. This controller supplies
 recovery plumbing only and cannot manufacture those external prerequisites.
+
+## 2026-10-19 — Collection-to-triage worker integration
+
+Base b460774; implementation commit 7c43858 on codex/m2-checkout-closure.
+Reviewed the actual worker, graph reducer, job lease implementation, reproduction
+journal, request-bound controller and related contracts/tests. Found a local
+integration gap: collection completed its lease at TRIAGING, so the existing
+polling path could not hand work to the inference controller. This was
+unfinished code, not an external provider blocker.
+
+Added explicit queue_triage opt-in through collection, tick/serve and the
+run_worker --queue-triage flag. Context, provenance and checkpoint now commit
+with either the unchanged default done job or an explicitly queued triage job;
+the old fence is cleared and the next stage's recovery count starts at zero.
+Default claim excludes TRIAGING; dedicated tick_triage claims only TRIAGING.
+It invokes the existing owner-scoped one-shot controller with an explicit
+operator cost policy. Successful proposal/checkpoint retention and triage-job
+completion share the same database transaction. No generated test runs locally.
+
+Tests cover real collection/provenance to queued handoff, default collection
+worker isolation, restarted inference-worker retention, exactly one synthetic
+HTTP request, completion/idleness, uncertainty after lease expiry, and rollback
+of the context/queue handoff on audit failure. Initial red run had three absent
+entry-point/argument failures. The first implementation run additionally
+rejected a test fixture missing source provenance; the fixture was corrected
+to carry an explicitly TEST_TRANSPORT manifest, preserving the production gate.
+
+Focused harness run: 3 passed, exit 0. Full scripts.test_postgres with
+--evidence-name m2-triage-worker-postgres.xml: **791 passed, zero skipped**,
+one existing upstream AnyIO deprecation warning, 138.43 seconds, exit 0.
+Authorized local PostgreSQL credentials were supplied only in memory; the
+harness removed its task-owned DB/roles. Red XML is archived losslessly in
+evidence/m2-triage-worker-red.xml.gz; focused and final XML are retained.
+Ruff check, Ruff format --check (149 files), strict mypy (78 files), staged
+diff checks and configured credential-value scanning of 12 changed files passed.
+Default run_worker printed NOT_RUN without --run; check_checkout returned
+M2_FIXTURE_ACCEPTED with both execution and verification authority false.
+
+No live inference, sandbox submission, remote write, push, merge or deployment
+occurred. Dependencies/UI were unchanged; broader readiness was not asserted.
+Pre-existing untracked files were preserved. The fixture M2 exit remains
+accepted; production M2, M3 verification/UI, M4 approval/PR/evaluation and M5
+deployment/submission remain open. Remaining M2 work includes a genuinely
+assessed runner, independently signed report collection, admitted baseline and
+candidate submission, and the downstream durable graph. The triage handoff
+does not claim to supply those controls or complete all phases.

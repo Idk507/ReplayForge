@@ -55,6 +55,8 @@ checkbox is completed by these offline tests.
 - [x] Known-operation read-only recovery controller: owner-scoped journal ID, active lease and version fencing bind one bounded REST GET; terminal states append transactionally, restart skips HTTP, and unknown submission never resubmits. Commit `b4c9b9b`; `m2-operation-recovery-postgres.xml`: 788 passed, zero skips, 148.40 seconds, exit 0. HTTP is synthetic in these tests; live production admission, submission, signed report delivery and polling-worker scheduling remain pending. See `docs/operation-recovery.md`.
 **Gate:** actual buggy fixture transitions through reproduced failure into candidate tested patch.
 
+- [x] Opt-in durable collection-to-triage worker handoff (`7c43858`): context/checkpoint and next-stage queue commit atomically; stage-scoped claims isolate collection from triage; successful reproduction retention closes its job atomically. Uncertain requests cannot repeat after restart. Evidence: `m2-triage-worker-postgres.xml`, **791 passed, zero skips**, 138.43 seconds, exit 0; Ruff lint/format and strict mypy passed. Inference uses synthetic HTTP in these tests. Default collection remains inference-off; remaining remote execution and full graph acceptance stay open. See `docs/triage-worker.md`.
+
 Fixture-contingency gate observed on 2026-10-19: generated regression baseline
 exit 1, inferred Git-applied candidate exit 0, independent clean replay exit 0.
 All three use the same source commit and test digest; candidate/replay tree
