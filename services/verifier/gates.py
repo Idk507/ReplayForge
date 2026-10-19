@@ -1,24 +1,30 @@
 """Minimal deterministic gate evaluator for structured execution evidence."""
 
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from packages.contracts.run import ArtifactID, CommitSHA
 
 GateName = Literal[
     "BASELINE_REPRODUCED",
     "PATCHED_REGRESSION_PASS",
+    "EXISTING_SUITE_PASS",
     "CLEAN_REPLAY_PASS",
     "PATCH_SCOPE_PASS",
     "ARTIFACT_INTEGRITY_PASS",
+    "SECURITY_GATE_PASS",
+    "STATIC_ANALYSIS_PASS",
 ]
 REQUIRED_GATES: tuple[GateName, ...] = (
     "BASELINE_REPRODUCED",
     "PATCHED_REGRESSION_PASS",
+    "EXISTING_SUITE_PASS",
     "CLEAN_REPLAY_PASS",
     "PATCH_SCOPE_PASS",
     "ARTIFACT_INTEGRITY_PASS",
+    "SECURITY_GATE_PASS",
 )
 
 
@@ -30,6 +36,7 @@ class GateEvidence(BaseModel):
     status: Literal["PASS", "FAIL", "MISSING"]
     evidence_origin: Literal["REMOTE_SERVICE", "TRUSTED_VERIFIER"]
     execution_ref: ArtifactID
+    execution_id: UUID | None = None
     source_commit: CommitSHA
     patch_ref: ArtifactID | None = None
     workspace_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -37,12 +44,13 @@ class GateEvidence(BaseModel):
 
 class VerificationVerdict(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    status: Literal["VERIFIED", "NOT_VERIFIED", "INCONCLUSIVE"]
+    status: Literal["GATES_SATISFIED", "NOT_VERIFIED", "INCONCLUSIVE"]
     missing: tuple[GateName, ...]
     failed: tuple[GateName, ...]
     workspace_sha256: str | None
     source_commit: CommitSHA | None
     patch_ref: ArtifactID | None
+    can_authorize_verification: Literal[False] = False
 
 
 def _inconclusive(
@@ -60,16 +68,26 @@ def _inconclusive(
 
 
 def evaluate(evidence: tuple[GateEvidence, ...]) -> VerificationVerdict:
-    """Require complete evidence tied to one source, patch, and workspace."""
+    """Preview consistency only; unsigned records cannot establish VERIFIED."""
+    if len(evidence) > 8:
+        return _inconclusive()
+    try:
+        evidence = tuple(GateEvidence.model_validate(r.model_dump()) for r in evidence)
+    except ValidationError:
+        return _inconclusive()
     by_gate: dict[GateName, GateEvidence] = {}
     for record in evidence:
         if record.gate in by_gate:
             return _inconclusive()
         by_gate[record.gate] = record
-    missing = tuple(gate for gate in REQUIRED_GATES if gate not in by_gate)
-    failed = tuple(
+    missing = tuple(
         gate
         for gate in REQUIRED_GATES
+        if gate not in by_gate or by_gate[gate].status == "MISSING"
+    )
+    failed = tuple(
+        gate
+        for gate in (*REQUIRED_GATES, "STATIC_ANALYSIS_PASS")
         if gate in by_gate and by_gate[gate].status == "FAIL"
     )
     workspaces = {record.workspace_sha256 for record in by_gate.values()}
@@ -92,7 +110,7 @@ def evaluate(evidence: tuple[GateEvidence, ...]) -> VerificationVerdict:
     if patch_ref is None:
         return _inconclusive()
     return VerificationVerdict(
-        status="VERIFIED",
+        status="GATES_SATISFIED",
         missing=(),
         failed=(),
         workspace_sha256=next(iter(workspaces)),
