@@ -103,6 +103,7 @@ class Store:
         expected_version: int,
         source_manifest: SourceManifest | None = None,
         sealed_snapshot: SealedSnapshot | None = None,
+        queue_triage: bool = False,
     ) -> RunState:
         """Commit sanitized context and TRIAGING checkpoint in one transaction.
 
@@ -110,6 +111,8 @@ class Store:
         call. No model/API tool can invoke it. Unknown commit outcomes require
         checkpoint reconciliation; a repeated stale write is not retried.
         """
+        if type(queue_triage) is not bool:
+            raise StoreError("TRIAGE_HANDOFF_INVALID")
         payload = self._context_payload(bundle)
         lease = Lease.model_validate(lease.model_dump())
         digest = hashlib.sha256(payload).hexdigest()
@@ -219,11 +222,12 @@ class Store:
                 expected_version=expected_version,
             )
             self._save(conn, state)
-            # Collection hands off at TRIAGING; this collection job is finished.
-            # Commit the fence with its artifact/checkpoint, not in a later call.
+            # Queue handoff and release the old fence atomically with context.
+            # The offline/default collection mode still finishes without inference.
             conn.execute(
-                "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
-                (state.run_id,),
+                "UPDATE job_leases SET status=%s,token=NULL,attempt_count="
+                "CASE WHEN %s THEN 0 ELSE attempt_count END WHERE run_id=%s",
+                ("queued" if queue_triage else "done", queue_triage, state.run_id),
             )
             return state
 
@@ -620,14 +624,20 @@ class Store:
             )
             return state
 
-    def claim(self, worker: UUID) -> Lease | None:
+    def claim(self, worker: UUID, *, triage_only: bool = False) -> Lease | None:
         """Claim queued/expired work; at most three acquisitions, server clock."""
+        if type(triage_only) is not bool:
+            raise StoreError("CLAIM_STAGE_INVALID")
         with self._connection() as conn:
-            row = conn.execute("""SELECT r.id, r.checkpoint FROM runs r
+            row = conn.execute(
+                """SELECT r.id, r.checkpoint FROM runs r
                 JOIN job_leases j ON j.run_id=r.id WHERE
                 (j.status='queued' OR (j.status='leased'
                     AND j.leased_until<=clock_timestamp()))
-                ORDER BY r.id FOR UPDATE OF r,j SKIP LOCKED LIMIT 1""").fetchone()
+                AND (r.checkpoint->>'current_stage'='TRIAGING')=%s
+                ORDER BY r.id FOR UPDATE OF r,j SKIP LOCKED LIMIT 1""",
+                (triage_only,),
+            ).fetchone()
             if row is None:
                 return None
             job = conn.execute(

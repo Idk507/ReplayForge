@@ -1,0 +1,96 @@
+"""Commit requested-work reservations or durable exhaustion before network I/O."""
+
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+import psycopg
+
+from packages.contracts.budget import Budget
+from packages.contracts.execution import TestCommandPlan
+from packages.contracts.inference import ModelDispatch
+from packages.contracts.run import RunState, Stage
+from packages.policies.budget import BudgetError, consume
+from packages.policies.transitions import transition
+from services.persistence.store import Store, StoreError
+
+
+class _Exhausted(Exception):
+    """Internal signal: commit terminal checkpoint, then return a safe denial."""
+
+
+@contextmanager
+def reservation_transaction(
+    store: Store,
+) -> Iterator[psycopg.Connection[dict[str, object]]]:
+    exhausted = False
+    with store._connection() as conn:
+        try:
+            yield conn
+        except _Exhausted:
+            exhausted = True
+    if exhausted:
+        raise StoreError("BUDGET_EXHAUSTED")
+
+
+def debit_model(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    dispatch: ModelDispatch | None,
+) -> Budget:
+    """Legacy count-only intents stay inert; dispatch requires explicit metadata."""
+    if dispatch is None:
+        return consume(run.remaining_budget, "model_calls")
+    dispatch = ModelDispatch.model_validate(dispatch.model_dump())
+    return _debit(
+        store,
+        conn,
+        run,
+        (
+            ("model_calls", 1),
+            ("execution_seconds", dispatch.request.timeout_seconds),
+            ("estimated_spend_microusd", dispatch.cost.estimated_spend_microusd),
+        ),
+    )
+
+
+def debit_baseline(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    plan: TestCommandPlan,
+) -> Budget:
+    """Reserve the immutable plan's full requested duration with its command."""
+    plan = TestCommandPlan.model_validate(plan.model_dump())
+    return _debit(
+        store,
+        conn,
+        run,
+        (("sandbox_commands", 1), ("execution_seconds", plan.timeout_seconds)),
+    )
+
+
+def _debit(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    resources: tuple[tuple[str, int], ...],
+) -> Budget:
+    try:
+        remaining = run.remaining_budget
+        for resource, amount in resources:
+            remaining = consume(remaining, resource, amount)
+        return remaining
+    except BudgetError as error:
+        if str(error) != "BUDGET_EXHAUSTED":
+            raise
+        state = RunState.model_validate(
+            {**run.model_dump(), "failure_reason": "BUDGET_EXHAUSTED"}
+        )
+        closed = transition(state, Stage.INCONCLUSIVE, expected_version=run.version)
+        store._save(conn, closed)
+        conn.execute(
+            "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
+            (run.run_id,),
+        )
+        raise _Exhausted from None

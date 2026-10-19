@@ -2,17 +2,19 @@
 
 import difflib
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from uuid import UUID
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from packages.contracts.inference import RequestIdentity
 from packages.contracts.repair import PatchProposal
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
 from packages.policies.repository import admit, allowed_entry
 from packages.providers.nebius import NebiusConfig, ProbeError
+from packages.providers.request_identity import prepare_request
 from packages.providers.triage import _completion_content
 from services.runner.patches import PatchAdmission, PatchDenied, admit_patch
 
@@ -48,6 +50,7 @@ def request_patch(
     caller: UUID,
     *,
     transport: httpx.BaseTransport | None = None,
+    before_submit: Callable[[RequestIdentity], None] | None = None,
 ) -> tuple[PatchProposal, PatchAdmission]:
     """Issue at most one approved call; never apply or execute its output.
 
@@ -106,16 +109,24 @@ def request_patch(
         "store": False,
         "response_format": {"type": "json_object"},
     }
+    config, wire_body, identity = prepare_request(config, payload)
+    if before_submit is not None:
+        before_submit(identity)
     try:
         with httpx.Client(
             base_url=config.base_url,
-            headers={"Authorization": "Bearer " + config.api_key.get_secret_value()},
+            headers={
+                "Authorization": "Bearer " + config.api_key.get_secret_value(),
+                "Content-Type": "application/json",
+            },
             timeout=httpx.Timeout(30, connect=10),
             follow_redirects=False,
             trust_env=False,
             transport=transport,
         ) as client:
-            with client.stream("POST", "chat/completions", json=payload) as response:
+            with client.stream(
+                "POST", "chat/completions", content=wire_body
+            ) as response:
                 if response.status_code != 200:
                     raise ProbeError("PATCH_PROVIDER_UNAVAILABLE")
                 raw = bytearray()
@@ -130,8 +141,12 @@ def request_patch(
             raise ProbeError("PATCH_FILE_CLAIM_MISMATCH")
         diff_parts = []
         for path, replacement in sorted(response_files.replacements.items()):
-            if not replacement.endswith("\n") or len(replacement.encode()) > 12000:
-                raise ProbeError("PATCH_OUTPUT_DENIED")
+            # JSON strings commonly omit the final newline. Normalize it before
+            # constructing hunks; never delegate diff line counts to the model.
+            if not replacement.endswith("\n"):
+                replacement += "\n"
+            if len(replacement.encode()) > 12000:
+                raise ProbeError("PATCH_REPLACEMENT_LIMIT")
             delta = "".join(
                 difflib.unified_diff(
                     sources[path].splitlines(keepends=True),
@@ -141,7 +156,7 @@ def request_patch(
                 )
             )
             if not delta:
-                raise ProbeError("PATCH_OUTPUT_DENIED")
+                raise ProbeError("PATCH_EMPTY")
             diff_parts.append(f"diff --git a/{path} b/{path}\n" + delta)
         proposal = PatchProposal(
             unified_diff="".join(diff_parts),
@@ -165,7 +180,9 @@ def request_patch(
         ) <= set(sources):
             raise ProbeError("PATCH_FILE_CLAIM_MISMATCH")
         return proposal, admission
-    except (ValidationError, PatchDenied):
-        raise ProbeError("PATCH_OUTPUT_DENIED") from None
+    except ValidationError:
+        raise ProbeError("PATCH_OUTPUT_SCHEMA") from None
+    except PatchDenied:
+        raise ProbeError("PATCH_DIFF_DENIED") from None
     except httpx.HTTPError:
         raise ProbeError("PATCH_PROVIDER_UNAVAILABLE") from None

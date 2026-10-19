@@ -1,7 +1,7 @@
 {
-  "status": "INCONCLUSIVE",
-  "observed_at": "2026-10-18T14:35:09.595466+00:00",
-  "trace_id": "d29d80c6-192f-4ad8-8749-6549c29e4cdd",
+  "status": "FIXTURE_REPAIR_PASSED",
+  "observed_at": "2026-10-19T04:43:55.864943+00:00",
+  "trace_id": "e2af2408-4e65-4c74-bff1-114a1910e46f",
   "scope": "FIXED_SYNTHETIC_CHECKOUT_ONLY",
   "limitations": [
     "Not general repository admission or a VERIFIED verdict.",
@@ -31,6 +31,45 @@
   },
   "model": "nvidia/nemotron-3-super-120b-a12b",
   "test_sha256": "7527a1c244c21132f9fe0f2e480e4edfd78fd11406314b77513f4bae99f3e46d",
-  "error_class": "ProbeError",
-  "error_code": "PATCH_OUTPUT_DENIED"
+  "patch_ref": "sha256:deb161a47fe446ea621bd49705fc24978106dc30beecdd366c325501e0b8433a",
+  "candidate": {
+    "operation_id": "01a15279-3b82-743c-bbeb-44ffa25c3a93",
+    "image_uuid": "db458f4b-a505-310b-8565-b7bb7919a528",
+    "compute_terminal_confirmed": true,
+    "status": "EXECUTED",
+    "source_commit": "64acd34050cdb95bf69e27d1564ca21434145198",
+    "source_tree": "4cab53fc89d952ec8d8b341b38c4a8dae882029c",
+    "tree": "820fa4233884b9e9967a4cf0661df38403668b3c",
+    "test_sha256": "7527a1c244c21132f9fe0f2e480e4edfd78fd11406314b77513f4bae99f3e46d",
+    "output_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+    "exit_code": 0,
+    "behavioral_failure": false,
+    "setup_error": false,
+    "tests_ran": true,
+    "uid": 1000,
+    "interfaces": [
+      "lo"
+    ],
+    "credential_env_present": false
+  },
+  "clean_replay": {
+    "operation_id": "01a15279-4376-729d-925b-e6494dd4e3b8",
+    "image_uuid": "db458f4b-a505-310b-8565-b7bb7919a528",
+    "compute_terminal_confirmed": true,
+    "status": "EXECUTED",
+    "source_commit": "64acd34050cdb95bf69e27d1564ca21434145198",
+    "source_tree": "4cab53fc89d952ec8d8b341b38c4a8dae882029c",
+    "tree": "820fa4233884b9e9967a4cf0661df38403668b3c",
+    "test_sha256": "7527a1c244c21132f9fe0f2e480e4edfd78fd11406314b77513f4bae99f3e46d",
+    "output_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+    "exit_code": 0,
+    "behavioral_failure": false,
+    "setup_error": false,
+    "tests_ran": true,
+    "uid": 1000,
+    "interfaces": [
+      "lo"
+    ],
+    "credential_env_present": false
+  }
 }

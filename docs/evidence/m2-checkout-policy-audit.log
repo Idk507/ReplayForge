@@ -1,0 +1,2 @@
+WARNING  services.runner.checkout_benchmark:checkout_benchmark.py:25 {"event": "fixture_dispatch_denied", "policy_decision": "FIXTURE_PATCH_PATH_DENIED"}
+WARNING  services.runner.checkout_benchmark:checkout_benchmark.py:25 {"event": "fixture_dispatch_denied", "policy_decision": "FIXTURE_COMMAND_DENIED"}

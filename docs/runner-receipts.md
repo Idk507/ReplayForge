@@ -57,3 +57,11 @@ Original/final tree hash inventory semantics must be fixed by that materializer.
 No live runner receipt was obtained in this slice. Synthetic signed reports cannot
 qualify live milestone gates. Existing raw-JUnit inspection remains independently
 available and cannot authorize patching. M0/M1/M2 remain partial.
+
+Update 2026-10-19: baseline-journal receipt retention now also stores bounded
+report bytes under migration 0015. The delivery/recovery controller passes those
+integrity-checked bytes to the existing reducer, which authenticates them again
+before a new stage transition. See baseline-delivery.md. This closes delivery
+plumbing, not collector implementation, key deployment, runner capabilities or
+live acceptance. Actual process exits, including setup exit 2, are classified by
+inspect_baseline; direct assertion-receipt verify still specifically requires 1.

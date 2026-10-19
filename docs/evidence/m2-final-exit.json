@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-10-19T14:46:48.746997+00:00",
+  "build_commit": "cad94a3f5b50bcaf5faec338d0bec5d04d663378",
+  "status": "M2_FIXED_FIXTURE_EXIT_COMPLETE",
+  "scope": "EXISTING_TRUSTED_SYNTHETIC_CHECKOUT_CONTINGENCY",
+  "acceptance_spec": "milestones.md#M2 acceptance",
+  "retained_live_evidence": {
+    "status": "M2_FIXTURE_ACCEPTED",
+    "failed_checks": [],
+    "evidence_origin": "RETAINED_FIXTURE_OBSERVATIONS",
+    "can_authorize_verification": false,
+    "can_authorize_execution": false
+  },
+  "offline_exit_tests": {
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "criteria": {
+    "intended_duplicate_charge_baseline_failure": "PASS_RETAINED_LIVE_OBSERVATION",
+    "inferred_allowed_path_patch": "PASS_RETAINED_LIVE_OBSERVATION",
+    "source_and_tree_identities_recorded": "PASS_RETAINED_LIVE_OBSERVATION",
+    "separate_passing_candidate_execution": "PASS_RETAINED_LIVE_OBSERVATION",
+    "forbidden_path_and_command_denied_with_audit": "PASS_OFFLINE_NEGATIVE_CONTRACT",
+    "invalid_reproduction_syntax_inconclusive": "PASS_OFFLINE_NEGATIVE_CONTRACT"
+  },
+  "production_m2_complete": false,
+  "can_authorize_verification": false,
+  "can_authorize_execution": false,
+  "cloud_calls_this_attempt": 0,
+  "full_suite_evidence_note": "Previous unchanged implementation validation: 802 passed, zero skipped; not rerun during this documentation-only closure.",
+  "next_milestone": "M3_TRUST_AND_UI_WITH_EXPLICIT_FIXTURE_LIMITATIONS",
+  "artifacts": {
+    "docs/evidence/m2-checkout-e2e/report.json": "sha256:860bf2208742bbf21936f46aadd02d26ae95e72099ad73547177306ddeee8749",
+    "docs/evidence/m2-checkout-e2e/triage.json": "sha256:a8e6e4d016a603a69ea674c859e24cef11bb5391662b949e3c3b49ee40a7f165",
+    "docs/evidence/m2-checkout-e2e/patch.json": "sha256:81c9810ca12ac9d5ff7bc3a86e595d14266bbc19f5253f5b4d730938bacf4099",
+    "docs/evidence/m2-final-exit-tests.xml": "sha256:f1923021961fc491c851025047c30756ce4da83840e73c9888a5281de6345b54",
+    "docs/evidence/m2-baseline-delivery-postgres.xml": "sha256:6079722e0b01ca75ca8dbb2b6cded6b8ab22dce477abb21cb0299d236c153384",
+    "milestones.md": "sha256:d2cc99edd61cf95d8b14b306f1047bdab7b27648583753d5b0f69be1881d4a23"
+  }
+}

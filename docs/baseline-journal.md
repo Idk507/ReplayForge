@@ -47,7 +47,7 @@ time for signature freshness, rechecks consent/checkpoint and verifies the actua
 bounded JUnit bytes through ReceiptVerifier. Only signed envelope, safe inspection
 metadata and acceptance timestamp are stored. Raw JUnit, logs, source, signing
 keys and credentials are never retained by this journal. Both matched and rejected
-signed reports may be preserved for audit; neither can authorize patching.
+signed reports may be preserved for audit; retention alone cannot authorize patching.
 The receipt and RECEIPT_RETAINED audit row commit atomically. Exact signed repeats
 reconcile to one stored record; changed envelopes conflict. Freshness is checked
 on every retention attempt. After that window, recovery reads the stored record
@@ -75,4 +75,70 @@ dispatch. Tests use synthetic reports and ephemeral TEST_TRANSPORT signing keys,
 covering restart, concurrent replay, owner/version/lease denial, hash tampering,
 expiry, immutable permissions and audit rollback. M0/M1/M2 remain partial;
 production signer/runner admission, actual execution, artifact materialization,
-external dispatch/reconciliation and reducer acceptance remain open.
+external dispatch/reconciliation remain open.
+
+## Authenticated baseline acceptance (19 October 2026)
+
+`BaselineJournal.accept(lease, owner, execution_id, junit, verifier,
+expected_version=...)` is now the trusted reducer entry point. It locks the
+owner checkpoint and live job lease; requires the action, matching command
+reservation and unexpired retained receipt; checks current consent and every
+source/test/run binding; and revalidates signature, freshness and actual JUnit
+bytes using the current configured trusted keys. TEST_TRANSPORT is rejected
+even when its signature verifies. The caller cannot supply a baseline hash.
+
+A behavioral failure atomically binds the retained receipt digest and advances
+REPRODUCING to PATCHING with one version increment and audit event. Invalid
+reproduction closes INCONCLUSIVE with INVALID_REPRODUCTION and completes the
+job lease. Audit failure rolls back checkpoint changes. After a successful
+commit, recovery reads the checkpoint and proceeds to the existing patch
+controller; it does not reaccept or resubmit the baseline. Acceptance requires
+a still-fresh receipt; an old retained record alone cannot revive execution.
+
+Authenticated setup/syntax process outcomes (including pytest exit 2) are
+retained as rejected inspections using their actual exit code. They cannot
+match a behavioral baseline and close with INVALID_REPRODUCTION. Direct
+assertion receipt verification retains its stricter exit-1 requirement.
+
+## Requested execution-time reservation
+
+New baseline dispatch intents atomically reserve one sandbox command and the
+immutable plan's full timeout (currently 60 seconds). Migration 0014 retains
+that amount as reserved_seconds alongside the action digest and version range.
+The action digest already binds the plan and its timeout; a caller cannot
+supply a cheaper duration independently. This reserves requested process time,
+not measured provider usage or sandbox pricing.
+
+If command count or remaining execution time is insufficient, the transaction
+instead commits INCONCLUSIVE/BUDGET_EXHAUSTED and completes the lease. No intent
+or partial resource debit survives. Failed budget/audit writes roll back. A
+concurrent or restart replay returns the original reservation version and never
+charges time twice, even when the original reservation used the last second.
+
+Historical intents have NULL reserved_seconds. Reads/reconciliation preserve
+that history without inventing an earlier time debit. Neither legacy nor new
+reservation metadata grants execution authority or permits resubmitting an
+operation with unknown outcome. Capability assessment, owned operation recovery,
+actual elapsed-time/usage reconciliation and cloud authorization remain separate.
+
+The shared reservation transaction is also used by model requests. It commits
+only recognized budget exhaustion as a terminal outcome; other budget errors
+propagate instead of being mislabeled as exhaustion. No runtime DB grants or
+execution command templates were broadened. Migration downgrade removes the
+new duration metadata and requires the same audit/data review as other schema
+rollbacks.
+
+This adds no signing authority, cloud dispatch or capability waiver. Tests use
+ephemeral synthetic signing keys, including REMOTE_SERVICE-shaped contract
+inputs; they are explicitly not evidence that a production signer exists.
+
+## Durable report delivery
+
+Migration 0015 retains newly inspected JUnit bytes in baseline_receipts alongside
+the signed envelope, within the same receipt/audit transaction. The private
+owner-scoped report() read checks expiry, bounded bytes and the signed report
+digest. Legacy NULL reports remain unavailable rather than being fabricated.
+receive_baseline and accept_retained_baseline connect delivery/restart recovery
+to the existing reducer without new inference or execution. See
+baseline-delivery.md for recovery semantics, producer redaction requirements,
+rollback limits and the independently assessed collector boundary.

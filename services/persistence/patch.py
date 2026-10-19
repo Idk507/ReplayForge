@@ -7,12 +7,14 @@ import psycopg
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from packages.contracts.inference import ModelDispatch
 from packages.contracts.repair import PatchProposal
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
 from packages.policies.budget import consume
 from packages.policies.repository import admit
 from packages.policies.transitions import transition
+from services.persistence.model_budget import debit_model, reservation_transaction
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.patches import PatchAdmission, admit_patch
 from services.runner.receipts import canonical
@@ -74,11 +76,18 @@ class PatchJournal:
         return run, grant
 
     def reserve(
-        self, lease: Lease, owner: UUID, *, expected_version: int
+        self,
+        lease: Lease,
+        owner: UUID,
+        *,
+        expected_version: int,
+        dispatch: ModelDispatch | None = None,
     ) -> tuple[UUID, int]:
         """Debit one model call and record sticky intent in the same transaction."""
         lease = Lease.model_validate(lease.model_dump())
-        with self._store._connection() as conn:
+        if dispatch is not None:
+            dispatch = ModelDispatch.model_validate(dispatch.model_dump())
+        with reservation_transaction(self._store) as conn:
             run, _ = self._locked(conn, lease, owner, expected_version)
             if (
                 conn.execute(
@@ -92,15 +101,22 @@ class PatchJournal:
             data = run.model_dump()
             data.update(
                 version=run.version + 1,
-                remaining_budget=consume(
-                    run.remaining_budget, "model_calls"
+                remaining_budget=debit_model(
+                    self._store, conn, run, dispatch
                 ).model_dump(),
             )
             updated = RunState.model_validate(data)
             attempt = uuid4()
             conn.execute(
-                "INSERT INTO patch_intents VALUES (%s,%s,%s)",
-                (run.run_id, attempt, updated.version),
+                "INSERT INTO patch_intents "
+                "(run_id,attempt_id,reserved_version,dispatch_json) "
+                "VALUES (%s,%s,%s,%s)",
+                (
+                    run.run_id,
+                    attempt,
+                    updated.version,
+                    Jsonb(dispatch.model_dump(mode="json")) if dispatch else None,
+                ),
             )
             conn.execute(
                 "UPDATE runs SET checkpoint=%s,version=%s WHERE id=%s",

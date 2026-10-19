@@ -118,6 +118,7 @@ def run_collection(
     *,
     known_secrets: tuple[SecretStr, ...] = (),
     input_loader: InputLoader | None = None,
+    queue_triage: bool = False,
 ) -> RunState:
     """Resume collection from persisted stage; stop before any triage inference.
 
@@ -229,6 +230,7 @@ def run_collection(
                 expected_version=state.run.version,
                 source_manifest=delta.source_manifest,
                 sealed_snapshot=delta.sealed_snapshot,
+                queue_triage=queue_triage,
             )
         else:
             updated = store.advance(

@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from packages.contracts.context import ContextBundle, ContextFile
 from packages.contracts.run import Stage
-from packages.providers.nebius import NebiusConfig
+from packages.providers.nebius import NebiusConfig, ProbeError
 from services.orchestrator import repair_flow
 from services.persistence.baseline import BaselineAction, RetainedReceipt
 from services.persistence.store import StoreError
@@ -112,6 +112,7 @@ def test_patch_controller_correlates_before_call_and_reconciles(
 
         def reserve(self, *args, **kwargs):
             state.reservations += 1
+            state.dispatch = kwargs["dispatch"]
             state.run = state.run.model_copy(update={"version": state.run.version + 1})
             return receipt.execution_id, state.run.version
 
@@ -141,6 +142,10 @@ def test_patch_controller_correlates_before_call_and_reconciles(
 
     def respond(request):
         state.calls += 1
+        assert (
+            state.dispatch.request.request_ref
+            == "sha256:" + hashlib.sha256(request.content).hexdigest()
+        )
         assert (
             body
             in json.loads(json.loads(request.content)["messages"][1]["content"])[
@@ -182,7 +187,14 @@ def test_patch_controller_correlates_before_call_and_reconciles(
     else:
         # Patch gateway's real scope check still requires the matching grant.
         grant = grant.model_copy(update={"repository_id": run.repository_id})
-        first = repair_flow.run_patch(*args, transport=httpx.MockTransport(respond))
+        from tests.unit.test_model_dispatch import policy
+
+        with pytest.raises(ProbeError, match="MODEL_COST_POLICY_REQUIRED"):
+            repair_flow.run_patch(*args, transport=httpx.MockTransport(respond))
+        assert state.calls == state.reservations == 0
+        first = repair_flow.run_patch(
+            *args, transport=httpx.MockTransport(respond), cost_policy=policy(args[3])
+        )
         assert (
             repair_flow.run_patch(*args, transport=httpx.MockTransport(respond))
             == first

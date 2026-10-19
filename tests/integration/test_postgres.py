@@ -214,6 +214,7 @@ def test_triage_controller_recovery_never_repeats_inference(
     from packages.contracts.context import ContextBundle
     from packages.providers.nebius import NebiusConfig, ProbeError
     from services.orchestrator.repair_flow import run_triage
+    from tests.unit.test_model_dispatch import policy
     from tests.unit.test_triage_gateway import response_for_any_context
 
     run, grant, _, lease = reproduction_setup(store)
@@ -234,23 +235,52 @@ def test_triage_controller_recovery_never_repeats_inference(
         )
     calls = 0
 
-    def request(_: httpx.Request) -> httpx.Response:
+    def request(outbound: httpx.Request) -> httpx.Response:
         nonlocal calls
         calls += 1
+        with psycopg.connect(store.dsn) as conn:
+            metadata = conn.execute(
+                "SELECT dispatch_json FROM triage_intents WHERE run_id=%s",
+                (run.run_id,),
+            ).fetchone()[0]
+        assert metadata["request"]["request_ref"] == (
+            "sha256:" + hashlib.sha256(outbound.content).hexdigest()
+        )
         return httpx.Response(503) if provider_fails else response_for_any_context()
 
     config = NebiusConfig.from_env({"NEBIUS_API_KEY": "test-secret"})
     transport = httpx.MockTransport(request)
+    with pytest.raises(ProbeError, match="MODEL_COST_POLICY_REQUIRED"):
+        run_triage(store, lease, grant.owner_id, config, transport=transport)
+    assert calls == 0
+    assert store.get(run.run_id, grant.owner_id) == run
     if provider_fails:
         with pytest.raises(ProbeError, match="M_UNAVAILABLE"):
-            run_triage(store, lease, grant.owner_id, config, transport=transport)
+            run_triage(
+                store,
+                lease,
+                grant.owner_id,
+                config,
+                transport=transport,
+                cost_policy=policy(config),
+            )
         with pytest.raises(StoreError, match="TRIAGE_SUBMISSION_UNCERTAIN"):
             run_triage(
-                Store(store.dsn), lease, grant.owner_id, config, transport=transport
+                Store(store.dsn),
+                lease,
+                grant.owner_id,
+                config,
+                transport=transport,
+                cost_policy=policy(config),
             )
     else:
         completed = run_triage(
-            store, lease, grant.owner_id, config, transport=transport
+            store,
+            lease,
+            grant.owner_id,
+            config,
+            transport=transport,
+            cost_policy=policy(config),
         )
         assert completed.current_stage == Stage.REPRODUCING
         assert (
@@ -261,6 +291,9 @@ def test_triage_controller_recovery_never_repeats_inference(
         )
     assert calls == 1
     assert store.get(run.run_id, grant.owner_id).remaining_budget.model_calls == 14
+    after = store.get(run.run_id, grant.owner_id)
+    assert after.remaining_budget.execution_seconds == 870
+    assert after.remaining_budget.estimated_spend_microusd == 1_900_000
 
 
 def patch_setup(store: Store):
@@ -295,6 +328,116 @@ def patch_setup(store: Store):
         risk_notes="not executed",
     )
     return run, grant, proposal, lease
+
+
+@pytest.mark.parametrize("phase", ["TRIAGE", "PATCH"])
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "model_calls",
+        "execution_seconds",
+        "estimated_spend_microusd",
+        "audit",
+        "concurrent",
+    ],
+)
+def test_model_dispatch_reserves_identity_cost_and_time_atomically(
+    store: Store, phase: str, fault: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Synthetic cost declarations, never a provider pricing assertion."""
+    from psycopg.types.json import Jsonb
+
+    from packages.contracts.inference import ModelDispatch, RequestIdentity
+    from packages.providers.nebius import NebiusConfig
+    from services.persistence.patch import PatchJournal
+    from services.persistence.reproduction import ReproductionJournal
+    from tests.unit.test_model_dispatch import policy
+
+    run, grant, _, lease = (
+        patch_setup(store) if phase == "PATCH" else reproduction_setup(store)
+    )
+    method = (
+        PatchJournal(store).reserve
+        if phase == "PATCH"
+        else ReproductionJournal(store).reserve_inference
+    )
+    table = "patch_intents" if phase == "PATCH" else "triage_intents"
+    if fault in {"model_calls", "execution_seconds", "estimated_spend_microusd"}:
+        limits = run.remaining_budget.model_dump()
+        limits[fault] = 0
+        run = RunState.model_validate({**run.model_dump(), "remaining_budget": limits})
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "UPDATE runs SET checkpoint=%s WHERE id=%s",
+                (Jsonb(run.model_dump(mode="json")), run.run_id),
+            )
+    if fault == "audit":
+
+        def fail(*args, **kwargs):
+            raise StoreError("AUDIT_FAILURE")
+
+        monkeypatch.setattr(Store, "_event", fail)
+    config = NebiusConfig.from_env({"NEBIUS_API_KEY": "synthetic"})
+    dispatch = ModelDispatch(
+        request=RequestIdentity(
+            request_ref="sha256:" + "a" * 64,
+            model=config.model,
+            base_url=config.base_url,
+        ),
+        cost=policy(config),
+    )
+    if fault == "concurrent":
+
+        def attempt():
+            try:
+                return method(
+                    lease, grant.owner_id, expected_version=0, dispatch=dispatch
+                )
+            except StoreError:
+                return None
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            outcomes = list(pool.map(lambda _: attempt(), range(2)))
+        assert sum(value is not None for value in outcomes) == 1
+        version = store.get(run.run_id, grant.owner_id).version
+    elif fault:
+        with pytest.raises(
+            StoreError,
+            match="AUDIT_FAILURE" if fault == "audit" else "BUDGET_EXHAUSTED",
+        ):
+            method(lease, grant.owner_id, expected_version=0, dispatch=dispatch)
+        after = store.get(run.run_id, grant.owner_id)
+        if fault == "audit":
+            assert after == run
+        else:
+            assert after.current_stage == Stage.INCONCLUSIVE
+            assert after.failure_reason == "BUDGET_EXHAUSTED"
+            assert after.remaining_budget == run.remaining_budget
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                f"SELECT count(*) FROM {table} WHERE run_id=%s", (run.run_id,)
+            ).fetchone() == (0,)
+        return
+    else:
+        _, version = method(
+            lease, grant.owner_id, expected_version=0, dispatch=dispatch
+        )
+    after = store.get(run.run_id, grant.owner_id)
+    assert (
+        after.remaining_budget.model_calls,
+        after.remaining_budget.execution_seconds,
+        after.remaining_budget.estimated_spend_microusd,
+    ) == (14, 870, 1_900_000)
+    with psycopg.connect(store.dsn) as conn:
+        recorded = conn.execute(
+            f"SELECT dispatch_json FROM {table} WHERE run_id=%s", (run.run_id,)
+        ).fetchone()[0]
+        assert recorded == dispatch.model_dump(mode="json")
+        assert "synthetic" not in recorded["request"]
+    with pytest.raises(StoreError, match="SUBMISSION_UNCERTAIN"):
+        method(lease, grant.owner_id, expected_version=version, dispatch=dispatch)
+    assert store.get(run.run_id, grant.owner_id) == after
 
 
 def test_patch_journal_reserve_retain_restart_and_duplicate_denial(
@@ -1942,6 +2085,101 @@ def test_baseline_journal_restart_replay_owner_and_permissions(store: Store) -> 
             conn.execute("DELETE FROM baseline_receipts")
 
 
+@pytest.mark.parametrize(
+    "case",
+    [
+        "remote",
+        "test_origin",
+        "wrong_report",
+        "unreserved",
+        "cancelled",
+        "wrong_owner",
+        "invalid_repro",
+        "stale",
+        "rollback",
+    ],
+)
+def test_baseline_checkpoint_requires_authenticated_reserved_failure(
+    store: Store, case: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Synthetic signing authority tests reducer contracts, not live attestation."""
+    import hashlib
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from services.runner.receipts import ReceiptDenied, ReceiptVerifier, canonical
+
+    journal, lease, owner, run, action, signed, xml, _ = baseline_journal_fixture(store)
+    key = Ed25519PrivateKey.generate()
+    origin = "TEST_TRANSPORT" if case == "test_origin" else "REMOTE_SERVICE"
+    if case == "invalid_repro":
+        xml = xml.replace(b"failure", b"error")
+    signed = signed.model_copy(
+        update={
+            "payload": signed.payload.model_copy(
+                update={
+                    "origin": origin,
+                    "junit_ref": "sha256:" + hashlib.sha256(xml).hexdigest(),
+                    "exit_code": 2 if case == "invalid_repro" else 1,
+                }
+            )
+        }
+    )
+    signed = signed.model_copy(
+        update={"signature": key.sign(canonical(signed, unsigned=True)).hex()}
+    )
+    verifier = ReceiptVerifier({"test": key.public_key()}, origin=origin)
+    journal.record_action(lease, owner, action, expected_version=0)
+    version = (
+        0
+        if case == "unreserved"
+        else journal.reserve_dispatch(
+            lease, owner, action.execution_id, expected_version=0
+        )
+    )
+    ref = journal.retain(
+        lease,
+        owner,
+        action.execution_id,
+        signed,
+        xml,
+        verifier,
+        expected_version=version,
+    )
+    if case == "cancelled":
+        store.cancel(run.run_id, owner, expected_version=version)
+    if case == "rollback":
+
+        def reject_event(*args, **kwargs):
+            raise StoreError("AUDIT_FAILURE")
+
+        monkeypatch.setattr(Store, "_event", reject_event)
+    if case not in {"remote", "invalid_repro"}:
+        with pytest.raises((StoreError, ReceiptDenied)):
+            journal.accept(
+                lease,
+                uuid4() if case == "wrong_owner" else owner,
+                action.execution_id,
+                b"invalid" if case == "wrong_report" else xml,
+                verifier,
+                expected_version=version + 1 if case == "stale" else version,
+            )
+        assert store.get(run.run_id, owner).current_stage != Stage.PATCHING
+        return
+    updated = journal.accept(
+        lease, owner, action.execution_id, xml, verifier, expected_version=version
+    )
+    assert updated.current_stage == (
+        Stage.INCONCLUSIVE if case == "invalid_repro" else Stage.PATCHING
+    )
+    assert updated.baseline_result_ref == (None if case == "invalid_repro" else ref)
+    assert updated.failure_reason == (
+        "INVALID_REPRODUCTION" if case == "invalid_repro" else None
+    )
+    assert updated.version == version + 1
+    assert Store(store.dsn).get(run.run_id, owner) == updated
+
+
 @pytest.mark.parametrize("case", ["version", "lease", "conflict", "report"])
 def test_baseline_journal_rejects_stale_conflicting_and_tampered_inputs(
     store: Store, case: str
@@ -2155,6 +2393,7 @@ def test_dispatch_reservation_concurrent_replay(store: Store) -> None:
         assert list(pool.map(lambda _: reserve(), range(2))) == [1, 1]
     updated = store.get(run.run_id, owner)
     assert updated.version == 1
+    assert updated.remaining_budget.execution_seconds == 840
     assert (
         updated.remaining_budget.sandbox_commands
         == run.remaining_budget.sandbox_commands - 1
@@ -2169,6 +2408,84 @@ def test_dispatch_reservation_concurrent_replay(store: Store) -> None:
         journal.reserve_dispatch(
             lease, uuid4(), action.execution_id, expected_version=0
         )
+
+
+@pytest.mark.parametrize(
+    "seconds,audit_fails", [(0, False), (59, False), (60, False), (59, True)]
+)
+def test_dispatch_reserves_full_planned_timeout_or_closes_run(
+    store: Store, seconds: int, audit_fails: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from psycopg.types.json import Jsonb
+
+    journal, lease, owner, run, action, _, _, _ = baseline_journal_fixture(store)
+    journal.record_action(lease, owner, action, expected_version=0)
+    run = run.model_copy(
+        update={
+            "remaining_budget": run.remaining_budget.model_copy(
+                update={"execution_seconds": seconds}
+            )
+        }
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    if audit_fails:
+
+        def fail(*args, **kwargs):
+            raise StoreError("AUDIT_FAILURE")
+
+        monkeypatch.setattr(Store, "_event", fail)
+    if seconds < 60:
+        with pytest.raises(
+            StoreError, match="AUDIT_FAILURE" if audit_fails else "BUDGET_EXHAUSTED"
+        ):
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+        if audit_fails:
+            assert store.get(run.run_id, owner) == run
+            return
+        closed = store.get(run.run_id, owner)
+        assert closed.current_stage == Stage.INCONCLUSIVE
+        assert closed.failure_reason == "BUDGET_EXHAUSTED"
+        assert closed.remaining_budget == run.remaining_budget
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT status,token FROM job_leases WHERE run_id=%s", (run.run_id,)
+            ).fetchone() == ("done", None)
+            assert conn.execute(
+                "SELECT count(*) FROM baseline_dispatch_intents WHERE execution_id=%s",
+                (action.execution_id,),
+            ).fetchone() == (0,)
+    else:
+        assert (
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+            == 1
+        )
+        updated = store.get(run.run_id, owner)
+        assert updated.remaining_budget.execution_seconds == 0
+        assert (
+            updated.remaining_budget.sandbox_commands
+            == run.remaining_budget.sandbox_commands - 1
+        )
+        assert (
+            journal.reserve_dispatch(
+                lease, owner, action.execution_id, expected_version=0
+            )
+            == 1
+        )
+        assert store.get(run.run_id, owner) == updated
+        with psycopg.connect(store.dsn) as conn:
+            assert conn.execute(
+                "SELECT reserved_seconds FROM baseline_dispatch_intents "
+                "WHERE execution_id=%s",
+                (action.execution_id,),
+            ).fetchone() == (60,)
 
 
 def test_dispatch_reservation_rollback(store: Store) -> None:

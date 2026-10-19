@@ -134,7 +134,9 @@ class ReceiptVerifier:
         if len(junit) > 131072:
             raise ReceiptDenied("RECEIPT_REPORT_LIMIT")
         junit_ref = "sha256:" + hashlib.sha256(junit).hexdigest()
-        verified = self.verify(
+        # Authentic process observations include setup failures (pytest exit 2).
+        # Authenticate first, then classify the actual exit instead of forcing 1.
+        verified = self._authenticate(
             signed,
             plan,
             execution_id=execution_id,
@@ -143,7 +145,11 @@ class ReceiptVerifier:
             now=now,
         )
         inspection = inspect_baseline(
-            plan, junit, junit_ref, exit_code=1, expected=expected
+            plan,
+            junit,
+            junit_ref,
+            exit_code=signed.payload.exit_code,
+            expected=expected,
         )
         return SignedBaselineInspection(
             status="MATCHED_SIGNED_REPORT"
@@ -154,6 +160,29 @@ class ReceiptVerifier:
         )
 
     def verify(
+        self,
+        signed: SignedReceipt,
+        plan: TestCommandPlan,
+        *,
+        execution_id: UUID,
+        source_tree_ref: str,
+        junit_ref: str,
+        now: datetime,
+    ) -> VerifiedReceipt:
+        """Authenticate a receipt that specifically claims assertion exit 1."""
+        result = self._authenticate(
+            signed,
+            plan,
+            execution_id=execution_id,
+            source_tree_ref=source_tree_ref,
+            junit_ref=junit_ref,
+            now=now,
+        )
+        if signed.payload.exit_code != 1:
+            raise ReceiptDenied("RECEIPT_BINDING_INVALID")
+        return result
+
+    def _authenticate(
         self,
         signed: SignedReceipt,
         plan: TestCommandPlan,
@@ -191,7 +220,6 @@ class ReceiptVerifier:
             or not receipt.terminal
             or receipt.timed_out
             or receipt.signal is not None
-            or receipt.exit_code != 1
             or plan.request.phase != "BASELINE"
         ):
             raise ReceiptDenied("RECEIPT_BINDING_INVALID")

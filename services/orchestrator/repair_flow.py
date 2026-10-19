@@ -5,7 +5,9 @@ import json
 from uuid import UUID
 
 import httpx
+from pydantic import ValidationError
 
+from packages.contracts.inference import ModelCostPolicy, ModelDispatch, RequestIdentity
 from packages.contracts.run import RunState, Stage
 from packages.providers.nebius import NebiusConfig, ProbeError
 from packages.providers.patch import request_patch
@@ -14,7 +16,63 @@ from services.persistence.baseline import BaselineJournal
 from services.persistence.patch import PatchJournal
 from services.persistence.reproduction import ReproductionJournal
 from services.persistence.store import Lease, Store, StoreError
-from services.runner.receipts import canonical, plan_ref
+from services.runner.receipts import ReceiptVerifier, canonical, plan_ref
+
+
+def _dispatch(
+    identity: RequestIdentity, policy: ModelCostPolicy | None
+) -> ModelDispatch:
+    if policy is None:
+        raise ProbeError("MODEL_COST_POLICY_REQUIRED")
+    try:
+        return ModelDispatch(
+            request=RequestIdentity.model_validate(identity.model_dump()),
+            cost=ModelCostPolicy.model_validate(policy.model_dump()),
+        )
+    except ValidationError:
+        raise ProbeError("MODEL_COST_POLICY_DENIED") from None
+
+
+def continue_from_baseline(
+    store: Store,
+    lease: Lease,
+    owner: UUID,
+    config: NebiusConfig,
+    baseline_execution_id: UUID,
+    junit: bytes,
+    verifier: ReceiptVerifier,
+    *,
+    transport: httpx.BaseTransport | None = None,
+    cost_policy: ModelCostPolicy | None = None,
+) -> RunState:
+    """Accept retained remote evidence, then generate/retain one bounded patch.
+
+    Trusted worker entry point, not a model tool or execution dispatcher. Resume
+    from the durable stage: never repeat acceptance after PATCHING, and let the
+    patch journal reconcile completed output or deny uncertain inference.
+    Invalid reproduction terminates without contacting the model.
+    """
+    run = store.get(lease.run_id, owner)
+    if run.current_stage == Stage.REPRODUCING:
+        run = BaselineJournal(store).accept(
+            lease,
+            owner,
+            baseline_execution_id,
+            junit,
+            verifier,
+            expected_version=run.version,
+        )
+        if run.current_stage == Stage.INCONCLUSIVE:
+            return run
+    return run_patch(
+        store,
+        lease,
+        owner,
+        config,
+        baseline_execution_id,
+        transport=transport,
+        cost_policy=cost_policy,
+    )
 
 
 def run_patch(
@@ -25,6 +83,7 @@ def run_patch(
     baseline_execution_id: UUID,
     *,
     transport: httpx.BaseTransport | None = None,
+    cost_policy: ModelCostPolicy | None = None,
 ) -> RunState:
     """Generate from retained context/baseline once; never apply generated code.
 
@@ -83,13 +142,31 @@ def run_patch(
     context = json.dumps({"sources": sources, "failure": failure}, sort_keys=True)
     if not sources or len(sources) > 8 or len(context.encode()) > 4096:
         raise ProbeError("PATCH_CONTEXT_DENIED")
-    _, version = journal.reserve(lease, owner, expected_version=run.version)
-    reserved = store.get(run.run_id, owner)
-    if reserved.version != version:
-        raise StoreError("STALE_VERSION")
+    version: int | None = None
+
+    def reserve(identity: RequestIdentity) -> None:
+        nonlocal version
+        _, version = journal.reserve(
+            lease,
+            owner,
+            expected_version=run.version,
+            dispatch=_dispatch(identity, cost_policy),
+        )
+        if store.get(run.run_id, owner).version != version:
+            raise StoreError("STALE_VERSION")
+
     proposal, _ = request_patch(
-        config, sources, failure, reserved, grant, owner, transport=transport
+        config,
+        sources,
+        failure,
+        run,
+        grant,
+        owner,
+        transport=transport,
+        before_submit=reserve,
     )
+    if version is None:
+        raise StoreError("MODEL_RESERVATION_REQUIRED")
     return journal.retain(lease, owner, proposal, expected_version=version)
 
 
@@ -100,6 +177,8 @@ def run_triage(
     config: NebiusConfig,
     *,
     transport: httpx.BaseTransport | None = None,
+    cost_policy: ModelCostPolicy | None = None,
+    finish_job: bool = False,
 ) -> RunState:
     """Reserve once, request once, retain once; never retry uncertain inference.
 
@@ -137,10 +216,28 @@ def run_triage(
         > 4096
     ):
         raise ProbeError("TRIAGE_CONTEXT_DENIED")
-    _, reserved_version = journal.reserve_inference(
-        lease, owner, expected_version=run.version
+    reserved_version: int | None = None
+
+    def reserve(identity: RequestIdentity) -> None:
+        nonlocal reserved_version
+        _, reserved_version = journal.reserve_inference(
+            lease,
+            owner,
+            expected_version=run.version,
+            dispatch=_dispatch(identity, cost_policy),
+        )
+        if store.get(run.run_id, owner).version != reserved_version:
+            raise StoreError("STALE_VERSION")
+
+    proposal = request_triage(
+        config, context, transport=transport, before_submit=reserve
     )
-    proposal = request_triage(config, context, transport=transport)
+    if reserved_version is None:
+        raise StoreError("MODEL_RESERVATION_REQUIRED")
     return journal.retain(
-        lease, owner, proposal.reproduction, expected_version=reserved_version
+        lease,
+        owner,
+        proposal.reproduction,
+        expected_version=reserved_version,
+        finish_job=finish_job,
     )

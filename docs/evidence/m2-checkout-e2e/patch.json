@@ -1,0 +1,9 @@
+{
+  "unified_diff": "diff --git a/app/checkout.py b/app/checkout.py\n--- a/app/checkout.py\n+++ b/app/checkout.py\n@@ -24,5 +24,10 @@\n         self.gateway = gateway\n \n     def complete(self, checkout_id: str, amount_cents: int) -> None:\n-        \"\"\"Complete a checkout; baseline defect: retries duplicate a charge.\"\"\"\n+        \"\"\"Complete a checkout; fixed idempotent version using deduplication by ID.\"\"\"\n+        # Check if this checkout has already been charged\n+        for existing_charge in self.gateway.charges:\n+            if existing_charge.checkout_id == checkout_id:\n+                return  # Already processed, skip duplicate charge\n+        \n         self.gateway.charge(checkout_id, amount_cents)\n",
+  "files_changed": [
+    "app/checkout.py"
+  ],
+  "justification": "The original implementation always called gateway.charge() on every invocation of complete(), causing duplicate charges when retried. The fix adds a deduplication check that scans existing charges for the same checkout_id before issuing a new charge, making the operation idempotent while preserving the gateway's charging behavior for genuinely new transactions.",
+  "expected_test_delta": "+1",
+  "risk_notes": "Low risk: change is localized to the business logic layer, preserves all external interfaces, and maintains the gateway's intentional charging behavior for legitimate new transactions."
+}

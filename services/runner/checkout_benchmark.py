@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 import time
 from pathlib import Path
 from uuid import UUID
@@ -11,12 +12,20 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from packages.contracts.repair import ReproductionProposal
 from packages.contracts.sandbox import RunnerError
 from services.runner.fixture_guest import GUEST_PROGRAM
-from services.runner.patches import _paths
+from services.runner.patches import PatchDenied, _paths
 from services.runner.remote import NebiusSandboxBackend, SandboxConfig, probe_request
 from services.runner.responses import Created, ProcessResult
 from services.runner.smoke import _decode, _wait
 
 SOURCE_HASH = "74d09f7d6afe6a413d3548b28fa35ad3f7596fdf4f383c04a3d614a7d686bc26"
+
+
+def _deny(code: str) -> None:
+    """Emit a safe policy audit record before rejecting fixture dispatch."""
+    logging.getLogger(__name__).warning(
+        json.dumps({"event": "fixture_dispatch_denied", "policy_decision": code})
+    )
+    raise RunnerError(code)
 
 
 def fixture_source() -> str:
@@ -53,10 +62,22 @@ class FixtureObservation(BaseModel):
 class CheckoutBenchmarkBackend(NebiusSandboxBackend):
     """No repository URLs, host paths, arbitrary argv or source parameters."""
 
-    def start_checkout(self, proposal: ReproductionProposal, patch: str = "") -> UUID:
+    def start_checkout(
+        self,
+        proposal: ReproductionProposal,
+        patch: str = "",
+        *,
+        command_id: str = "checkout-unittest-v1",
+    ) -> UUID:
         proposal = ReproductionProposal.model_validate(proposal.model_dump())
-        if patch and _paths(patch)[0] != ("app/checkout.py",):
-            raise RunnerError("FIXTURE_PATCH_PATH_DENIED")
+        if command_id != "checkout-unittest-v1":
+            _deny("FIXTURE_COMMAND_DENIED")
+        try:
+            allowed_patch = not patch or _paths(patch)[0] == ("app/checkout.py",)
+        except PatchDenied:
+            allowed_patch = False
+        if not allowed_patch:
+            _deny("FIXTURE_PATCH_PATH_DENIED")
         if self._submitted:
             raise RunnerError("S_DUPLICATE_SUBMISSION")
         data = {
