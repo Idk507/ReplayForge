@@ -5,16 +5,20 @@ from dataclasses import replace
 from typing import Literal, Protocol
 from uuid import UUID
 
+import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
+from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
+from packages.providers.nebius import NebiusConfig
 from services.orchestrator.collection import (
     CollectionError,
     CollectionInputs,
     InputLoader,
     run_collection,
 )
+from services.orchestrator.repair_flow import run_triage
 from services.persistence.store import Store, StoreError
 
 
@@ -47,7 +51,13 @@ class WorkerResult(BaseModel):
     stage: Stage | None = None
 
 
-def tick(store: Store, worker_id: UUID, input_loader: InputLoader) -> WorkerResult:
+def tick(
+    store: Store,
+    worker_id: UUID,
+    input_loader: InputLoader,
+    *,
+    queue_triage: bool = False,
+) -> WorkerResult:
     """Claim at most one job and dispatch through the fenced graph.
 
     No automatic retries or infinite loops. Provider exceptions propagate and
@@ -58,7 +68,41 @@ def tick(store: Store, worker_id: UUID, input_loader: InputLoader) -> WorkerResu
     if lease is None:
         return WorkerResult(status="IDLE")
     owner, _ = store.claimed_run(lease)
-    result = run_collection(store, owner, lease, input_loader=input_loader)
+    result = run_collection(
+        store, owner, lease, input_loader=input_loader, queue_triage=queue_triage
+    )
+    return WorkerResult(
+        status="PROCESSED", run_id=result.run_id, stage=result.current_stage
+    )
+
+
+def tick_triage(
+    store: Store,
+    worker_id: UUID,
+    config: NebiusConfig,
+    cost_policy: ModelCostPolicy,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> WorkerResult:
+    """Claim one explicitly queued triage job; never execute generated code.
+
+    The trusted caller authorizes inference and supplies its declared cost policy.
+    Uncertain requests remain sticky across lease expiry and worker restart.
+    Successful artifact retention finishes this job in the same transaction.
+    """
+    lease = store.claim(worker_id, triage_only=True)
+    if lease is None:
+        return WorkerResult(status="IDLE")
+    owner, _ = store.claimed_run(lease)
+    result = run_triage(
+        store,
+        lease,
+        owner,
+        config,
+        cost_policy=cost_policy,
+        transport=transport,
+        finish_job=True,
+    )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )
@@ -89,6 +133,7 @@ def serve(
     *,
     max_ticks: int = 100,
     idle_seconds: float = 1,
+    queue_triage: bool = False,
 ) -> WorkerLoopResult:
     """Bounded polling with cooperative shutdown; never silently retry failures.
 
@@ -106,7 +151,11 @@ def serve(
         raise ValueError("POLLING_LIMIT")
     ticks = processed = idle = 0
     while ticks < max_ticks and not stop.is_set():
-        result = tick(store, worker_id, input_loader)
+        result = (
+            tick(store, worker_id, input_loader, queue_triage=True)
+            if queue_triage
+            else tick(store, worker_id, input_loader)
+        )
         ticks += 1
         if result.status == "PROCESSED":
             processed += 1

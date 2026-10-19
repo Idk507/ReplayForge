@@ -178,6 +178,7 @@ def run_triage(
     *,
     transport: httpx.BaseTransport | None = None,
     cost_policy: ModelCostPolicy | None = None,
+    finish_job: bool = False,
 ) -> RunState:
     """Reserve once, request once, retain once; never retry uncertain inference.
 
@@ -234,5 +235,9 @@ def run_triage(
     if reserved_version is None:
         raise StoreError("MODEL_RESERVATION_REQUIRED")
     return journal.retain(
-        lease, owner, proposal.reproduction, expected_version=reserved_version
+        lease,
+        owner,
+        proposal.reproduction,
+        expected_version=reserved_version,
+        finish_job=finish_job,
     )

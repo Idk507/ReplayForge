@@ -89,6 +89,11 @@ def main() -> int:
     parser.add_argument(
         "--max-ticks", type=int, default=1, choices=range(1, 1001), metavar="N"
     )
+    parser.add_argument(
+        "--queue-triage",
+        action="store_true",
+        help="Queue collected context for a separately authorized triage worker",
+    )
     args = parser.parse_args()
     if not args.run:
         print(json.dumps({"status": "NOT_RUN", "reason": "Explicit --run required"}))
@@ -109,7 +114,14 @@ def main() -> int:
         loader = bind_incident(store, github_inputs(config.read_token, config.paths))
         for sig in (signal.SIGINT, signal.SIGTERM):
             previous[sig] = signal.signal(sig, lambda signum, frame: stop.set())
-        result = serve(store, uuid4(), loader, stop, max_ticks=args.max_ticks)
+        result = serve(
+            store,
+            uuid4(),
+            loader,
+            stop,
+            max_ticks=args.max_ticks,
+            queue_triage=args.queue_triage,
+        )
         print(result.model_dump_json())
         return 0
     except WorkerConfigError as error:

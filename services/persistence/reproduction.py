@@ -135,8 +135,11 @@ class ReproductionJournal:
         proposal: ReproductionProposal,
         *,
         expected_version: int,
+        finish_job: bool = False,
     ) -> RunState:
         """Commit candidate, reference, stage and event in a single transaction."""
+        if type(finish_job) is not bool:
+            raise StoreError("TRIAGE_HANDOFF_INVALID")
         lease = Lease.model_validate(lease.model_dump())
         with self._store._connection() as conn:
             row = conn.execute(
@@ -184,6 +187,11 @@ class ReproductionJournal:
                 expected_version=expected_version,
             )
             self._store._save(conn, updated)
+            if finish_job:
+                conn.execute(
+                    "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
+                    (run.run_id,),
+                )
             return updated
 
     def get(self, run_id: UUID, owner: UUID) -> ReproductionArtifact:

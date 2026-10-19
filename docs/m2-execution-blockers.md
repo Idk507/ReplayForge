@@ -78,3 +78,12 @@ and production admission/signing is not bypassed. See `operation-recovery.md`.
 This is tested with real PostgreSQL and mocked HTTP; no live operation was
 queried during this increment. General submission, signed report collection,
 candidate/replay integration and polling-worker scheduling remain open.
+
+Collection-to-triage handoff update (2026-10-19): collection can now atomically
+queue a TRIAGING job via the explicit --queue-triage option. A separate trusted
+tick_triage entry point claims only those jobs and invokes the existing
+request-bound inference controller; successful test retention closes the job
+atomically. Restart after an uncertain request cannot repeat inference. See
+triage-worker.md. Default startup remains offline with respect to inference.
+Baseline/candidate execution and the remaining graph are not implied by this
+handoff, and the production assessment/signing boundary above still applies.
