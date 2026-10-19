@@ -2122,3 +2122,53 @@ deployment/submission remain open. Remaining M2 work includes a genuinely
 assessed runner, independently signed report collection, admitted baseline and
 candidate submission, and the downstream durable graph. The triage handoff
 does not claim to supply those controls or complete all phases.
+
+## 2026-10-19 — Restart-safe signed baseline report delivery
+
+Base f70d96f; implementation commit 6ee1a71 on codex/m2-checkout-closure.
+Read operating documents and active journal, receipt, reducer, recovery and
+worker contracts; inspected implementation and recent changes. The next local
+gap was that signed receipts persisted but their actual JUnit bytes did not,
+preventing restart-safe baseline acceptance without an external report resend.
+
+Migration 0015 adds bounded nullable report_payload to baseline_receipts.
+New receipt/report/audit writes share one transaction; existing runtime grants
+are unchanged. Private owner-scoped report reads validate expiry, canonical
+receipt integrity, execution identity, size and signed report SHA256. Legacy
+NULL reports stay unavailable rather than being fabricated. Producers must
+redact before signing; no raw report enters checkpoints, events or public routes.
+
+receive_baseline and accept_retained_baseline connect delivery/recovery to the
+existing reducer without inference or execution. Fresh acceptance still checks
+the live owner/lease/version, current consent, reserved action, trusted key and
+fresh signature. Acceptance audit failure leaves a recoverable retained report
+while rolling back the checkpoint. Concurrent delivery reconciles committed
+content; conflicting redelivery and unrelated stages fail closed. Reconciliation
+does not refresh evidence or grant a new action. No signing service/key or new
+runtime capability claim is introduced by this receiver.
+
+Observed tests: initial red 9 missing-feature failures; focused delivery checks
+10 passed after adding the audit rollback test. One full run exposed an incorrect
+static-method test hook (1 failed, 800 passed); corrected the hook. Another full
+run exposed a real concurrency race (1 failed, 800 passed): completion between
+two nontransactional checkpoint reads raised STALE_VERSION outside reconciliation.
+Removed the redundant read; the transactional reducer remains the authority for
+lease/version checks. Added a deterministic competing-completion regression.
+Both failure captures and original red XML are retained as lossless gzip files.
+
+Final scripts.test_postgres --evidence-name m2-baseline-delivery-postgres.xml:
+**802 passed, zero skipped**, one existing upstream AnyIO warning, 132.64 seconds,
+exit 0. Local PostgreSQL credentials were supplied only in memory; the harness
+removed its random task-owned DB/roles. Migration, downgrade/reapply, existing
+unit/contract and negative-policy cases passed in this run. Ruff check/format
+(152 files), strict mypy (79 files), staged diff checks and configured-secret
+value scanning of 12 changed files plus final XML passed. Offline check_checkout
+still returns M2_FIXTURE_ACCEPTED, exit 0, with no execution/verification authority.
+
+No cloud calls, remote writes, push, merge or deployment occurred. Dependencies
+and UI were unchanged, and no broad readiness claim is made. Pre-existing
+untracked files were preserved. The fixed-fixture M2 exit passes; production M2
+still requires a genuinely assessed runner, independently observed collector
+facts and deployed signing identity, followed by admitted baseline/candidate and
+worker integration. This closes report delivery/recovery plumbing, not those
+external runtime facts. Details and rollback/privacy limits: baseline-delivery.md.
