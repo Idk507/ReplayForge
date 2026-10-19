@@ -14,6 +14,7 @@ from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import ArtifactID, RunState, Stage
 from packages.policies.budget import consume
 from packages.policies.repository import admit, allowed_entry
+from packages.policies.transitions import transition
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.baseline import FailureExpectation
 from services.runner.commands import plan_pytest
@@ -69,12 +70,101 @@ def _decode(payload: object, digest: object, model: type[T]) -> T:
 class BaselineJournal:
     """Trusted reducer-facing adapter; runtime needs SELECT/INSERT only.
 
-    Planning/retention is not execution acceptance. Reservations update budget
-    and version only; synthetic receipts cannot open PATCHING through this journal.
+    Planning/retention is not execution acceptance. Only accept() may advance
+    the stage, after revalidating a reserved, authenticated remote report.
+    Test-transport receipts cannot open PATCHING through this journal.
     """
 
     def __init__(self, store: Store) -> None:
         self._store = store
+
+    def accept(
+        self,
+        lease: Lease,
+        owner: UUID,
+        execution_id: UUID,
+        junit: bytes,
+        verifier: ReceiptVerifier,
+        *,
+        expected_version: int,
+    ) -> RunState:
+        """Reduce a retained, reserved remote baseline into a durable checkpoint.
+
+        Reverify actual report bytes under the current trusted key configuration.
+        A test-transport receipt never opens PATCHING. Failed reproduction setup
+        closes INCONCLUSIVE; neither path claims a verified repair. A replay
+        reads the checkpoint, rather than reaccepting or dispatching work.
+        """
+        lease = Lease.model_validate(lease.model_dump())
+        with self._store._connection() as conn:
+            run = self._fence(conn, lease, owner, expected_version)
+            row = conn.execute(
+                """SELECT a.payload AS action_payload,a.digest AS action_digest,
+                s.payload,s.digest,clock_timestamp() AS now
+                FROM baseline_actions a JOIN baseline_receipts s
+                ON s.execution_id=a.execution_id JOIN baseline_dispatch_intents i
+                ON i.execution_id=a.execution_id AND i.action_digest=a.digest
+                WHERE a.execution_id=%s AND a.run_id=%s
+                AND a.expires_at>clock_timestamp()
+                AND s.expires_at>clock_timestamp()""",
+                (execution_id, run.run_id),
+            ).fetchone()
+            if row is None:
+                raise StoreError("BASELINE_RESERVED_RECEIPT_REQUIRED")
+            action = _decode(
+                row["action_payload"], row["action_digest"], BaselineAction
+            )
+            retained = _decode(row["payload"], row["digest"], RetainedReceipt)
+            request = action.plan.request
+            consent = conn.execute(
+                "SELECT grant_json FROM repository_grants WHERE id=%s AND owner_id=%s",
+                (run.repository_id, owner),
+            ).fetchone()
+            if consent is None:
+                raise StoreError("BASELINE_SCOPE_DENIED")
+            grant = RepositoryGrant.model_validate(consent["grant_json"])
+            if (
+                not admit(grant, owner, run.repository_id, run.source_commit).allowed
+                or retained.signed.payload.origin != "REMOTE_SERVICE"
+                or request.run_id != run.run_id
+                or request.repository_id != run.repository_id
+                or request.source_commit != run.source_commit
+                or request.source_manifest_ref != run.source_manifest_ref
+                or request.reproduction_test_ref != run.reproduction_test_ref
+                or any(
+                    not allowed_entry(grant, p, "100644") for p in request.test_paths
+                )
+            ):
+                raise StoreError("BASELINE_BINDING_DENIED")
+            now = row["now"]
+            if not isinstance(now, datetime):
+                raise StoreError("BASELINE_CLOCK")
+            result = verifier.inspect_baseline(
+                retained.signed,
+                action.plan,
+                junit,
+                execution_id=execution_id,
+                source_tree_ref=action.source_tree_ref,
+                expected=action.expected,
+                now=now,
+            )
+            data = run.model_dump()
+            data["failure_reason"] = "INVALID_REPRODUCTION"
+            target = Stage.INCONCLUSIVE
+            if result.status == "MATCHED_SIGNED_REPORT":
+                data["baseline_result_ref"] = "sha256:" + str(row["digest"])
+                data["failure_reason"] = None
+                target = Stage.PATCHING
+            updated = transition(
+                RunState.model_validate(data), target, expected_version=expected_version
+            )
+            self._store._save(conn, updated)
+            if target == Stage.INCONCLUSIVE:
+                conn.execute(
+                    "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
+                    (run.run_id,),
+                )
+            return updated
 
     @staticmethod
     def _fence(

@@ -14,7 +14,42 @@ from services.persistence.baseline import BaselineJournal
 from services.persistence.patch import PatchJournal
 from services.persistence.reproduction import ReproductionJournal
 from services.persistence.store import Lease, Store, StoreError
-from services.runner.receipts import canonical, plan_ref
+from services.runner.receipts import ReceiptVerifier, canonical, plan_ref
+
+
+def continue_from_baseline(
+    store: Store,
+    lease: Lease,
+    owner: UUID,
+    config: NebiusConfig,
+    baseline_execution_id: UUID,
+    junit: bytes,
+    verifier: ReceiptVerifier,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> RunState:
+    """Accept retained remote evidence, then generate/retain one bounded patch.
+
+    Trusted worker entry point, not a model tool or execution dispatcher. Resume
+    from the durable stage: never repeat acceptance after PATCHING, and let the
+    patch journal reconcile completed output or deny uncertain inference.
+    Invalid reproduction terminates without contacting the model.
+    """
+    run = store.get(lease.run_id, owner)
+    if run.current_stage == Stage.REPRODUCING:
+        run = BaselineJournal(store).accept(
+            lease,
+            owner,
+            baseline_execution_id,
+            junit,
+            verifier,
+            expected_version=run.version,
+        )
+        if run.current_stage == Stage.INCONCLUSIVE:
+            return run
+    return run_patch(
+        store, lease, owner, config, baseline_execution_id, transport=transport
+    )
 
 
 def run_patch(

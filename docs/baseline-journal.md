@@ -47,7 +47,7 @@ time for signature freshness, rechecks consent/checkpoint and verifies the actua
 bounded JUnit bytes through ReceiptVerifier. Only signed envelope, safe inspection
 metadata and acceptance timestamp are stored. Raw JUnit, logs, source, signing
 keys and credentials are never retained by this journal. Both matched and rejected
-signed reports may be preserved for audit; neither can authorize patching.
+signed reports may be preserved for audit; retention alone cannot authorize patching.
 The receipt and RECEIPT_RETAINED audit row commit atomically. Exact signed repeats
 reconcile to one stored record; changed envelopes conflict. Freshness is checked
 on every retention attempt. After that window, recovery reads the stored record
@@ -75,4 +75,31 @@ dispatch. Tests use synthetic reports and ephemeral TEST_TRANSPORT signing keys,
 covering restart, concurrent replay, owner/version/lease denial, hash tampering,
 expiry, immutable permissions and audit rollback. M0/M1/M2 remain partial;
 production signer/runner admission, actual execution, artifact materialization,
-external dispatch/reconciliation and reducer acceptance remain open.
+external dispatch/reconciliation remain open.
+
+## Authenticated baseline acceptance (19 October 2026)
+
+`BaselineJournal.accept(lease, owner, execution_id, junit, verifier,
+expected_version=...)` is now the trusted reducer entry point. It locks the
+owner checkpoint and live job lease; requires the action, matching command
+reservation and unexpired retained receipt; checks current consent and every
+source/test/run binding; and revalidates signature, freshness and actual JUnit
+bytes using the current configured trusted keys. TEST_TRANSPORT is rejected
+even when its signature verifies. The caller cannot supply a baseline hash.
+
+A behavioral failure atomically binds the retained receipt digest and advances
+REPRODUCING to PATCHING with one version increment and audit event. Invalid
+reproduction closes INCONCLUSIVE with INVALID_REPRODUCTION and completes the
+job lease. Audit failure rolls back checkpoint changes. After a successful
+commit, recovery reads the checkpoint and proceeds to the existing patch
+controller; it does not reaccept or resubmit the baseline. Acceptance requires
+a still-fresh receipt; an old retained record alone cannot revive execution.
+
+Authenticated setup/syntax process outcomes (including pytest exit 2) are
+retained as rejected inspections using their actual exit code. They cannot
+match a behavioral baseline and close with INVALID_REPRODUCTION. Direct
+assertion receipt verification retains its stricter exit-1 requirement.
+
+This adds no signing authority, cloud dispatch or capability waiver. Tests use
+ephemeral synthetic signing keys, including REMOTE_SERVICE-shaped contract
+inputs; they are explicitly not evidence that a production signer exists.

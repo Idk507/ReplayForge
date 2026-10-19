@@ -75,6 +75,7 @@ class RunState(BaseModel):
             "SOURCE_REJECTED",
             "SOURCE_UNAVAILABLE",
             "BUDGET_EXHAUSTED",
+            "INVALID_REPRODUCTION",
         ]
         | None
     ) = None

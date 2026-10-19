@@ -1942,6 +1942,101 @@ def test_baseline_journal_restart_replay_owner_and_permissions(store: Store) -> 
             conn.execute("DELETE FROM baseline_receipts")
 
 
+@pytest.mark.parametrize(
+    "case",
+    [
+        "remote",
+        "test_origin",
+        "wrong_report",
+        "unreserved",
+        "cancelled",
+        "wrong_owner",
+        "invalid_repro",
+        "stale",
+        "rollback",
+    ],
+)
+def test_baseline_checkpoint_requires_authenticated_reserved_failure(
+    store: Store, case: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Synthetic signing authority tests reducer contracts, not live attestation."""
+    import hashlib
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from services.runner.receipts import ReceiptDenied, ReceiptVerifier, canonical
+
+    journal, lease, owner, run, action, signed, xml, _ = baseline_journal_fixture(store)
+    key = Ed25519PrivateKey.generate()
+    origin = "TEST_TRANSPORT" if case == "test_origin" else "REMOTE_SERVICE"
+    if case == "invalid_repro":
+        xml = xml.replace(b"failure", b"error")
+    signed = signed.model_copy(
+        update={
+            "payload": signed.payload.model_copy(
+                update={
+                    "origin": origin,
+                    "junit_ref": "sha256:" + hashlib.sha256(xml).hexdigest(),
+                    "exit_code": 2 if case == "invalid_repro" else 1,
+                }
+            )
+        }
+    )
+    signed = signed.model_copy(
+        update={"signature": key.sign(canonical(signed, unsigned=True)).hex()}
+    )
+    verifier = ReceiptVerifier({"test": key.public_key()}, origin=origin)
+    journal.record_action(lease, owner, action, expected_version=0)
+    version = (
+        0
+        if case == "unreserved"
+        else journal.reserve_dispatch(
+            lease, owner, action.execution_id, expected_version=0
+        )
+    )
+    ref = journal.retain(
+        lease,
+        owner,
+        action.execution_id,
+        signed,
+        xml,
+        verifier,
+        expected_version=version,
+    )
+    if case == "cancelled":
+        store.cancel(run.run_id, owner, expected_version=version)
+    if case == "rollback":
+
+        def reject_event(*args, **kwargs):
+            raise StoreError("AUDIT_FAILURE")
+
+        monkeypatch.setattr(Store, "_event", reject_event)
+    if case not in {"remote", "invalid_repro"}:
+        with pytest.raises((StoreError, ReceiptDenied)):
+            journal.accept(
+                lease,
+                uuid4() if case == "wrong_owner" else owner,
+                action.execution_id,
+                b"invalid" if case == "wrong_report" else xml,
+                verifier,
+                expected_version=version + 1 if case == "stale" else version,
+            )
+        assert store.get(run.run_id, owner).current_stage != Stage.PATCHING
+        return
+    updated = journal.accept(
+        lease, owner, action.execution_id, xml, verifier, expected_version=version
+    )
+    assert updated.current_stage == (
+        Stage.INCONCLUSIVE if case == "invalid_repro" else Stage.PATCHING
+    )
+    assert updated.baseline_result_ref == (None if case == "invalid_repro" else ref)
+    assert updated.failure_reason == (
+        "INVALID_REPRODUCTION" if case == "invalid_repro" else None
+    )
+    assert updated.version == version + 1
+    assert Store(store.dsn).get(run.run_id, owner) == updated
+
+
 @pytest.mark.parametrize("case", ["version", "lease", "conflict", "report"])
 def test_baseline_journal_rejects_stale_conflicting_and_tampered_inputs(
     store: Store, case: str

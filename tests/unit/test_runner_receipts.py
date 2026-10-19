@@ -98,6 +98,41 @@ def test_signed_receipt_binds_actual_junit_bytes(tamper: bool) -> None:
         assert result.can_authorize_patching is False
 
 
+@pytest.mark.parametrize("exit_code", [0, 2])
+def test_authenticated_non_assertion_exit_is_retained_as_rejected(
+    exit_code: int,
+) -> None:
+    """Real pytest syntax/setup failures use exit 2, never assertion exit 1."""
+    import hashlib
+
+    from services.runner.baseline import FailureExpectation
+    from tests.unit.test_baseline_inspection import XML
+
+    plan, receipt, now, sign, verifier = fixture()
+    receipt = receipt.model_copy(
+        update={
+            "exit_code": exit_code,
+            "junit_ref": "sha256:" + hashlib.sha256(XML).hexdigest(),
+        }
+    )
+    signed = sign(receipt)
+    result = verifier.inspect_baseline(
+        signed,
+        plan,
+        XML,
+        execution_id=receipt.execution_id,
+        source_tree_ref=receipt.source_tree_ref,
+        expected=FailureExpectation(
+            test_name="test_duplicate", assertion_marker="RF_DUPLICATE_TRANSACTION"
+        ),
+        now=now,
+    )
+    assert result.status == "REJECTED_SIGNED_REPORT"
+    assert result.inspection.reason == "PROCESS_FAILURE"
+    with pytest.raises(ReceiptDenied):
+        check(verifier, signed, plan, receipt, now)
+
+
 @pytest.mark.parametrize("case", ["empty", "limit", "name", "type"])
 def test_bad_key_registry_fails_closed(case: str) -> None:
     key = Ed25519PrivateKey.generate().public_key()
