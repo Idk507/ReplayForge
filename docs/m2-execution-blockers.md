@@ -48,8 +48,10 @@ required retention/deletion guarantees with the Sandboxes team.
 The explicit triage controller loads owner-scoped persisted context, reserves
 one inference attempt, performs a single request and atomically retains the
 validated reproduction. It is not yet connected to the polling worker's full
-agent graph. Exact model/request identity and estimated spend/time reservations
-also remain incomplete. Provider failures leave sticky uncertain intent and
+agent graph. Exact body/model/endpoint identity and operator-estimated cost plus
+configured-timeout reservations are now atomic in the existing journals; see
+`inference-reservations.md`. Actual elapsed-time/usage reconciliation and live
+pricing validation remain open. Provider failures leave sticky uncertain intent and
 must not be retried blindly.
 
 Beyond triage, M2 requires admitted remote baseline submission, signed report

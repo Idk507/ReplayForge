@@ -1940,3 +1940,52 @@ artifacts. Branch `codex/m2-checkout-closure`; no push or merge. The pre-existin
 untracked `.env.example` was not modified or staged. Three fixed-fixture tracker
 items are now checked against committed executable evidence. Broader production
 items remain open rather than being silently redefined as complete.
+
+## 2026-10-19 — Request-bound inference budget reservations
+
+Base 165ea15; implementation commit 3c8e2b3 on codex/m2-checkout-closure.
+Read operating contracts, architecture/playbook/milestones/tracker and active
+runner, budget, triage, patch and persistence contracts. General runner admission
+still lacks external assessed capability/signing evidence. Closed the next local
+prerequisite: the production controllers previously debited only model-call
+count, without binding the request, configured timeout or declared estimate.
+
+Added closed RequestIdentity/ModelCostPolicy/ModelDispatch contracts. Gateways
+validate configuration, serialize once and expose a safe pre-submission identity;
+the same bytes are sent as application/json. Controllers require an explicit
+model/endpoint-matching operator policy for a new call, reserve all three
+resources and metadata atomically in existing append-only intents, then recheck
+the version before HTTP submission. Migration 0013 adds bounded nullable JSONB
+metadata; historical unpriced intents cannot be upgraded into another call.
+Provider/output faults retain sticky intent and do not refund or retry.
+
+Exhaustion commits INCONCLUSIVE/BUDGET_EXHAUSTED and closes the lease without
+intent insertion or partial resource debit. Audit failure rolls the transaction
+back. Tests cover both triage and patch reservations, three exhausted resources,
+concurrent requests, restart/duplicate denial and policy mismatch. The mocked
+HTTP handler reads committed metadata and checks SHA256 against actual wire
+bytes; no fake transport result is presented as live provider acceptance.
+
+The first two pre-submission tests failed before implementation. Review also
+reproduced an oversized-response bug: triage buffered the full stream before
+checking its size. A failing streaming regression demonstrated continued reading
+past the limit; bounded incremental collection now stops immediately.
+
+Actual validation: focused DB/model dispatch run 17 passed, exit 0; initial
+full disposable-PostgreSQL suite 764 passed, exit 0. After streaming and missing
+policy regressions, final full run **765 passed, zero skipped**, one upstream
+AnyIO deprecation warning, 100.07 seconds, exit 0. Evidence:
+`evidence/m2-model-budget-final-postgres.xml`. The existing scripts.test_postgres
+harness used an in-memory local admin credential and removed its random
+task-owned DB/roles. Ruff check/format (145 files), strict mypy (77 core/script
+modules), Git diff checks and a targeted configured-credential-value scan
+(12 changed-module/evidence files) passed. Dependencies/UI were unchanged;
+vulnerability/UI/readiness gates were not rerun or claimed.
+
+No inference, sandbox submission, remote write, push, merge or deployment was
+performed. Existing live fixture evidence and pre-existing untracked files were
+preserved. Estimates are operator declarations rather than verified pricing;
+HTTPX timeout reservations are not absolute wall-clock enforcement. Production
+runner admission/dispatch, measured elapsed-time/usage reconciliation and full
+worker integration remain open. See inference-reservations.md for the internal
+caller contract and migration/rollback limits.
