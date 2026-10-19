@@ -87,3 +87,11 @@ atomically. Restart after an uncertain request cannot repeat inference. See
 triage-worker.md. Default startup remains offline with respect to inference.
 Baseline/candidate execution and the remaining graph are not implied by this
 handoff, and the production assessment/signing boundary above still applies.
+
+Signed delivery update (2026-10-19): baseline report bytes now persist atomically
+with their signed receipt under migration 0015. The internal receive_baseline
+and accept_retained_baseline paths deliver/recover those bytes into the existing
+authenticated reducer, including concurrent delivery and acceptance rollback.
+See baseline-delivery.md. This closes local delivery/restart plumbing, not the
+external collector's signing or independently observed runner facts. No new
+provider submission or automatic patch inference is enabled.

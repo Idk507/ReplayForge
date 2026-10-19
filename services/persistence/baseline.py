@@ -438,9 +438,9 @@ class BaselineJournal:
             )
             digest = hashlib.sha256(body).hexdigest()
             conn.execute(
-                """INSERT INTO baseline_receipts(execution_id,digest,payload)
-                VALUES (%s,%s,%s)""",
-                (execution_id, digest, body),
+                """INSERT INTO baseline_receipts
+                (execution_id,digest,payload,report_payload) VALUES (%s,%s,%s,%s)""",
+                (execution_id, digest, body, junit),
             )
             conn.execute(
                 """INSERT INTO baseline_action_events
@@ -449,6 +449,40 @@ class BaselineJournal:
                 (execution_id, run.version, run.trace_id, lease.worker_id),
             )
         return "sha256:" + digest
+
+    def report(self, execution_id: UUID, owner: UUID) -> bytes:
+        """Read private bounded report bytes bound to the retained signed digest.
+
+        Producers must redact before signing. No public route or event exposes
+        these bytes. Historical receipts without report bytes cannot be replayed
+        through this path; neither signature nor parsing checks are bypassed.
+        """
+        with self._store._connection() as conn:
+            row = conn.execute(
+                """SELECT s.payload,s.digest,s.report_payload FROM baseline_receipts s
+                JOIN baseline_actions a ON a.execution_id=s.execution_id
+                JOIN runs r ON r.id=a.run_id WHERE s.execution_id=%s AND r.owner_id=%s
+                AND s.expires_at>clock_timestamp()
+                AND a.expires_at>clock_timestamp()""",
+                (execution_id, owner),
+            ).fetchone()
+        if row is None:
+            raise StoreError("NOT_FOUND")
+        retained = _decode(row["payload"], row["digest"], RetainedReceipt)
+        body = row["report_payload"]
+        if body is None:
+            raise StoreError("BASELINE_REPORT_UNAVAILABLE")
+        if not isinstance(body, (bytes, bytearray, memoryview)):
+            raise StoreError("BASELINE_REPORT_INTEGRITY")
+        report = bytes(body)
+        if (
+            not 1 <= len(report) <= 131072
+            or retained.signed.payload.execution_id != execution_id
+            or retained.signed.payload.junit_ref
+            != "sha256:" + hashlib.sha256(report).hexdigest()
+        ):
+            raise StoreError("BASELINE_REPORT_INTEGRITY")
+        return report
 
     def receipt(self, execution_id: UUID, owner: UUID) -> RetainedReceipt:
         with self._store._connection() as conn:

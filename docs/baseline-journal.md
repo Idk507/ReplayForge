@@ -131,3 +131,14 @@ rollbacks.
 This adds no signing authority, cloud dispatch or capability waiver. Tests use
 ephemeral synthetic signing keys, including REMOTE_SERVICE-shaped contract
 inputs; they are explicitly not evidence that a production signer exists.
+
+## Durable report delivery
+
+Migration 0015 retains newly inspected JUnit bytes in baseline_receipts alongside
+the signed envelope, within the same receipt/audit transaction. The private
+owner-scoped report() read checks expiry, bounded bytes and the signed report
+digest. Legacy NULL reports remain unavailable rather than being fabricated.
+receive_baseline and accept_retained_baseline connect delivery/restart recovery
+to the existing reducer without new inference or execution. See
+baseline-delivery.md for recovery semantics, producer redaction requirements,
+rollback limits and the independently assessed collector boundary.
