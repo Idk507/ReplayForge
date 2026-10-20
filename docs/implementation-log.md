@@ -2294,3 +2294,44 @@ The harness removed its task-owned database and roles. Offline check_checkout
 still reports M2_FIXTURE_ACCEPTED with no execution/verification authority.
 M3 remains partial: durable verdict reduction, assessed producer deployment and
 live proof, physical retention, authentic research integration and UI remain open.
+
+### 2026-10-20 — Durable authenticated verdict reduction and private API
+
+Added migration 0017 and VerificationJournal. The reducer shares the existing
+checkpoint-bound evaluator inside its committing transaction: actual retained
+bytes, live lease, exact version, consent, context, signature and gate policy are
+checked again. Signed envelope plus computed verdict, hashed verification_ref,
+stage/version, STAGE_CHANGED event and job completion commit atomically. A final
+lease check rolls all writes back if expiry occurs during validation.
+
+Concurrent exact redelivery reconciles the historical committed state without
+another transition or retention extension. Conflicting delivery/configuration,
+changed checkpoint, expiry and corruption fail closed. The generic reducer still
+cannot manufacture VERIFIED, and no verdict-upload or PR authority was added.
+GET /api/v1/runs/{run_id}/verification exposes an owner-authenticated, no-store
+verdict and bounded gate matrix without signatures/raw reports. Runtime verdict
+records are SELECT/INSERT only. Read expiry is not physical erasure.
+
+Focused disposable PostgreSQL acceptance: **44 passed**, 845 deselected, zero
+skips, one upstream AnyIO warning, 43.86 seconds, exit 0
+(m3-verdict-focused.xml). It includes the existing 13 evaluation cases and 31
+journal/API cases: three outcomes, concurrent restart/idempotency, specific
+denials, audit rollback, expiry during commit, private reads, safe API and denied
+runtime mutation/deletion. Red captures for absent reducer/API are archived
+losslessly as m3-verdict-red.xml.gz and m3-verdict-api-red.xml.gz.
+
+Ruff lint/format (161 files), strict mypy (82 files), diff checks, scoped configured
+credential-value scans and offline M2_FIXTURE_ACCEPTED passed. Parent build is
+942e0c4 plus this change; full-suite result follows after completion. No dependency
+or frontend changes, production migration, remote write, inference, sandbox,
+push, merge or deployment occurred. Tests use tiny synthetic artifacts and
+ephemeral authority; no live verified repair or producer deployment is claimed.
+
+Full acceptance: `scripts.test_postgres --evidence-name m3-verdict-postgres.xml`
+with the authorized local password supplied only in memory and the subprocess
+ceiling increased from 180 to 300 seconds: **889 passed, zero skips**, one upstream
+AnyIO warning, 192.93 seconds, exit 0. No test filters or assertions were removed.
+The harness removed its task-owned database/roles. Final Ruff lint/format, strict
+mypy and scoped secret/diff checks passed. M2 fixture acceptance remains intact.
+M3 remains partial pending actual producer/runner integration, physical retention,
+authentic research integration, UI and live end-to-end acceptance.

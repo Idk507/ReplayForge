@@ -21,6 +21,10 @@ from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
 from services.persistence.evidence import EvidenceStore
 from services.persistence.store import Store, StoreError
+from services.persistence.verification import VerificationJournal
+from services.runner.receipts import canonical
+from services.verifier.authenticated import AuthenticatedVerdict
+from services.verifier.gates import GateEvidence
 from services.verifier.manifest import EvidenceManifest
 
 
@@ -40,6 +44,15 @@ class LocalAuth(BaseModel):
             if not 32 <= len(raw) <= 256 or not all(33 <= ord(c) <= 126 for c in raw):
                 raise ValueError("AUTH_TOKEN_INVALID")
         return value
+
+
+class VerificationSummary(BaseModel):
+    """Read-only verdict and gate matrix, without raw reports or signatures."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    verification_ref: ArtifactID
+    verdict: AuthenticatedVerdict
+    gates: tuple[GateEvidence, ...] = Field(min_length=1, max_length=8)
 
 
 class CreateRun(BaseModel):
@@ -207,6 +220,21 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
         run_id: UUID, payload: CancelRun, owner: Annotated[UUID, Depends(identity)]
     ) -> RunState:
         return store.cancel(run_id, owner, expected_version=payload.expected_version)
+
+    @app.get("/api/v1/runs/{run_id}/verification")
+    def verification(
+        run_id: UUID,
+        response: Response,
+        owner: Annotated[UUID, Depends(identity)],
+    ) -> VerificationSummary:
+        record = VerificationJournal(store).get(run_id, owner)
+        # The digest is already checked against the checkpoint by get().
+        response.headers["Cache-Control"] = "no-store"
+        return VerificationSummary(
+            verification_ref="sha256:" + hashlib.sha256(canonical(record)).hexdigest(),
+            verdict=record.verdict,
+            gates=record.signed.payload.gates,
+        )
 
     @app.get("/api/v1/runs/{run_id}/evidence/{manifest_ref}")
     def evidence_manifest(

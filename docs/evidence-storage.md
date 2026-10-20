@@ -52,6 +52,7 @@ Reapplying the migration re-establishes the same closed vocabulary.
 
 The gate verifier's context should bind the version after bundle retention.
 Storage does not authenticate a producer or decide whether raw observations
-prove a gate. Durable authenticated verdict reduction, producer deployment,
-actual runner capabilities, physical retention and M3 UI acceptance remain
-separate work. Tests use small synthetic content in a disposable local database.
+prove a gate. Durable authenticated verdict reduction is now implemented through
+the shared transaction boundary (verification-journal.md). Producer deployment,
+actual runner capabilities, physical retention and M3 UI acceptance remain open.
+Tests use small synthetic content in a disposable local database.

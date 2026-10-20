@@ -37,6 +37,9 @@ def store() -> Store:
             sql.SQL("GRANT SELECT,INSERT ON evidence_bundles TO {}").format(role)
         )
         conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON verification_results TO {}").format(role)
+        )
+        conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON source_manifests TO {}").format(role)
         )
         conn.execute(
