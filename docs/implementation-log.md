@@ -2202,3 +2202,66 @@ production_m2_complete=false. Production runner/signing, full graph and measured
 usage tasks stay open; their checkboxes were not promoted. Proceed to M3 trust
 and UI within the existing fixed-fixture contingency, showing actual statuses
 and limitations. Existing untracked user files remain untouched.
+
+## 2026-10-20 — M3 authenticated gates and private evidence API
+
+Resumed from f1b7acf with unfinished evidence-store work present in the index.
+Re-read operating contracts, architecture, instructions, milestones and tracker;
+inspected actual verifier, persistence and API behavior. Preserved the existing
+staged .env.example and m2-baseline-checkpoint-red.xml without including them in
+these commits. Implementation/evidence commit d62d607 completes the resumed
+storage/API slice; the earlier authenticated-gate increment is f1b7acf.
+
+Authenticated-gate review found the old five-gate unsigned evaluator could label
+caller-created evidence VERIFIED and omitted EXISTING_SUITE_PASS and
+SECURITY_GATE_PASS. Its positive preview is now GATES_SATISFIED without authority.
+The separate authenticated boundary checks an explicit trusted Ed25519 registry,
+dedicated purpose/policy, freshness, expected run/version/source/patch/test/image/
+configuration, actual manifest bytes, patch/test presence and distinct baseline,
+candidate and replay operation identities. Optional static-analysis failure cannot
+pass. No caller can waive mandatory gates. Tests use ephemeral synthetic producer
+keys; no live producer or operational verification is claimed. Initial red:
+24 failed, 3 passed. Focused checks: 34 passed before the configuration-mismatch
+addition. Full PostgreSQL run: 830 passed, zero skips, 136.08 seconds, exit 0,
+captured in m3-gates-postgres.xml. Ruff/type checks passed with that increment.
+
+Migration 0016 and EvidenceStore now retain canonical bounded private bundles
+with source/run identities, manifest and exact bytes. A live owner/lease/version,
+VERIFYING stage and current consent gate retention. Bundle/ref/version/event
+commit together; duplicate concurrent requests reconcile. Owner-scoped reads
+check expiry, hashes and complete decoded content, including arbitrary binary
+round trips. Runtime role privileges are SELECT/INSERT only. No artifact bytes
+are written to public run events. Default lifetime is fixed 24-hour read expiry.
+This does not implement physical purge or deployed encryption/backup retention.
+
+The first focused run exposed four failures from the database event allowlist:
+EVIDENCE_RETAINED had not been migrated. Added that event explicitly to the
+closed vocabulary. Partial downgrade keeps the additive vocabulary valid for
+existing immutable audit records while dropping the evidence table. Full
+downgrade/reapply passes in the disposable harness. Initial absent-module red
+had eight failures; the corrected storage checks passed eight tests.
+
+Added authenticated loopback-only GET manifest and attachment endpoints. Metadata
+contains names/hashes/sizes rather than bytes/paths. Downloads use octet-stream,
+attachment, nosniff and no-store. Owner/auth/expiry/integrity checks apply to both
+routes; unknown artifacts return 404. Four API tests failed before the routes
+existed (two negative 404 cases already passed). The final focused run passed
+15 storage/API cases. Expired content cannot be resubmitted to refresh lifetime;
+audit failure rolls back, and the runtime cannot UPDATE/DELETE retained rows.
+
+Final command: scripts.test_postgres --evidence-name
+m3-evidence-store-postgres.xml, with authorized local PostgreSQL credentials
+supplied only in memory: **845 passed, zero skipped**, one existing upstream
+AnyIO warning, 164.43 seconds, exit 0. The harness removed its task-owned DB/roles.
+Ruff check and format --check (157 files), strict mypy (81 files), scoped staged
+diff checks and configured-secret-value scanning of ten changed files/evidence
+artifacts passed. Red XML captures were archived losslessly. No dependencies
+changed and no frontend was implemented; broader readiness is not asserted.
+
+check_checkout still returns M2_FIXTURE_ACCEPTED, exit 0, with no execution or
+verification authority. No model, sandbox, remote-write, push, merge or deployment
+call occurred. M3 stays partial: producer/signing deployment, raw runtime proof,
+durable authenticated verdict reduction, physical retention and UI acceptance
+remain open. The next integration must reverify under the current checkpoint and
+scope; neither stored hashes nor caller-supplied verdict objects may open a
+privileged stage. See verification-gates.md and evidence-storage.md for contracts.

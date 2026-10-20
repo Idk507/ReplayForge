@@ -136,12 +136,19 @@ general dispatch, worker integration and measured usage reconciliation remain op
 
 ## M3 — Oct 21–23: Verification and experience
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
-- [ ] Implement mandatory deterministic gate evaluator. Acceptance: fabricated model claim cannot set VERIFIED.
-- [ ] Manifest hashing, artifact access control and retention. Acceptance: tampering fails verification.
+- [~] Mandatory deterministic gate evaluator: authenticated core `f1b7acf` now requires seven architecture gates, signed run/source/patch/test/image/configuration context, intact manifest bytes and independent baseline/candidate/replay identities. Unsigned records return GATES_SATISFIED with no authority. Forgery/tamper/context/omission negatives passed within 830 tests (`m3-gates-postgres.xml`). Live producer deployment and durable verdict reduction remain pending; no live VERIFIED result is claimed. See `docs/verification-gates.md`.
+- [~] Manifest hashing, artifact access control and retention: `d62d607` adds atomic private bundles, owner/lease/version/consent checks, integrity-checked restart reads, authenticated manifest/download endpoints and fixed 24-hour read expiry. Final 845 tests passed with zero skips (`m3-evidence-store-postgres.xml`); runtime mutation/deletion and unauthorized/expired/tampered downloads are denied. Physical purge, backup retention, encryption-at-rest deployment and full M3 integration remain pending. See `docs/evidence-storage.md`.
 - [ ] Tavily documentation retrieval in at least one authentic agent path. Acceptance: retrieved citations appear in investigation timeline.
 - [ ] Next.js dashboard, intake, run timeline, diff and evidence matrix. Acceptance: real run displayed without fake statuses.
 - [ ] SSE reconnect and accessible errors. Acceptance: disconnect/reconnect retains sequence.
 **Gate:** judge can inspect a complete verified or rejected outcome in UI.
+
+M3 local validation update (2026-10-20): Ruff lint/format (157 files), strict
+mypy (81 files), targeted credential-value scans and Git diff checks passed.
+The full disposable-PostgreSQL suite passed 845 tests in 164.43 seconds, exit 0,
+with one upstream AnyIO warning. M2 fixture acceptance remains intact. No cloud
+calls or remote writes occurred; production VERIFIED, UI and PR authority are
+not implied by these primitives.
 
 ## M4 — Oct 24–26: External write and benchmark
 - [ ] Approval bound to immutable patch digest and reviewer authorization. Acceptance: changed patch invalidates approval.
