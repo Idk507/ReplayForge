@@ -64,6 +64,7 @@ class RunState(BaseModel):
     patch_attempt_refs: tuple[ArtifactID, ...] = Field(default=(), max_length=3)
     verification_ref: ArtifactID | None = None
     evidence_manifest_ref: ArtifactID | None = None
+    research_refs: tuple[ArtifactID, ...] = Field(default=(), max_length=2)
     cancellation_requested: bool = Field(default=False, strict=True)
     remaining_budget: Budget = Field(default_factory=Budget)
     failure_reason: (

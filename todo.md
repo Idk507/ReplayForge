@@ -136,12 +136,38 @@ general dispatch, worker integration and measured usage reconciliation remain op
 
 ## M3 — Oct 21–23: Verification and experience
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
-- [ ] Implement mandatory deterministic gate evaluator. Acceptance: fabricated model claim cannot set VERIFIED.
-- [ ] Manifest hashing, artifact access control and retention. Acceptance: tampering fails verification.
+- [~] Mandatory deterministic gate evaluator: authenticated core `f1b7acf` now requires seven architecture gates, signed run/source/patch/test/image/configuration context, intact manifest bytes and independent baseline/candidate/replay identities. Unsigned records return GATES_SATISFIED with no authority. Forgery/tamper/context/omission negatives passed within 830 tests (`m3-gates-postgres.xml`). Live producer deployment and live end-to-end acceptance remain pending; no live VERIFIED result is claimed. See `docs/verification-gates.md`.
+- [~] Manifest hashing, artifact access control and retention: `d62d607` adds atomic private bundles, owner/lease/version/consent checks, integrity-checked restart reads, authenticated manifest/download endpoints and fixed 24-hour read expiry. Final 845 tests passed with zero skips (`m3-evidence-store-postgres.xml`); runtime mutation/deletion and unauthorized/expired/tampered downloads are denied. Physical purge, backup retention, encryption-at-rest deployment and full M3 integration remain pending. See `docs/evidence-storage.md`.
+  Checkpoint-bound evaluation now reloads private artifact bytes under current
+  owner, worker fence, version, stage and consent checks; expected context comes
+  from the checkpoint plus trusted operator image/configuration. Thirteen small
+  synthetic PostgreSQL cases passed (`m3-evidence-evaluation-focused.xml`), including
+  forged signatures, changed patch/test identities and expired/tampered evidence.
+  Standalone evaluation leaves checkpoint/events unchanged; durable acceptance is recorded below.
+  Full regression: **858 passed, zero skips**, one upstream warning, 171.81s,
+  exit 0 (`m3-evidence-evaluation-postgres.xml`); Ruff lint/format and strict mypy passed.
+- [x] Durable authenticated verdict journal and private read API: migration 0017,
+  signature/actual-byte revalidation inside the committing transaction, exact
+  owner/lease/version/consent binding, hashed private verdict, atomic checkpoint/
+  event/job completion and restart-safe exact duplicate reconciliation. Focused
+  acceptance: **44 passed**, zero skips, exit 0 (m3-verdict-focused.xml), including
+  31 journal/API scenarios and 13 existing evaluation cases. Runtime update/delete,
+  forged/stale evidence, wrong owner and rollback/lease expiry are covered. No live
+  producer or VERIFIED repair is claimed; see docs/verification-journal.md.
+  Full disposable-PostgreSQL regression: **889 passed, zero skips**, one upstream
+  warning, 192.93s, exit 0 (`m3-verdict-postgres.xml`); Ruff lint/format (161 files),
+  strict mypy (82 files), scoped secret and diff checks passed. No cloud use.
 - [ ] Tavily documentation retrieval in at least one authentic agent path. Acceptance: retrieved citations appear in investigation timeline.
 - [ ] Next.js dashboard, intake, run timeline, diff and evidence matrix. Acceptance: real run displayed without fake statuses.
 - [ ] SSE reconnect and accessible errors. Acceptance: disconnect/reconnect retains sequence.
 **Gate:** judge can inspect a complete verified or rejected outcome in UI.
+
+M3 local validation update (2026-10-20): Ruff lint/format (157 files), strict
+mypy (81 files), targeted credential-value scans and Git diff checks passed.
+The full disposable-PostgreSQL suite passed 845 tests in 164.43 seconds, exit 0,
+with one upstream AnyIO warning. M2 fixture acceptance remains intact. No cloud
+calls or remote writes occurred; production VERIFIED, UI and PR authority are
+not implied by these primitives.
 
 ## M4 — Oct 24–26: External write and benchmark
 - [ ] Approval bound to immutable patch digest and reviewer authorization. Acceptance: changed patch invalidates approval.

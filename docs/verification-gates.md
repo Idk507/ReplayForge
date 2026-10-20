@@ -56,13 +56,31 @@ replace runner capability admission or establish OCI/configuration facts itself.
 Do not give this signing key to models or untrusted sandbox workloads.
 
 The returned object is an internal calculation, not an approval token. Its
-can_authorize_publication is always false. No API route, checkpoint mutation,
-PR publication, remote request or execution is enabled. Future durable ingestion
-must call this verifier under current owner/lease/version/consent checks, not
-accept a serialized verdict from a caller. Signing deployment, artifact storage
-ACL/retention, durable verdict ingestion and live end-to-end M3 acceptance remain
-unfinished. The unsigned M2 fixture observations cannot be promoted to VERIFIED.
+can_authorize_publication is always false. The evaluator itself performs no
+checkpoint mutation, PR publication, remote request or execution. The dedicated
+durable boundary now reauthenticates under owner/lease/version/consent checks;
+see verification-journal.md. Signing deployment, production artifact ACL/retention
+and live end-to-end M3 acceptance remain unfinished. Unsigned M2 fixture
+observations cannot be promoted to VERIFIED.
 
 Tests use small synthetic artifact bytes and ephemeral signing authority,
 including REMOTE_SERVICE-shaped fixtures to exercise the successful contract.
 They do not demonstrate a live producer, runner assessment or verified repair.
+
+## Checkpoint-bound evaluation
+
+`EvidenceStore.evaluate` now loads the current private bundle under a live worker
+fence and owner/version/stage/consent checks. It constructs expected run, source,
+latest patch, reproduction artifact and manifest identities from the checkpoint;
+the envelope cannot select these values. Image and configuration digests and
+public keys must come from trusted operator configuration. Freshness uses the
+database clock. Retained bytes are decoded and hashed again before evaluation.
+
+This method performs no checkpoint/event mutation and exposes no API endpoint.
+Its returned calculation must not be accepted later as a serialized authority:
+the durable reducer authenticates again in its own transaction before saving
+a verdict. A reproduction reference means the retained reproduction artifact,
+not merely its raw test source. Baseline reference presence is required here;
+the producer remains responsible for authenticating the actual baseline report
+and intended failure. No deployment or live producer is proven by synthetic
+signed fixtures.

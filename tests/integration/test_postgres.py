@@ -23,8 +23,7 @@ from services.api.app import LocalAuth, create_app
 from services.persistence.store import Store, StoreError
 
 
-@pytest.fixture(scope="module")
-def store() -> Store:
+def prepare_store() -> Store:
     dsn = os.environ.get("REPLAYFORGE_TEST_DATABASE_URL")
     if not dsn:
         pytest.skip("requires isolated PostgreSQL test database")
@@ -33,6 +32,17 @@ def store() -> Store:
         role = sql.Identifier(os.environ["REPLAYFORGE_TEST_ROLE"])
         conn.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
         conn.execute(sql.SQL("GRANT SELECT ON repository_grants TO {}").format(role))
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON evidence_bundles TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON verification_results TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON research_intents,research_reports TO {}"
+            ).format(role)
+        )
         conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON source_manifests TO {}").format(role)
         )
@@ -68,6 +78,11 @@ def store() -> Store:
             ).format(role)
         )
     return Store(dsn)
+
+
+@pytest.fixture(scope="module")
+def store() -> Store:
+    return prepare_store()
 
 
 def reproduction_setup(store: Store):

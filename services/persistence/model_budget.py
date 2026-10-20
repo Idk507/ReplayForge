@@ -70,6 +70,25 @@ def debit_baseline(
     )
 
 
+def debit_research(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    estimate_microusd: int,
+) -> Budget:
+    """Reserve one search, its bounded request time and operator estimate."""
+    return _debit(
+        store,
+        conn,
+        run,
+        (
+            ("research_searches", 1),
+            ("execution_seconds", 25),
+            ("estimated_spend_microusd", estimate_microusd),
+        ),
+    )
+
+
 def _debit(
     store: Store,
     conn: psycopg.Connection[dict[str, object]],

@@ -1,0 +1,31 @@
+{
+  "name": "replayforge-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/next.mjs dev",
+    "build": "node scripts/next.mjs build",
+    "start": "node scripts/next.mjs start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "typescript": "5.9.3",
+    "@eslint/js": "9.39.5",
+    "typescript-eslint": "8.72.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-jsx-a11y": "6.10.2"
+  }
+}

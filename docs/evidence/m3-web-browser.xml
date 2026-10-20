@@ -1,0 +1,16 @@
+<testsuites id="" name="" tests="6" failures="0" skipped="0" errors="0" time="22.219814000000003">
+<testsuite name="workbench.spec.ts" timestamp="2026-10-20T14:07:02.642Z" hostname="" tests="6" failures="0" skipped="0" time="17.388" errors="0">
+<testcase name="bridge rejects foreign origin, host, path and malformed query before network" classname="workbench.spec.ts" time="0.023">
+</testcase>
+<testcase name="SSE cursor ignores replayed IDs and rejects ID/body mismatch" classname="workbench.spec.ts" time="0.015">
+</testcase>
+<testcase name="synthetic contract: reconnect preserves cursor, missing gates stay missing, mobile has no overflow" classname="workbench.spec.ts" time="13.362">
+</testcase>
+<testcase name="synthetic contract: provider failure has a readable retry state" classname="workbench.spec.ts" time="0.72">
+</testcase>
+<testcase name="real local API: create, inspect persisted events, cancel and reload" classname="workbench.spec.ts" time="2.356">
+</testcase>
+<testcase name="synthetic contract: rejected gate, inert diff and hash-checked artifact preview" classname="workbench.spec.ts" time="0.912">
+</testcase>
+</testsuite>
+</testsuites>
