@@ -548,6 +548,16 @@ class Store:
                 raise StoreError("INCIDENT_INTEGRITY")
             return report
 
+    def recent(self, owner: UUID) -> tuple[RunState, ...]:
+        """Latest thirty owner-scoped checkpoints; bounded dashboard discovery."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT checkpoint FROM runs WHERE owner_id=%s "
+                "ORDER BY created_at DESC,id DESC LIMIT 30",
+                (owner,),
+            ).fetchall()
+            return tuple(RunState.model_validate(row["checkpoint"]) for row in rows)
+
     def get(self, run_id: UUID, owner: UUID) -> RunState:
         """Owner-scoped reads conceal another owner's existence."""
         with self._connection() as conn:

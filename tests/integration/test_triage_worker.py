@@ -3,14 +3,14 @@
 import os
 from dataclasses import replace
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
-from packages.contracts.run import Stage
+from packages.contracts.run import RunState, Stage
 from packages.contracts.source import SourceFile, SourceManifest
 from packages.providers.nebius import NebiusConfig, ProbeError
 from services.orchestrator.collection import CollectionInputs, run_collection
@@ -24,7 +24,7 @@ from tests.unit.test_triage_gateway import response_for_any_context
 store = test_postgres.store
 
 
-def handoff(store):
+def handoff(store: Store) -> tuple[UUID, RunState, RunState]:
     owner, state, lease, snapshot = collection_fixture(store)
     grant = store.repository(state.repository_id, owner)
     grant = grant.model_copy(update={"approved_paths": ("src/", "tests/")})

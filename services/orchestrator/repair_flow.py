@@ -12,6 +12,7 @@ from packages.contracts.run import RunState, Stage
 from packages.providers.nebius import NebiusConfig, ProbeError
 from packages.providers.patch import request_patch
 from packages.providers.triage import request_triage
+from services.orchestrator.research import ResearchBroker
 from services.persistence.baseline import BaselineJournal
 from services.persistence.patch import PatchJournal
 from services.persistence.reproduction import ReproductionJournal
@@ -208,6 +209,12 @@ def run_triage(
         if bundle.source_commit != run.source_commit:
             raise StoreError("TRIAGE_CONTEXT_BINDING")
         context[f"context_{index}"] = bundle.model_dump_json()
+    if run.research_refs:
+        reports = ResearchBroker(store).reports(run.run_id, owner)
+        if len(reports) != len(run.research_refs):
+            raise StoreError("TRIAGE_RESEARCH_UNAVAILABLE")
+        for index, report in enumerate(reports):
+            context[f"untrusted_documentation_{index}"] = report.model_dump_json()
     # Match the gateway's byte/count bounds before reserving a paid attempt.
     if (
         not context

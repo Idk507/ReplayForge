@@ -19,7 +19,9 @@ from packages.contracts.source import SourceManifest
 from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
+from services.orchestrator.research import ResearchBroker, RetainedResearch
 from services.persistence.evidence import EvidenceStore
+from services.persistence.patch import PatchJournal, RetainedPatch
 from services.persistence.store import Store, StoreError
 from services.persistence.verification import VerificationJournal
 from services.runner.receipts import canonical
@@ -204,6 +206,21 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
         return store.create(
             state, owner, payload.idempotency_key, digest, incident=report
         )
+
+    @app.get("/api/v1/runs")
+    def recent(owner: Annotated[UUID, Depends(identity)]) -> tuple[RunState, ...]:
+        return store.recent(owner)
+
+    @app.get("/api/v1/runs/{run_id}/research")
+    def research(
+        run_id: UUID, response: Response, owner: Annotated[UUID, Depends(identity)]
+    ) -> tuple[RetainedResearch, ...]:
+        response.headers["Cache-Control"] = "no-store"
+        return ResearchBroker(store).reports(run_id, owner)
+
+    @app.get("/api/v1/runs/{run_id}/patch")
+    def patch(run_id: UUID, owner: Annotated[UUID, Depends(identity)]) -> RetainedPatch:
+        return PatchJournal(store).get(run_id, owner)
 
     @app.get("/api/v1/runs/{run_id}")
     def get(run_id: UUID, owner: Annotated[UUID, Depends(identity)]) -> RunState:

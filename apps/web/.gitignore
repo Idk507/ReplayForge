@@ -1,0 +1,6 @@
+node_modules/
+node_modules-incomplete/
+.next/
+test-results/
+playwright-report/
+*.tsbuildinfo

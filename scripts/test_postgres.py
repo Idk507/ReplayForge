@@ -18,6 +18,11 @@ def main() -> int:
     """Create only random task-owned resources; drop them even on test failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-name", default="m1-postgres-tests.xml")
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Run real local API/browser acceptance in the disposable DB",
+    )
     args = parser.parse_args()
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}\.xml", args.evidence_name):
         parser.error("evidence-name must be a simple lowercase XML filename")
@@ -67,14 +72,19 @@ def main() -> int:
                         f"@127.0.0.1:5432/{database}"
                     )
                     env["REPLAYFORGE_TEST_ROLE"] = runtime_role
-                    result = subprocess.run(
-                        [
+                    child = (
+                        [sys.executable, "-m", "scripts.test_web_acceptance"]
+                        if args.web
+                        else [
                             sys.executable,
                             "-m",
                             "pytest",
                             "-q",
                             f"--junitxml=docs/evidence/{args.evidence_name}",
-                        ],
+                        ]
+                    )
+                    result = subprocess.run(
+                        child,
                         env=env,
                         timeout=180,
                         check=False,

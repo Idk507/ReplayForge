@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="6" time="6.916" timestamp="2026-10-19T10:20:29.251765+05:30" hostname="dhanu"><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[remote]" time="0.805"><failure message="AttributeError: 'BaselineJournal' object has no attribute 'accept'">store = &lt;services.persistence.store.Store object at 0x000001639DC764B0&gt;
+case = 'remote'
+
+    @pytest.mark.parametrize("case", ["remote", "test_origin", "wrong_report", "unreserved", "cancelled", "wrong_owner"])
+    def test_baseline_checkpoint_requires_authenticated_reserved_failure(store: Store, case: str) -&gt; None:
+        """Synthetic signing authority tests reducer contracts, not live attestation."""
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from services.runner.receipts import ReceiptVerifier, canonical
+    
+        journal, lease, owner, run, action, signed, xml, _ = baseline_journal_fixture(store)
+        key = Ed25519PrivateKey.generate()
+        origin = "TEST_TRANSPORT" if case == "test_origin" else "REMOTE_SERVICE"
+        signed = signed.model_copy(update={"payload": signed.payload.model_copy(update={"origin": origin})})
+        signed = signed.model_copy(update={"signature": key.sign(canonical(signed, unsigned=True)).hex()})
+        verifier = ReceiptVerifier({"test": key.public_key()}, origin=origin)
+        journal.record_action(lease, owner, action, expected_version=0)
+        version = 0 if case == "unreserved" else journal.reserve_dispatch(lease, owner, action.execution_id, expected_version=0)
+        ref = journal.retain(lease, owner, action.execution_id, signed, xml, verifier, expected_version=version)
+        if case == "cancelled":
+            store.cancel(run.run_id, owner, expected_version=version)
+        if case != "remote":
+            with pytest.raises(Exception):
+                journal.accept(lease, uuid4() if case == "wrong_owner" else owner, action.execution_id, b"invalid" if case == "wrong_report" else xml, verifier, expected_version=version)
+            assert store.get(run.run_id, owner).current_stage != Stage.PATCHING
+            return
+&gt;       updated = journal.accept(lease, owner, action.execution_id, xml, verifier, expected_version=version)
+                  ^^^^^^^^^^^^^^
+E       AttributeError: 'BaselineJournal' object has no attribute 'accept'
+
+tests\integration\test_postgres.py:1967: AttributeError</failure></testcase><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[test_origin]" time="0.783" /><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[wrong_report]" time="0.829" /><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[unreserved]" time="0.555" /><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[cancelled]" time="0.802" /><testcase classname="tests.integration.test_postgres" name="test_baseline_checkpoint_requires_authenticated_reserved_failure[wrong_owner]" time="0.657" /></testsuite></testsuites>
