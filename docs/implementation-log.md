@@ -2265,3 +2265,32 @@ durable authenticated verdict reduction, physical retention and UI acceptance
 remain open. The next integration must reverify under the current checkpoint and
 scope; neither stored hashes nor caller-supplied verdict objects may open a
 privileged stage. See verification-gates.md and evidence-storage.md for contracts.
+
+### 2026-10-20 — Checkpoint-bound gate evaluation
+
+Added EvidenceStore.evaluate: reload current owner-scoped checkpoint, validate
+worker fence/version/stage/consent, decode the current retained manifest and
+actual bytes, derive run/source/latest-patch/reproduction identities from state,
+and authenticate gates using operator image/configuration and database time.
+No external request, state transition, publication authority or API write route
+is introduced. Baseline authenticity remains a producer responsibility; this
+adapter requires its reference but does not reinterpret raw runner reports.
+
+Thirteen tiny synthetic PostgreSQL cases passed in 15.13 seconds, exit 0, with
+one upstream AnyIO warning (m3-evidence-evaluation-focused.xml). Negative cases
+assert specific denial codes, preventing an unrelated early denial from masking
+an untested branch. Successful and denied evaluations leave state and events
+unchanged. Initial test harness mistakes (Store.get name and absent synthetic
+baseline ref) were corrected before recording acceptance. Ruff lint/format
+(158 files), strict mypy (81 files), scoped secret-value scanning and diff checks
+passed. No dependencies changed. Full-suite evidence is recorded separately
+after completion. Existing staged user files were preserved.
+
+Full disposable PostgreSQL acceptance: **858 passed, zero skips**, one upstream
+warning, 171.81 seconds, exit 0 (m3-evidence-evaluation-postgres.xml), based on
+parent c59e535 plus this change. The in-memory test invocation allowed 300 seconds
+instead of the harness default 180; no test selection or assertions were removed.
+The harness removed its task-owned database and roles. Offline check_checkout
+still reports M2_FIXTURE_ACCEPTED with no execution/verification authority.
+M3 remains partial: durable verdict reduction, assessed producer deployment and
+live proof, physical retention, authentic research integration and UI remain open.

@@ -66,3 +66,21 @@ unfinished. The unsigned M2 fixture observations cannot be promoted to VERIFIED.
 Tests use small synthetic artifact bytes and ephemeral signing authority,
 including REMOTE_SERVICE-shaped fixtures to exercise the successful contract.
 They do not demonstrate a live producer, runner assessment or verified repair.
+
+## Checkpoint-bound evaluation
+
+`EvidenceStore.evaluate` now loads the current private bundle under a live worker
+fence and owner/version/stage/consent checks. It constructs expected run, source,
+latest patch, reproduction artifact and manifest identities from the checkpoint;
+the envelope cannot select these values. Image and configuration digests and
+public keys must come from trusted operator configuration. Freshness uses the
+database clock. Retained bytes are decoded and hashed again before evaluation.
+
+This method performs no checkpoint/event mutation and exposes no API endpoint.
+Its returned calculation must not be accepted later as a serialized authority:
+a future reducer must authenticate again in its own transaction before saving
+a verdict. A reproduction reference means the retained reproduction artifact,
+not merely its raw test source. Baseline reference presence is required here;
+the producer remains responsible for authenticating the actual baseline report
+and intended failure. No deployment or live producer is proven by synthetic
+signed fixtures.

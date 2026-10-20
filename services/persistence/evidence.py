@@ -4,6 +4,7 @@ import base64
 import binascii
 import hashlib
 import re
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -15,6 +16,12 @@ from packages.contracts.run import CommitSHA, RunState, Stage
 from packages.policies.repository import admit
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.receipts import canonical
+from services.verifier.authenticated import (
+    AuthenticatedVerdict,
+    GateContext,
+    GateVerifier,
+    SignedGates,
+)
 from services.verifier.manifest import (
     ArtifactInput,
     EvidenceManifest,
@@ -76,6 +83,93 @@ class EvidenceStore:
 
     def __init__(self, store: Store) -> None:
         self._store = store
+
+    def evaluate(
+        self,
+        lease: Lease,
+        owner: UUID,
+        signed: SignedGates,
+        verifier: GateVerifier,
+        *,
+        image_digest: str,
+        configuration_ref: str,
+        expected_version: int,
+    ) -> AuthenticatedVerdict:
+        """Authenticate gates against a fenced current checkpoint, without writes.
+
+        Image/configuration identities and verifier keys are trusted operator
+        configuration, never fields selected by a model or received envelope.
+        This result is an evaluation, not a durable stage transition or approval.
+        """
+        lease = Lease.model_validate(lease.model_dump())
+        with self._store._connection() as conn:
+            row = conn.execute(
+                "SELECT checkpoint FROM runs WHERE id=%s AND owner_id=%s FOR UPDATE",
+                (lease.run_id, owner),
+            ).fetchone()
+            job = conn.execute(
+                "SELECT run_id FROM job_leases WHERE run_id=%s AND worker_id=%s "
+                "AND token=%s AND status='leased' "
+                "AND leased_until>clock_timestamp() FOR UPDATE",
+                (lease.run_id, lease.worker_id, lease.token),
+            ).fetchone()
+            if row is None or job is None:
+                raise StoreError("LEASE_LOST")
+            run = RunState.model_validate(row["checkpoint"])
+            if type(expected_version) is not int or run.version != expected_version:
+                raise StoreError("STALE_VERSION")
+            if (
+                run.current_stage != Stage.VERIFYING
+                or run.cancellation_requested
+                or not run.patch_attempt_refs
+                or run.reproduction_test_ref is None
+                or run.baseline_result_ref is None
+                or run.evidence_manifest_ref is None
+            ):
+                raise StoreError("EVIDENCE_STAGE_DENIED")
+            consent = conn.execute(
+                "SELECT grant_json FROM repository_grants WHERE id=%s AND owner_id=%s",
+                (run.repository_id, owner),
+            ).fetchone()
+            if (
+                consent is None
+                or not admit(
+                    RepositoryGrant.model_validate(consent["grant_json"]),
+                    owner,
+                    run.repository_id,
+                    run.source_commit,
+                ).allowed
+            ):
+                raise StoreError("EVIDENCE_SCOPE_DENIED")
+            stored = conn.execute(
+                "SELECT payload,payload_digest,manifest_digest FROM evidence_bundles "
+                "WHERE run_id=%s AND manifest_digest=%s "
+                "AND expires_at>clock_timestamp()",
+                (run.run_id, run.evidence_manifest_ref[7:]),
+            ).fetchone()
+            if stored is None:
+                raise StoreError("NOT_FOUND")
+            bundle, artifacts = _decode(stored)
+            if bundle.run_id != run.run_id or bundle.source_commit != run.source_commit:
+                raise StoreError("EVIDENCE_INTEGRITY")
+            expected = GateContext(
+                run_id=run.run_id,
+                repository_id=run.repository_id,
+                run_version=run.version,
+                source_commit=run.source_commit,
+                patch_ref=run.patch_attempt_refs[-1],
+                image_digest=image_digest,
+                configuration_ref=configuration_ref,
+                test_ref=run.reproduction_test_ref,
+                workspace_sha256=bundle.manifest.workspace_sha256,
+                manifest_ref=run.evidence_manifest_ref,
+            )
+            clock = conn.execute("SELECT clock_timestamp() AS now").fetchone()
+            if clock is None or not isinstance(clock["now"], datetime):
+                raise StoreError("EVIDENCE_CLOCK_INVALID")
+            return verifier.verify(
+                signed, expected, bundle.manifest, artifacts, now=clock["now"]
+            )
 
     def retain(
         self,

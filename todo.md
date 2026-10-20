@@ -138,6 +138,14 @@ general dispatch, worker integration and measured usage reconciliation remain op
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
 - [~] Mandatory deterministic gate evaluator: authenticated core `f1b7acf` now requires seven architecture gates, signed run/source/patch/test/image/configuration context, intact manifest bytes and independent baseline/candidate/replay identities. Unsigned records return GATES_SATISFIED with no authority. Forgery/tamper/context/omission negatives passed within 830 tests (`m3-gates-postgres.xml`). Live producer deployment and durable verdict reduction remain pending; no live VERIFIED result is claimed. See `docs/verification-gates.md`.
 - [~] Manifest hashing, artifact access control and retention: `d62d607` adds atomic private bundles, owner/lease/version/consent checks, integrity-checked restart reads, authenticated manifest/download endpoints and fixed 24-hour read expiry. Final 845 tests passed with zero skips (`m3-evidence-store-postgres.xml`); runtime mutation/deletion and unauthorized/expired/tampered downloads are denied. Physical purge, backup retention, encryption-at-rest deployment and full M3 integration remain pending. See `docs/evidence-storage.md`.
+  Checkpoint-bound evaluation now reloads private artifact bytes under current
+  owner, worker fence, version, stage and consent checks; expected context comes
+  from the checkpoint plus trusted operator image/configuration. Thirteen small
+  synthetic PostgreSQL cases passed (`m3-evidence-evaluation-focused.xml`), including
+  forged signatures, changed patch/test identities and expired/tampered evidence.
+  Evaluation leaves checkpoint/events unchanged; durable verdict reduction remains open.
+  Full regression: **858 passed, zero skips**, one upstream warning, 171.81s,
+  exit 0 (`m3-evidence-evaluation-postgres.xml`); Ruff lint/format and strict mypy passed.
 - [ ] Tavily documentation retrieval in at least one authentic agent path. Acceptance: retrieved citations appear in investigation timeline.
 - [ ] Next.js dashboard, intake, run timeline, diff and evidence matrix. Acceptance: real run displayed without fake statuses.
 - [ ] SSE reconnect and accessible errors. Acceptance: disconnect/reconnect retains sequence.
