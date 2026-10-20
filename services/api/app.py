@@ -9,7 +9,7 @@ from uuid import UUID, uuid4, uuid5
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -19,7 +19,9 @@ from packages.contracts.source import SourceManifest
 from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
+from services.persistence.evidence import EvidenceStore
 from services.persistence.store import Store, StoreError
+from services.verifier.manifest import EvidenceManifest
 
 
 class LocalAuth(BaseModel):
@@ -205,6 +207,45 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
         run_id: UUID, payload: CancelRun, owner: Annotated[UUID, Depends(identity)]
     ) -> RunState:
         return store.cancel(run_id, owner, expected_version=payload.expected_version)
+
+    @app.get("/api/v1/runs/{run_id}/evidence/{manifest_ref}")
+    def evidence_manifest(
+        run_id: UUID,
+        manifest_ref: ArtifactID,
+        response: Response,
+        owner: Annotated[UUID, Depends(identity)],
+    ) -> EvidenceManifest:
+        manifest, _ = EvidenceStore(store).read(run_id, owner, manifest_ref)
+        response.headers["Cache-Control"] = "no-store"
+        return manifest
+
+    @app.get("/api/v1/runs/{run_id}/evidence/{manifest_ref}/artifacts/{artifact_id}")
+    def evidence_artifact(
+        run_id: UUID,
+        manifest_ref: ArtifactID,
+        artifact_id: ArtifactID,
+        owner: Annotated[UUID, Depends(identity)],
+    ) -> Response:
+        manifest, artifacts = EvidenceStore(store).read(run_id, owner, manifest_ref)
+        names = {
+            entry.name for entry in manifest.entries if entry.artifact_id == artifact_id
+        }
+        for artifact in artifacts:
+            if artifact.name in names:
+                # Names are constrained to a short ASCII token; never paths or
+                # user-controlled MIME types. Binary/HTML always downloads inertly.
+                return Response(
+                    content=artifact.content,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Cache-Control": "no-store",
+                        "X-Content-Type-Options": "nosniff",
+                        "Content-Disposition": (
+                            f'attachment; filename="{artifact.name}"'
+                        ),
+                    },
+                )
+        raise HTTPException(404, "NOT_FOUND")
 
     @app.get("/api/v1/runs/{run_id}/source-manifests/{artifact_id}")
     def source_manifest(
