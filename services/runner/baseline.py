@@ -64,7 +64,7 @@ def _metadata(element: ET.Element) -> None:
         raise ReportInvalid
 
 
-def _cases(root: ET.Element) -> list[ET.Element]:
+def junit_cases(root: ET.Element) -> list[ET.Element]:
     """Accept flat pytest suites, require exact declared/observed outcome counts."""
     stack = [(root, 0)]
     nodes = 0
@@ -190,7 +190,7 @@ def inspect_baseline(
     except (UnicodeError, ET.ParseError, ValueError):
         return result("INCONCLUSIVE", "INVALID_XML")
     try:
-        cases = _cases(root)
+        cases = junit_cases(root)
     except ReportInvalid:
         return result("INVALID_REPRODUCTION", "REPORT_SCHEMA")
     target_class = plan.request.reproduction_path[:-3].replace("/", ".")

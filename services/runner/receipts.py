@@ -8,6 +8,7 @@ from datetime import datetime
 from types import MappingProxyType
 from typing import Literal
 from uuid import UUID
+from xml.etree import ElementTree as ET
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -18,7 +19,9 @@ from packages.contracts.run import ArtifactID
 from services.runner.baseline import (
     BaselineInspection,
     FailureExpectation,
+    ReportInvalid,
     inspect_baseline,
+    junit_cases,
 )
 
 
@@ -45,15 +48,26 @@ class ExecutionReceipt(BaseModel):
     signal: int | None = Field(default=None, strict=True, ge=1, le=255)
 
 
-class SignedReceipt(BaseModel):
+class ReceiptEnvelope(BaseModel):
+    """Shared bounded signature fields; concrete purposes cannot be interchanged."""
+
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     algorithm: Literal["Ed25519"] = "Ed25519"
-    purpose: Literal["replayforge.baseline-receipt.v1"] = (
-        "replayforge.baseline-receipt.v1"
-    )
     key_id: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,64}$")
     payload: ExecutionReceipt
     signature: str = Field(pattern=r"^[a-f0-9]{128}$", repr=False)
+
+
+class SignedReceipt(ReceiptEnvelope):
+    purpose: Literal["replayforge.baseline-receipt.v1"] = (
+        "replayforge.baseline-receipt.v1"
+    )
+
+
+class SignedReplayReceipt(ReceiptEnvelope):
+    """Separate signature domain for candidate and independent replay reports."""
+
+    purpose: Literal["replayforge.replay-receipt.v1"] = "replayforge.replay-receipt.v1"
 
 
 def canonical(model: BaseModel, *, unsigned: bool = False) -> bytes:
@@ -92,6 +106,17 @@ class SignedBaselineInspection(BaseModel):
     can_authorize_patching: Literal[False] = False
 
 
+class SignedReplayInspection(BaseModel):
+    """Authenticated process/report qualification, never a complete gate verdict."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    status: Literal["MATCHED_SIGNED_REPORT", "REJECTED_SIGNED_REPORT"]
+    reason: Literal["PASS", "PROCESS_FAILURE", "INVALID_REPORT", "TARGET_MISMATCH"]
+    receipt: VerifiedReceipt
+    tests: int = Field(strict=True, ge=0, le=256)
+    can_authorize_verification: Literal[False] = False
+
+
 class ReceiptVerifier:
     """Explicit trusted key registry; no discovery, persistence or fallback.
 
@@ -118,6 +143,81 @@ class ReceiptVerifier:
             raise ReceiptDenied("RECEIPT_CONFIG")
         self._keys = MappingProxyType(dict(keys))
         self._origin = origin
+
+    def inspect_replay(
+        self,
+        signed: SignedReplayReceipt,
+        plan: TestCommandPlan,
+        junit: bytes,
+        *,
+        execution_id: UUID,
+        source_tree_ref: str,
+        test_name: str,
+        now: datetime,
+    ) -> SignedReplayInspection:
+        """Bind a passing regression to a trusted planned patched tree and action.
+
+        The tree and operation expectations must come from durable dispatch,
+        and test_name from the retained reproduction, never from the report.
+        Candidate and fresh replay independence is checked by the gate producer.
+        """
+        if len(junit) > 131072:
+            raise ReceiptDenied("RECEIPT_REPORT_LIMIT")
+        if (
+            not isinstance(signed, SignedReplayReceipt)
+            or plan.request.phase not in {"CANDIDATE", "CLEAN_REPLAY"}
+            or not re.fullmatch(r"test_[A-Za-z0-9_]{1,123}", test_name)
+        ):
+            raise ReceiptDenied("RECEIPT_REPLAY_CONTEXT_INVALID")
+        verified = self._authenticate(
+            signed,
+            plan,
+            execution_id=execution_id,
+            source_tree_ref=source_tree_ref,
+            junit_ref="sha256:" + hashlib.sha256(junit).hexdigest(),
+            now=now,
+            phase=plan.request.phase,
+        )
+
+        def result(
+            reason: Literal[
+                "PASS", "PROCESS_FAILURE", "INVALID_REPORT", "TARGET_MISMATCH"
+            ],
+            tests: int = 0,
+        ) -> SignedReplayInspection:
+            return SignedReplayInspection(
+                status="MATCHED_SIGNED_REPORT"
+                if reason == "PASS"
+                else "REJECTED_SIGNED_REPORT",
+                reason=reason,
+                receipt=verified,
+                tests=tests,
+            )
+
+        if signed.payload.exit_code != 0:
+            return result("PROCESS_FAILURE")
+        try:
+            text = junit.decode("utf-8-sig")
+            if any(
+                marker in text.upper() for marker in ("<!DOCTYPE", "<!ENTITY", "\0")
+            ):
+                return result("INVALID_REPORT")
+            cases = junit_cases(ET.fromstring(text))
+        except (UnicodeError, ET.ParseError, ValueError, ReportInvalid):
+            return result("INVALID_REPORT")
+        target_class = plan.request.reproduction_path[:-3].replace("/", ".")
+        if not any(
+            (c.get("classname"), c.get("name")) == (target_class, test_name)
+            for c in cases
+        ):
+            return result("TARGET_MISMATCH", len(cases))
+        if any(
+            c.find(tag) is not None
+            for c in cases
+            for tag in ("failure", "error", "skipped")
+        ):
+            return result("INVALID_REPORT", len(cases))
+        return result("PASS", len(cases))
 
     def inspect_baseline(
         self,
@@ -184,16 +284,18 @@ class ReceiptVerifier:
 
     def _authenticate(
         self,
-        signed: SignedReceipt,
+        signed: SignedReceipt | SignedReplayReceipt,
         plan: TestCommandPlan,
         *,
         execution_id: UUID,
         source_tree_ref: str,
         junit_ref: str,
         now: datetime,
+        phase: Literal["BASELINE", "CANDIDATE", "CLEAN_REPLAY"] = "BASELINE",
     ) -> VerifiedReceipt:
         try:
-            signed = SignedReceipt.model_validate(signed.model_dump())
+            receipt_type = SignedReceipt if phase == "BASELINE" else SignedReplayReceipt
+            signed = receipt_type.model_validate(signed.model_dump())
             plan = TestCommandPlan.model_validate(plan.model_dump())
             key = self._keys.get(signed.key_id)
             if key is None:
@@ -220,7 +322,7 @@ class ReceiptVerifier:
             or not receipt.terminal
             or receipt.timed_out
             or receipt.signal is not None
-            or plan.request.phase != "BASELINE"
+            or plan.request.phase != phase
         ):
             raise ReceiptDenied("RECEIPT_BINDING_INVALID")
         return VerifiedReceipt(

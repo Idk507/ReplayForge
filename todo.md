@@ -135,6 +135,22 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] Candidate/clean-replay report qualification core (2026-10-21): separate
+  signature purpose, exact planned operation/tree/report binding, exit-zero
+  regression presence and strict JUnit outcome checks. Pair validation requires
+  identical immutable inputs and distinct baseline/candidate/replay operations.
+  Tiny synthetic focused acceptance: **81 passed**, zero skips, exit 0
+  (`m3-replay-receipts-focused.xml`). Full disposable-PostgreSQL regression:
+  **940 passed**, zero skips, one upstream warning, 198.07s, exit 0
+  (`m3-replay-receipts-postgres.xml`), tested from base `27c854e` plus this change.
+  Ruff lint and strict mypy (87 files) pass; changed-file formatting/diff checks
+  and credential-pattern scan pass. Repository-wide formatting/diff checks found
+  a concurrent unrelated trailing-space edit in `services/runner/smoke.py:97`,
+  left untouched. Initial negative-test data reused its original digest; corrected
+  before this final full run. No dependency/UI changes, cloud calls or remote
+  writes. This is authenticated protocol testing with ephemeral test keys,
+  not deployed collector evidence. Durable candidate delivery, scheduling and
+  live gate production remain pending; see `docs/replay-receipts.md`.
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
 - [~] Mandatory deterministic gate evaluator: authenticated core `f1b7acf` now requires seven architecture gates, signed run/source/patch/test/image/configuration context, intact manifest bytes and independent baseline/candidate/replay identities. Unsigned records return GATES_SATISFIED with no authority. Forgery/tamper/context/omission negatives passed within 830 tests (`m3-gates-postgres.xml`). Live producer deployment and live end-to-end acceptance remain pending; no live VERIFIED result is claimed. See `docs/verification-gates.md`.
 - [~] Manifest hashing, artifact access control and retention: `d62d607` adds atomic private bundles, owner/lease/version/consent checks, integrity-checked restart reads, authenticated manifest/download endpoints and fixed 24-hour read expiry. Final 845 tests passed with zero skips (`m3-evidence-store-postgres.xml`); runtime mutation/deletion and unauthorized/expired/tampered downloads are denied. Physical purge, backup retention, encryption-at-rest deployment and full M3 integration remain pending. See `docs/evidence-storage.md`.
