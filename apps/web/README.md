@@ -40,12 +40,13 @@ same-origin write checks, response/request limits and no retry of writes.
 
 `npm run lint`, `npm run typecheck`, `npm run build`, `npm audit`.
 From the repository root, `uv run python -m scripts.test_postgres --web` creates
-task-owned DB/runtime roles, runs six Playwright checks against real local API
+task-owned DB/runtime roles, runs seven Playwright checks against real local API
 and browser processes, then removes its database/roles and stops the API/web
 servers. A local PostgreSQL administrator password is prompted securely; no
 provider credentials or cloud calls are used. The browser tests currently use
 installed Microsoft Edge. Results/screenshots are in apps/web/test-results.
-Four browser/UI contracts use synthetic HTTP; the create/cancel/reload journey
+Three UI contracts use synthetic provider data; one replays the retained live
+research archive with mocked surrounding HTTP. The create/cancel/reload journey
 uses the actual API/database. Bridge and event-parser checks run without HTTP.
 
 Finite SSE pages reconnect with the last validated sequence and bounded backoff.

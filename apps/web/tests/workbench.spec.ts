@@ -1,7 +1,9 @@
 import {test, expect} from "@playwright/test";
 import {bridge} from "../lib/bridge";
-import {parseEvents} from "../lib/contracts";
+import {parseEvents, researchSchema} from "../lib/contracts";
 import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
 
 const runId = "12345678-1234-4234-8234-123456789abc";
 const repo = "12345678-1234-4234-8234-123456789abd";
@@ -111,4 +113,26 @@ test("synthetic contract: rejected gate, inert diff and hash-checked artifact pr
   await page.getByRole("tab",{name:"Patch & risk"}).click();
   await expect(page.locator("pre")).toContainText("<script>untrusted</script>");
   await expect(page.locator("main script")).toHaveCount(0);
+});
+
+test("retained live research archive: timeline shows source, title and timestamp without a provider request", async ({page}) => {
+  const bytes = readFileSync(resolve("../../docs/evidence/m3-live-research.json"));
+  expect(createHash("sha256").update(bytes).digest("hex")).toBe("0272b42fec7ac4d270e256ae0fc6d5c56f2e5efd67ea7563e7f3766594202d0a");
+  const archive: unknown = JSON.parse(bytes.toString("utf8"));
+  const checked = researchSchema.parse([archive])[0];
+  expect(checked.report.evidence_origin).toBe("REMOTE_SERVICE");
+  expect(checked.report.sources).toHaveLength(2);
+  await page.route("**/api/backend/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/research")) return route.fulfill({json:[archive]});
+    if (path.endsWith("/patch")) return route.fulfill({status:404,body:"{}"});
+    if (path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:": replay-page-complete\n\n"});
+    return route.fulfill({json:path.endsWith("/runs") ? [synthetic] : synthetic});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:/Run 12345678/}).click();
+  const first = checked.report.sources[0];
+  await expect(page.getByRole("link",{name:first.title + " ↗",exact:true})).toHaveAttribute("href",first.url);
+  await expect(page.locator(`time[datetime="${first.retrieved_at}"]`).first()).toBeVisible();
+  await expect(page.getByText(/External content is untrusted/)).toBeVisible();
 });

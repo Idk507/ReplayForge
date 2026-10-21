@@ -157,10 +157,36 @@ general dispatch, worker integration and measured usage reconciliation remain op
   Full disposable-PostgreSQL regression: **889 passed, zero skips**, one upstream
   warning, 192.93s, exit 0 (`m3-verdict-postgres.xml`); Ruff lint/format (161 files),
   strict mypy (82 files), scoped secret and diff checks passed. No cloud use.
-- [ ] Tavily documentation retrieval in at least one authentic agent path. Acceptance: retrieved citations appear in investigation timeline.
-- [ ] Next.js dashboard, intake, run timeline, diff and evidence matrix. Acceptance: real run displayed without fake statuses.
-- [ ] SSE reconnect and accessible errors. Acceptance: disconnect/reconnect retains sequence.
+- [x] On-demand research broker and citation timeline: migration 0018 persists
+  sticky query intent, run-level search/time/declared-spend budgets, private
+  hashed reports and RESEARCH_RETAINED events. Triage consumes citations only as
+  untrusted context. One explicitly approved live lookup on 2026-10-21 returned
+  two sources / one usage credit (m3-live-research.json). Archive hash and timeline
+  rendering pass without another request. Provider ranking was not version-exact;
+  the record is advisory and does not prove a diagnosis. See docs/m3-acceptance.md.
+- [x] Local Next.js workbench: actual recent-run discovery, incident intake,
+  persisted timeline, cancel/reload, candidate diff, gate matrix and SHA256-checked
+  text artifact previews. Server-only API bearer and closed loopback BFF; no mock
+  statuses ship in the app. The real API/database browser journey passed;
+  rejected-candidate rendering uses explicitly synthetic contract evidence.
+  Local-only scope; no public auth/deployment or live VERIFIED repair is claimed.
+- [x] Browser finite-SSE replay reconnects with last validated ID, bounded backoff
+  and deduplication; interrupted delivery preserves cursor. Error/missing/loading
+  states, keyboard-native controls and mobile overflow were checked. Final browser
+  harness: 7 passed, zero skips, 20.5s (m3-web-browser.xml); production build, UI
+  lint/typecheck and npm audit (zero known vulnerabilities) passed.
 **Gate:** judge can inspect a complete verified or rejected outcome in UI.
+
+**M3 status (2026-10-21): NOT CLOSED.** Local UI/research/reconnect acceptance
+passes, but required live seven-gate clean replay still lacks the trusted producer,
+assessed runner configuration/image binding and correlated signed reports. The
+existing fixed-fixture replay is not promoted to production VERIFIED. Physical
+retention/deployment storage guarantees remain open. See docs/m3-acceptance.md.
+Retained full backend evidence at 65bccad: 905 passed, zero skips, suite time
+191.980s (m3-workbench-research-postgres.xml). It was not redundantly rerun for
+this frontend-only/retained-evidence update; current Ruff/mypy and browser checks
+passed. Exactly one approved Tavily lookup ran; no inference, sandbox execution,
+remote repository write, merge or deployment occurred.
 
 M3 local validation update (2026-10-20): Ruff lint/format (157 files), strict
 mypy (81 files), targeted credential-value scans and Git diff checks passed.
