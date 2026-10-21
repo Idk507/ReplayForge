@@ -135,6 +135,21 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] Durable candidate/replay receipt delivery (2026-10-21): internal worker
+  receiver binds current source/repository/patch/test and accepted baseline,
+  authenticates both reports using database time, and atomically retains exact
+  plans/receipts/JUnit bytes in the private evidence bundle. Duplicate restart
+  and concurrent delivery commit once; conflicting evidence, stale workers,
+  cancellation, revoked consent and audit rollback are rejected. Authentic
+  failing results remain evidence and never manufacture VERIFIED. Focused real
+  PostgreSQL acceptance: **13 passed**, zero skips, exit 0
+  (`m3-replay-delivery-focused.xml`). See `docs/replay-delivery.md`.
+  Final full regression from base `3315bca` plus this increment: **973 passed**,
+  zero failures/errors/skips, 217.31s, one upstream AnyIO warning, exit 0
+  (`m3-delivery-m4-approval-postgres.xml`). Ruff lint, strict mypy (90 source
+  files), changed-file formatting and credential-pattern checks passed. Global
+  formatting still has the preserved unrelated trailing space in smoke.py:97.
+  No dependencies/UI changed; no cloud requests or remote writes occurred.
 - [x] Candidate/clean-replay report qualification core (2026-10-21): separate
   signature purpose, exact planned operation/tree/report binding, exit-zero
   regression presence and strict JUnit outcome checks. Pair validation requires
@@ -212,6 +227,15 @@ calls or remote writes occurred; production VERIFIED, UI and PR authority are
 not implied by these primitives.
 
 ## M4 — Oct 24–26: External write and benchmark
+- [~] M4 started (2026-10-21): deterministic human approval binding policy
+  validates exact run/repository/owner/source/diff/verdict/branch/policy,
+  independently supplied reviewer permission, explicit approval, TTL and nonce
+  availability. **20 unit cases passed**, zero skips, exit 0
+  (`m4-approval-policy.xml`), included in the 973-test full run above. This
+  validation kernel has no publication authority. Durable approval journal,
+  independently authenticated human endpoint and atomic nonce consumption are
+  still required before the approval task below can close. See
+  `docs/approval-policy.md`. No GitHub action was performed.
 - [ ] Approval bound to immutable patch digest and reviewer authorization. Acceptance: changed patch invalidates approval.
 - [ ] One-use GitHub PR publisher. Acceptance: retry creates exactly one PR.
 - [ ] Incident B aggregation fixture. Acceptance: hidden oracle identifies truth.
