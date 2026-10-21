@@ -30,7 +30,7 @@ from tests.unit.test_replay_receipts import XML
 store = test_postgres.store
 
 
-def prepared(store, *, failing=False):
+def prepared(store, *, failing=False, reserve=True):
     _, lease, owner, _, baseline, signed, xml, verifier = baseline_inputs(store)
     run = receive_baseline(
         store, lease, owner, baseline.execution_id, signed, xml, verifier
@@ -83,6 +83,12 @@ def prepared(store, *, failing=False):
         patched_tree_ref="sha256:" + "8" * 64,
         test_name="test_duplicate",
     )
+    from services.persistence.replay import ReplayJournal
+
+    if reserve:
+        run = ReplayJournal(store).reserve(
+            lease, owner, actions, expected_version=run.version
+        )
     return (
         lease,
         owner,

@@ -89,6 +89,27 @@ def debit_research(
     )
 
 
+def debit_replays(
+    store: Store,
+    conn: psycopg.Connection[dict[str, object]],
+    run: RunState,
+    candidate: TestCommandPlan,
+    clean: TestCommandPlan,
+) -> Budget:
+    """Reserve the complete pair atomically; exhaustion never partially debits."""
+    candidate = TestCommandPlan.model_validate(candidate.model_dump())
+    clean = TestCommandPlan.model_validate(clean.model_dump())
+    return _debit(
+        store,
+        conn,
+        run,
+        (
+            ("sandbox_commands", 2),
+            ("execution_seconds", candidate.timeout_seconds + clean.timeout_seconds),
+        ),
+    )
+
+
 def _debit(
     store: Store,
     conn: psycopg.Connection[dict[str, object]],

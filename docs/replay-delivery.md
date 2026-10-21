@@ -31,8 +31,9 @@ outcome. Delivery never changes the VERIFYING stage or completes the job.
 
 ## Limits and next integration
 
-Planned actions are trusted inputs, not public/model-submitted data. This
-receiver does not implement candidate dispatch reservations, remote execution,
+Planned actions are trusted inputs, not public/model-submitted data. Delivery
+now requires the exact retained pair reservation from migration 0019; see
+`replay-reservations.md`. This receiver does not implement remote execution,
 operation polling or queue scheduling. It cannot establish fresh compute,
 assessed image/configuration facts or a production collector key. The caller
 must load those expectations from its admitted execution controller. Additional

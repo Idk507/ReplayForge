@@ -7,6 +7,7 @@ from uuid import UUID
 from packages.contracts.run import RunState, Stage
 from services.persistence.baseline import BaselineJournal
 from services.persistence.evidence import EvidenceStore
+from services.persistence.replay import ReplayJournal
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.receipts import ReceiptVerifier, canonical
 from services.verifier.manifest import ArtifactInput, build_manifest
@@ -34,6 +35,8 @@ def receive_replays(
     VERIFYING unchanged, including when an authentic test report fails.
     """
     actions = ReplayActions.model_validate(actions.model_dump())
+    if ReplayJournal(store).load(lease.run_id, owner) != actions:
+        raise StoreError("REPLAY_RESERVATION_CONFLICT")
     candidate = ReplayReport.model_validate(candidate.model_dump())
     clean = ReplayReport.model_validate(clean.model_dump())
     files = artifacts + (
@@ -68,8 +71,10 @@ def receive_replays(
         if retained != manifest or run.version != expected_version + 1:
             raise StoreError("REPLAY_DELIVERY_CONFLICT")
         return run
-    claimed_owner, claimed = store.claimed_run(lease)
-    if claimed_owner != owner or claimed != run or run.version != expected_version:
+    claimed_owner, _ = store.claimed_run(lease)
+    # Another exact delivery may commit after our read. The retaining
+    # transaction owns CAS/idempotence; this read only establishes the fence.
+    if claimed_owner != owner or run.version != expected_version:
         raise StoreError("STALE_VERSION")
     journal = BaselineJournal(store)
     baseline = journal.receipt(actions.baseline_execution_id, owner)

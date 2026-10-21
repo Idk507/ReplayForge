@@ -135,6 +135,22 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] Immutable replay-pair intent and atomic accounting (2026-10-21): migration
+  0019 and ReplayJournal reserve exact candidate/clean plans and distinct action
+  identities against current checkpoint/baseline/consent/fence. Both commands and
+  full 120-second requested time commit once with the intent and budget event;
+  exhaustion closes INCONCLUSIVE without partial debit. Delivery now requires
+  the exact retained reservation. Runtime update/delete are denied. Fixed an
+  observed duplicate-delivery race without weakening transactional fencing; a
+  deterministic interleaving test covers it. Focused PostgreSQL: **28 passed**,
+  zero skips, exit 0 (`m3-replay-reservations-focused.xml`). Full regression:
+  **988 passed**, zero failures/errors/skips, 243.39s, one upstream warning,
+  exit 0 (`m3-replay-reservations-postgres.xml`), base `76840a2` plus this change.
+  Ruff lint, strict mypy (91 files), changed-file format/diff and scoped
+  credential-pattern checks passed. The unrelated smoke.py trailing-space edit
+  remains untouched. No cloud calls or remote writes. This reserves intent only;
+  assessed admission, actual submission/polling, collector and live seven-gate
+  acceptance remain open. See `docs/replay-reservations.md`.
 - [x] Durable candidate/replay receipt delivery (2026-10-21): internal worker
   receiver binds current source/repository/patch/test and accepted baseline,
   authenticates both reports using database time, and atomically retains exact
