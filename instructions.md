@@ -49,3 +49,17 @@ By October 27 record a truthful 2:50 demo, showing actual failing baseline, Nemo
 
 ## 15. Recovery / triage playbook
 `401/403` Nebius => recheck key scope and model catalog, never fall back to unrelated provider silently. `429` => obey Retry-After with bounded backoff; release run with retryable status if budget exhausted. Runner unavailable => `INCONCLUSIVE` plus incident event, do not fake test outcomes. GitHub 401/403 => store verified evidence but block PR until permissions restored. Test flakiness => repeat on clean runner and label inconclusive if inconsistent. Missing artifact => verification fails closed. Expired reviewer approval => re-review exact patch. Abnormal spending => disable new runs and notify operator. Sensitive data leak => revoke exposed token, quarantine artifact, audit scope, rotate credentials and preserve minimal redacted incident evidence.
+
+
+## Current runtime guides and delivery tracking (22 October 2026)
+
+Use todo.md's current-focus section to resume work; historical test counts belong
+to the commits that produced them. Record new acceptance evidence in
+implementation-log.md and update the affected feature contract/README entry point.
+The current harness entry point and permission/cost flags are documented in
+docs/agent-harness.md; durable recovery/advisory memory limits are in docs/memory.md.
+The combined worker currently reaches REPRODUCING. Continue through admitted
+execution and trusted report production to close the original M3 exit; do not
+substitute scheduler counts or historical lessons for a verified repair.
+Authentication is assigned to the user's teammate. Coordinate interfaces while
+prioritizing one complete checkout repair, approval/PR flow and submission assets.

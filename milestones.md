@@ -29,3 +29,19 @@ Public demo operates without exposing privileged controls to anonymous users; pr
 
 ## Milestone change control
 For a slipped milestone: identify failing exit test, block dependent scope, select minimum safe fix and cut optional features first. Never claim pass on an incomplete milestone. Weekly reporting is not enough during 18-day sprint; update `todo.md` and `docs/implementation-log.md` after each completed acceptance gate. Keep the final 48 hours free from large architectural changes.
+
+
+## Implementation alignment snapshot — 2026-10-22
+
+The acceptance criteria above remain unchanged. M2's fixed-checkout contingency
+exit is mapped in docs/evidence/m2-final-exit.json; broader general-repository
+execution is not complete. M3 remains open for authentic seven-gate clean replay.
+Local memory and the combined collection/triage harness are accepted increments,
+with 1074 passing backend regression cases retained at implementation 715831d;
+they do not close M3. M4's pure approval kernel does not close durable approval,
+PR publication or hidden evaluation. M5's deployment/submission exit is open.
+
+Use todo.md's current-focus block for the next task and implementation-log.md for
+actual test commands/results. Complete the checkout journey before optional
+integrations. The teammate owns authentication; required human write approval
+and public access boundaries still apply. Submit packaging remains mandatory.

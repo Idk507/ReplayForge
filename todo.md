@@ -2,6 +2,28 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
+## Current focus — reconciled 2026-10-22
+
+Implementation checkpoints: `f1a25d5` report export; `d5cf18e` scoped memory;
+`715831d` bounded collection/triage harness. Latest full local backend evidence:
+`docs/evidence/m3-harness-postgres.xml`, **1074 passed**, zero failures/errors/
+skips, 333.06s, exit 0. This is regression evidence, not live M3 acceptance.
+
+M2 is accepted within the fixed-checkout contingency; M3 remains open. M4 has
+an approval validation kernel; PR publication/evaluation remain open. M5
+packaging/deployment/submission remain open. Authentication is owned by the user's
+teammate. Memory is structured, scoped and evidence-expiring; the combined
+harness currently reaches REPRODUCING.
+
+Next critical implementation: connect admitted runner execution and bounded
+operation/report collection to a trusted receipt producer, then demonstrate all
+seven gates on a small fixture and expose the authentic outcome in the UI.
+Follow with durable human approval/idempotent PR publication and submission
+packaging. Preserve the approved architecture and acceptance gates while closing
+this journey; do not add optional frameworks or repeat paid probes routinely.
+Detailed limits: `docs/m3-acceptance.md`, `docs/memory.md`,
+`docs/agent-harness.md`, `docs/prepared-nebius-backend.md`.
+
 ## Status conventions
 `[ ]` not evidenced; `[x]` verified by committed change and test artifact; `[!]` blocked; `[~]` working but not acceptance-ready (replace symbols manually when appropriate). A task is complete only when its acceptance test has been actually run and evidence logged in `docs/implementation-log.md`. Track owner, commit, observed execution date and blocker there. Critical path is M0 -> M1 -> M2 -> M3 -> M4 -> M5.
 
@@ -341,7 +363,7 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
 ## Kill-switch and contingency decisions
 If runner isolation is not ready by Oct 17, reduce scope to a *trusted synthetic benchmark-only* remote runner and explicitly constrain accepted repositories to fixed fixtures; never fall back to arbitrary local execution. If reproduction cannot be achieved by Oct 20, freeze UI work and concentrate on one verified checkout case. If GitHub write permission cannot be safely obtained by Oct 25, ship reviewable patch artifacts with a clearly marked PR integration limitation; do not claim full feature completion. If Nebius credits are low, disable speculative multi-agent calls, use one supported NVIDIA model and cached deterministic fixtures; live user actions must still call Token Factory. If B/C are unstable by Oct 26, demonstrate A thoroughly and publish truthful benchmark gaps.
 
-## Final acceptance ledger template
+## Final acceptance ledger template (not current status)
 | Gate | Expected evidence | Observed result | Commit / artifact | Date |
 |---|---|---|---|---|
 | Live NVIDIA on Nebius | request ID + model + timestamp | Pending | — | — |

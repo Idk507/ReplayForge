@@ -62,3 +62,19 @@ and other deployment guarantees. This is a missing evidence/integration boundary
 not a claim that the provider is insecure:
 [security and data handling](https://docs.tokenfactory.nebius.com/sandboxes/operate/security-and-data-handling),
 [limits and retention](https://docs.tokenfactory.nebius.com/sandboxes/operate/limits-retention-and-usage).
+
+
+## 22 October follow-up — current implementation alignment
+
+Report export (`f1a25d5`), scoped memory (`d5cf18e`) and the bounded combined
+collection/triage harness (`715831d`) are implemented locally. Latest full backend
+report: docs/evidence/m3-harness-postgres.xml, 1074 passed, zero skips, 333.06s,
+exit 0. These updates preserve the fixed fixture acceptance and existing UI.
+They use synthetic provider/gate evidence in tests, not a new live repair.
+
+The active runtime currently reaches REPRODUCING. Completing M3 requires admitted
+execution/report collection, a trusted receipt producer with actual image/config
+assessment, fresh correlated reports for all seven mandatory gates, and the real
+outcome visible in the UI. Whole-filesystem saved-image retention and deployment
+storage guarantees remain open. Do not mark M3 complete from harness or memory
+unit tests. See todo.md's current focus; acceptance criteria are not relaxed.

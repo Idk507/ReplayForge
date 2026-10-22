@@ -1,6 +1,19 @@
 # ReplayForge — Blueprint Package
 
-ReplayForge is an evidence-first autonomous repair platform under implementation for the Nebius x NVIDIA Global AI Hackathon 2026. M0 provides Nebius inference, sandbox and documentation-search probes. Local M1 work includes run contracts, PostgreSQL checkpoints/job leases and an authenticated loopback-only API with SSE replay. UI, agents, repository execution and repair verification are not implemented. Live cloud integrations remain unverified. The target layout is specified in `repository_structure.md`.
+ReplayForge is an evidence-backed incident-repair platform under implementation
+for the Nebius x NVIDIA Global AI Hackathon 2026. Implemented local components
+include the PostgreSQL run API/event ledger, Next.js workbench, durable worker
+recovery, scoped advisory repair memory and a bounded collection/triage harness.
+A fixed checkout fixture has retained real Nemotron/remote fail-then-pass replay
+evidence. The general live seven-gate repair pipeline, approval-to-PR flow and
+public deployment remain incomplete. Local test success is not production readiness.
+
+Current work and acceptance evidence: [delivery tracker](todo.md),
+[M3 acceptance](docs/m3-acceptance.md), [implementation log](docs/implementation-log.md).
+Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
+[prepared runner](docs/prepared-nebius-backend.md). Latest full backend regression
+at `715831d`: 1074 passed, zero skips; see the retained report linked in the tracker.
+
 
 ## Local development (PowerShell)
 
@@ -24,7 +37,10 @@ exact NVIDIA Nemotron catalog ID.
 
 With local PostgreSQL installed, `uv run python -m scripts.test_postgres` prompts
 for administrator credentials and runs real integration tests in a disposable
-database with separate migration/runtime roles. See the
+database with separate migration/runtime roles. The full current suite needs the
+documented 420-second outer harness override in [memory verification](docs/memory.md);
+individual product/test timeouts remain unchanged. Direct pytest without the
+isolated DB does not prove PostgreSQL acceptance. See the
 [local database/API guide](docs/postgres-local.md) for behavior and limitations.
 
 After authorizing possible inference charges, run
@@ -46,8 +62,9 @@ See [initial assessment](docs/implementation-assessment.md) and
 
 The optional [Tavily research adapter](docs/tavily-research.md) supports bounded
 public documentation queries with offline policy tests. Run
-`uv run python -m scripts.check_tavily` for a safe offline report. Live access
-and integration into an authentic agent investigation remain unverified.
+`uv run python -m scripts.check_tavily` for a safe offline report. One approved live search and local broker/triage/UI integration are recorded in
+[research acceptance](docs/m3-acceptance.md). Search results remain advisory;
+a complete live repair investigation is still unverified.
 
 Start reading `project_scope.md` (what to build), `Architecture.md` and `system_design.md` (how it works), `AGENTS.md` (trusted boundaries and agent contracts), `instructions.md` (implementation playbook), `milestones.md` and `todo.md` (dated gates and acceptance). Supplementary documents cover threat modeling, benchmarking, UI, API/contracts, benchmark fixtures, submission and an evidence log.
 

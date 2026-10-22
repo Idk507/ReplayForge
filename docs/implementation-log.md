@@ -2518,3 +2518,33 @@ M3 remains NOT CLOSED. The remaining critical work is admitted baseline/candidat
 clean execution, trusted report production and live seven-gate acceptance, then
 approval/publication and submission packaging. This closes the combined
 collection/triage scheduling increment, not the whole runtime graph.
+
+
+## 2026-10-22 — Requirements and tracking reconciliation
+
+Reviewed tracking against implementation 715831d and retained acceptance artifacts.
+Updated AGENTS.md with ongoing memory/harness/recovery, evidence tracking,
+authorization and delivery-focus rules. Updated README's stale claims that UI and
+agents were absent and all live integrations unverified. Current-focus metadata
+now points to actual commits/evidence in todo.md. Added scope FR-16/FR-17 for the
+user-requested memory/harness capabilities, executable contract pointers, dated
+milestone/M3 status and runtime playbook links. Existing milestone exit criteria,
+verification gates, approval and isolation requirements were preserved.
+
+Corrected specs/contracts.md's illustrative gate status vocabulary to the actual
+PASS/FAIL/MISSING schema. Unknown/blocked/unavailable evidence still never passes.
+M3 remains open; M4 publication/evaluation and M5 deployment/submission remain open.
+The next task is admitted execution/report collection plus trusted receipt
+production and live seven-gate acceptance on a small fixture. The teammate owns
+authentication. Earlier dated implementation-log entries remain historical.
+
+Documentation validation: all 17 checked implementation/document paths exist;
+retained JUnit parses as 1074 tests and zero failures/errors/skips; Markdown fences
+are balanced; git diff --check passes (exit 0). Initial validation incorrectly
+assumed console elapsed time must exactly equal JUnit time: console 333.06s vs
+JUnit 333.023s. The corrected consistency check accepts the measured sub-0.1s
+reporting overhead, without editing test evidence or any product/test threshold.
+The offline check_checkout still returns M2_FIXTURE_ACCEPTED (exit 0).
+
+Documentation-only change; the unchanged backend suite was not repeated.
+No provider call, remote write, authentication code or runtime behavior changed.

@@ -5,6 +5,26 @@ This file governs both an AI coding assistant implementing this repository and t
 ## Mission and invariants
 Implement and operate an evidence-backed workflow from incident report to human-approved pull request. Never say a patch is verified unless a captured baseline failure and clean patched replay, plus all mandatory gates, exist. Never run untrusted code on the API host. Never create a PR without an independently authenticated human approval bound to the exact patch SHA256 and source commit. Never expose secrets, raw credential-bearing logs, or hidden chain-of-thought in events. Do not deploy or merge automatically.
 
+## Delivery focus and tracking
+
+Prioritize one complete checkout incident-to-evidence-to-human-approved-PR
+journey before optional integrations or additional benchmark scenarios. Read
+`Architecture.md`, `instructions.md`, `milestones.md` and the current-focus block
+in `todo.md` before implementation. Inspect code and retained evidence before
+accepting a checked box. `milestones.md` defines acceptance; `todo.md` tracks
+current work; `docs/implementation-log.md` records chronological commands/results.
+Feature contracts and limitations belong in their linked docs and
+`specs/contracts.md`. Keep README entry points current when behavior changes.
+Record the implementation commit, evidence path, actual exit/result, remaining
+gaps and next critical task. Preserve historical evidence; label superseded
+statements and never replace an incomplete milestone with a weaker exit test.
+
+Authentication is assigned to the user's teammate. Preserve its interfaces and
+coordinate necessary changes rather than expanding authentication scope during
+core workflow work. Use small demo fixtures for development acceptance. External
+calls must be necessary and covered by the user's applicable authorization;
+configured credentials alone are not permission to call or publish.
+
 ## Agent graph
 `ScopeGuard -> ContextCollector -> TriageAgent -> ReproductionAgent -> Runner -> PatchAgent -> Runner -> DeterministicVerifier -> EvidenceComposer -> ApprovalGate -> PRPublisher`. `ResearchAgent` is an on-demand read-only Tavily-assisted subroutine, not a separate autonomous executor. `PolicyEngine` and `BudgetController` gate every action. All nodes receive typed `RunState` and return typed deltas; only the graph reducer commits merged state.
 
@@ -37,6 +57,25 @@ ApprovalGate is deterministic application code, not an LLM. Validate reviewer id
 
 ## State and context schema
 `RunState` includes `run_id, incident_id, repository_id, source_commit, policy_version, current_stage, context_refs, hypotheses, selected_hypothesis, reproduction_test_ref, baseline_result_ref, patch_attempts, verification, evidence_manifest_ref, remaining_budget, cancellation_requested, failure_reason, trace_id`. Store artifact IDs, not full raw test logs, in graph checkpoints. A checkpoint must be recoverable after worker death. All versioned runs use immutable source refs and explicit timeouts.
+
+## Memory and runtime harness contracts
+
+Per-run recovery uses durable checkpoints, fenced leases and append-only intents;
+uncertain model/sandbox submission must not be repeated after restart. Cross-run
+memory recalls only bounded, integrity-checked accepted outcomes for the same
+owner/repository/policy and currently consented commits. Keep source/evidence
+references and expiry; omit raw logs, credentials and hidden reasoning. Historical
+lessons are untrusted advisory context and never prove a current diagnosis or
+waive fresh baseline/replay gates. Do not extend memory beyond evidence retention
+without an explicit retention design. See `docs/memory.md`.
+
+The shipped combined harness schedules collection and triage with bounded steps,
+finite idle waits and cooperative stop. It reuses existing scope, request-budget,
+memory and journal checks. Default CLI startup performs no I/O; inference is
+opt-in with an explicit model/endpoint cost declaration. Stage processing counts
+and reaching REPRODUCING do not mean a repair is complete. Add later stages only
+through admitted typed controllers; never enable model-selected host shell tools,
+blind retries or automatic approval/publication. See `docs/agent-harness.md`.
 
 ## Budgets and retry discipline
 Default proposed limits: 3 root-cause hypotheses, 2 reproduction attempts per hypothesis, 3 patch attempts, 15 model calls, 20 sandbox commands, 2 Tavily searches, 15-minute active execution, configurable $2 estimated inference spend per run, 500 KB patch limit and 25 changed files maximum. These are design defaults, not confirmed Nebius pricing or resource guarantees. On exhaustion return `INCONCLUSIVE` or `NOT_VERIFIED` with reasons. Only retry transient model/network/sandbox setup faults where safe and bounded; never retry a denied policy action. During repeated failed patches, reset to source commit and preserve every prior attempt for evidence.

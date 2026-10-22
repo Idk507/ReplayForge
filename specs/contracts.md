@@ -26,10 +26,35 @@
 }
 ```
 
-The actual implementation must enforce 64-digit hexadecimal SHA256 for hashes and actual valid Git SHA. `gate.status` is one of `PASS`, `FAIL`, `UNKNOWN`, `BLOCKED`; unknown never counts as pass. The verifier computes verdict from persisted observations whose execution IDs refer to jobs with matching source SHA, patch digest, runner image digest and test digest.
+The actual implementation must enforce 64-digit hexadecimal SHA256 for hashes and actual valid Git SHA. The implemented `GateEvidence.status` is `PASS`, `FAIL` or `MISSING`
+(`services/verifier/gates.py`); unknown/unavailable/blocked observations cannot
+be represented as PASS. The examples above are illustrative, not wire schemas. The verifier computes verdict from persisted observations whose execution IDs refer to jobs with matching source SHA, patch digest, runner image digest and test digest.
 
 ## Invariants to property-test
 An invalid transition cannot move to VERIFIED; missing mandatory gate implies not VERIFIED; corrupted evidence cannot satisfy a gate; reproduction failing only due to setup cannot satisfy baseline; authorization failure cannot be overridden by agent output; cancellation is terminal; approval cannot be reused; PR operation is idempotent; run cannot be approved when commit/patch/policy changed; untrusted content cannot create a privileged tool invocation; strict budget cannot become negative; a tenant cannot read another tenant's artifact.
 
 ## HTTP behavior
 201/202 for accepted or created jobs, 400 bad request, 401 no identity, 403 forbidden scope, 404 unknown or inaccessible ID (avoid information leaks), 409 stale run/approval/digest, 422 schema violation, 429 rate limit, 503 dependency unavailable. Supply stable error code and correlation ID without exposing sensitive stack traces.
+
+
+## Implemented memory and harness contracts — 2026-10-22
+
+`RepairLesson`/`MemoryRecall` in `packages/contracts/memory.py` carry bounded
+historical outcome, failed/missing gate names, exact source/patch/verdict/manifest
+references and expiry. Owner/repository/policy/commit consent is enforced by
+RunMemory. Canonical record/hash binding is checked on recall. Memory cannot
+execute, verify or publish, and cannot displace current context beyond the
+existing 8-entry/4096-byte request cap. No semantic accuracy claim is implied.
+
+`HarnessResult` in `services/orchestrator/harness.py` reports scheduling counts,
+configuration and stop state. Each step attempts at most one fixed-stage claim;
+collection-to-triage uses existing durable transactions. Failed/uncertain provider
+requests propagate without automatic retry. The CLI validates explicit inference
+permission and a matching declared cost policy before stage claims. Completed
+triage reconciles its checkpoint rather than issuing another inference request.
+The implemented flow reaches REPRODUCING; all original verifier/approval
+requirements remain mandatory for the later repair/publication path.
+
+Executable contracts: `tests/unit/test_memory_context.py`,
+`tests/integration/test_memory.py`, `tests/unit/test_agent_harness.py`,
+`tests/integration/test_harness_handoff.py`, and worker startup/recovery tests.
