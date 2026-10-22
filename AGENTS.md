@@ -77,6 +77,13 @@ and reaching REPRODUCING do not mean a repair is complete. Add later stages only
 through admitted typed controllers; never enable model-selected host shell tools,
 blind retries or automatic approval/publication. See `docs/agent-harness.md`.
 
+Known replay collection is a separate GET-only internal action tied to durable
+submission IDs and current lease/version/consent. Its private terminal observations
+are unsigned evidence. Never turn them into signed receipts without independently
+established workspace/image/configuration and collector trust bindings. Keep raw
+JUnit out of events, memory and public output; cached reads must preserve original
+observation time/expiry. See `docs/replay-collection.md`.
+
 ## Budgets and retry discipline
 Default proposed limits: 3 root-cause hypotheses, 2 reproduction attempts per hypothesis, 3 patch attempts, 15 model calls, 20 sandbox commands, 2 Tavily searches, 15-minute active execution, configurable $2 estimated inference spend per run, 500 KB patch limit and 25 changed files maximum. These are design defaults, not confirmed Nebius pricing or resource guarantees. On exhaustion return `INCONCLUSIVE` or `NOT_VERIFIED` with reasons. Only retry transient model/network/sandbox setup faults where safe and bounded; never retry a denied policy action. During repeated failed patches, reset to source commit and preserve every prior attempt for evidence.
 

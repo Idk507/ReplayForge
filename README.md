@@ -13,7 +13,7 @@ Current work and acceptance evidence: [delivery tracker](todo.md),
 Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
 [prepared runner](docs/prepared-nebius-backend.md),
 [durable replay collection](docs/replay-collection.md). Latest full backend regression
-at `715831d`: 1074 passed, zero skips; see the retained report linked in the tracker.
+at `c949e1e`: 1104 passed, zero skips; see the retained report linked in the tracker.
 
 
 ## Local development (PowerShell)

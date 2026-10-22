@@ -5,9 +5,9 @@
 ## Current focus — reconciled 2026-10-22
 
 Implementation checkpoints: `f1a25d5` report export; `d5cf18e` scoped memory;
-`715831d` bounded collection/triage harness. Latest full local backend evidence:
-`docs/evidence/m3-harness-postgres.xml`, **1074 passed**, zero failures/errors/
-skips, 333.06s, exit 0. This is regression evidence, not live M3 acceptance.
+`715831d` bounded collection/triage harness; `c949e1e` durable replay collection.
+Latest full local backend evidence: `docs/evidence/m3-replay-collection-postgres.xml`,
+**1104 passed**, zero failures/errors/skips, 373.37s, exit 0. This is regression evidence, not live M3 acceptance.
 
 M2 is accepted within the fixed-checkout contingency; M3 remains open. M4 has
 an approval validation kernel; PR publication/evaluation remain open. M5
@@ -15,8 +15,9 @@ packaging/deployment/submission remain open. Authentication is owned by the user
 teammate. Memory is structured, scoped and evidence-expiring; the combined
 harness currently reaches REPRODUCING.
 
-Next critical implementation: connect admitted runner execution and bounded
-operation/report collection to a trusted receipt producer, then demonstrate all
+Next critical implementation: bind independently measured workspaces and admitted
+execution to a trusted receipt producer. Known replay report collection is now
+durable; baseline/general materialization and producer wiring remain. Demonstrate all
 seven gates on a small fixture and expose the authentic outcome in the UI.
 Follow with durable human approval/idempotent PR publication and submission
 packaging. Preserve the approved architecture and acceptance gates while closing
@@ -330,6 +331,17 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
   portion reaches REPRODUCING; admitted execution, signed report production and
   live seven-gate acceptance remain pending. M3 remains open. Source rationale,
   commands and boundaries: docs/agent-harness.md.
+
+- [x] Durable known-replay observation collection (`c949e1e`, 2026-10-22):
+  bounded GET-only report/process collection, exact plan/operation correlation,
+  live lease/version/consent fencing, private atomic retention/audit, checksum/
+  expiry checks and restart without HTTP. Pending/terminal race and concurrent
+  terminal delivery reconcile; audit rollback and immutable runtime role pass.
+  Full local PostgreSQL regression **1104 passed**, zero skips, 373.37s, exit 0
+  (`m3-replay-collection-postgres.xml`); Ruff lint/format and strict mypy pass.
+  Observations remain unsigned and cannot authorize verification. M3 stays open
+  for independent workspace/image assessment, trusted receipt production and
+  live seven-gate acceptance. See docs/replay-collection.md.
 
 ## M4 — Oct 24–26: External write and benchmark
 - [~] M4 started (2026-10-21): deterministic human approval binding policy

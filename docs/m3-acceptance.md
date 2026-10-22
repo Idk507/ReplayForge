@@ -78,3 +78,15 @@ assessment, fresh correlated reports for all seven mandatory gates, and the real
 outcome visible in the UI. Whole-filesystem saved-image retention and deployment
 storage guarantees remain open. Do not mark M3 complete from harness or memory
 unit tests. See todo.md's current focus; acceptance criteria are not relaxed.
+
+
+## 22 October durable collection acceptance
+
+Implementation c949e1e adds known candidate/clean operation observation collection,
+private terminal records and audit/fencing/restart checks. Full local backend
+report: m3-replay-collection-postgres.xml, 1104 passed, zero failures/errors/skips,
+373.37s console, exit 0. Provider HTTP is synthetic in these tests. No live
+sandbox or inference ran. This closes read-only collection/retention locally;
+it does not establish trusted workspace measurements, receipt signatures or
+live seven-gate acceptance. M3 remains open. See replay-collection.md and the
+current-focus block in todo.md.

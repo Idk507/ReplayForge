@@ -2548,3 +2548,55 @@ The offline check_checkout still returns M2_FIXTURE_ACCEPTED (exit 0).
 
 Documentation-only change; the unchanged backend suite was not repeated.
 No provider call, remote write, authentication code or runtime behavior changed.
+
+
+## 2026-10-22 — Durable known-replay report collection
+
+Implementation commit **c949e1e**, base d009dd3. Added the bounded read-only
+observation reader, owner/lease/version/source/test/patch/consent fenced replay
+collector and migration 0021 private terminal observation journal. Known IDs come
+only from durable submission results. Only GETs are allowed; unknown submissions
+are never guessed or repeated. Strict process state and exact bounded JUnit bytes
+are retained independently of provider SUCCESS. Private report SHA256/canonical
+record bindings, immutable runtime role and reservation-derived expiry apply.
+
+Pending reads are not retained as terminal. Restart reconciles without HTTP.
+A reproduced pending-vs-terminal race was fixed: validated durable terminal facts
+win over an older pending read. Concurrent terminal reads produce one record/event;
+conflicting terminal facts fail. Cancellation/lease/version changes during I/O
+reject retention, and an audit failure rolls the private insert back. No checkpoint,
+stage, budget or job is changed by observation retention.
+
+Observed checks (final exit 0):
+- `uv run pytest tests/contract/test_observation_reader.py -q --junitxml=docs/evidence/m3-observation-reader.xml`: **13 passed**, zero skips.
+- Focused disposable-PostgreSQL collection run: **15 passed**, 1087 deselected,
+  zero skips, 34.80s (`m3-replay-collection-focused.xml`).
+- Additional atomic rollback/concurrent-read run: **2 passed**, 1102 deselected,
+  zero skips, 7.89s (`m3-replay-collection-atomic.xml`).
+- Full disposable-PostgreSQL regression with the existing 420-second outer
+  harness override: **1104 passed**, zero failures/errors/skips, **373.37s console**,
+  one existing upstream Starlette/AnyIO warning. JUnit suite time: 373.324s.
+  Report: m3-replay-collection-postgres.xml, SHA256 `0d8bc9ccac92099d6c20b77ca6e967269f74a0bf31069c605a5beee5f7ebbaa8`.
+- Global Ruff lint/format passed (199 files); strict mypy passed (99 source files).
+  Scoped credential-value scan and git diff checks passed. The offline retained
+  checkout checker still returned M2_FIXTURE_ACCEPTED.
+
+Initial missing-module RED and pending/terminal race RED are retained losslessly
+as m3-replay-collection-red.xml.gz and m3-replay-collection-race-red.xml.gz. No test
+was weakened, skipped or suppressed. Task-owned disposable DB/roles were cleaned.
+No dependency or UI changes required repeating their previous audits/browser runs.
+
+Provider-status HTML was unavailable; the official index-linked OpenAPI spec was
+read without credentials, alongside existing smoke response contracts. No live
+inference/sandbox/Tavily request, remote repository write, merge or deployment
+occurred. Actual report provenance in tests is synthetic HTTP and ephemeral test
+capabilities, never proof of a production admitted runner. Auth remains unchanged.
+
+M3 remains NOT CLOSED. Observations are unsigned and cannot authorize verification;
+source/final-tree identity, OCI/image/configuration assessment, trusted receipt
+production and live seven-gate acceptance remain required. The combined harness
+still reaches REPRODUCING; this collector is an explicit separate internal action.
+Next: independent workspace measurements and trusted receipt production, with
+admitted baseline/candidate/clean execution and authentic UI evidence. Actual
+assessed deployment facts/keys must not be invented or replaced with test keys.
+Details and retention/privacy limits: docs/replay-collection.md.
