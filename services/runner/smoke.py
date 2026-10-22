@@ -94,7 +94,7 @@ def _wait(
         if operation.status in TERMINAL:
             return operation
         sleep(min(1.0, max(0.0, deadline - time.monotonic())))
-    raise RunnerError("S_TIMEOUT")
+    raise RunnerError("S_TIMEOUT") 
 
 
 def run_smoke(

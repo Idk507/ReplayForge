@@ -28,9 +28,14 @@ class PreparedTestBackend(Protocol):
     No default production implementation is installed by this controller.
     """
 
-    origin: Origin
-    runner_id: UUID
-    configuration_ref: str
+    @property
+    def origin(self) -> Origin: ...
+
+    @property
+    def runner_id(self) -> UUID: ...
+
+    @property
+    def configuration_ref(self) -> str: ...
 
     def submit(
         self, plan: TestCommandPlan, execution_id: UUID, expected_tree_ref: str
