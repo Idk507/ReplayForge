@@ -38,3 +38,11 @@ and a synthetic model transport that receives citations solely as untrusted data
 This is not live Tavily or Nemotron evidence. One prepared fixed-query live check
 exists in scripts.accept_research and requires separate charge authorization and
 the disposable test environment. No live lookup has been performed by default.
+
+
+Live acceptance update (2026-10-21): one user-approved fixed query succeeded through
+this broker on a persisted tiny TRIAGING investigation. Two sources and one usage
+credit were retained in docs/evidence/m3-live-research.json before the disposable
+DB was removed. No inference or sandbox ran. Archived citations render in the UI
+without another provider request. Search ranking included a version-mismatched
+reference; this remains advisory evidence. See m3-acceptance.md for the full boundary.

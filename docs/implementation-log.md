@@ -2335,3 +2335,55 @@ The harness removed its task-owned database/roles. Final Ruff lint/format, stric
 mypy and scoped secret/diff checks passed. M2 fixture acceptance remains intact.
 M3 remains partial pending actual producer/runner integration, physical retention,
 authentic research integration, UI and live end-to-end acceptance.
+
+### 2026-10-20/21 — Workbench, research path and approved live lookup
+
+Snapshot 65bccad retains the Next.js local workbench, owner-scoped recent-run and
+patch reads, explicit loopback API startup and disposable real-API/browser harness.
+It also retains migration 0018, sticky research intents, atomic query/time/declared
+USD reservations, private hashed citation reports/events and the triage context
+integration. Research text is named untrusted_documentation and has no tool
+authority. Query vocabulary remains closed; no incident/code is submitted to Tavily.
+
+Retained backend report m3-workbench-research-postgres.xml records 905 tests with
+zero failures/errors/skips, suite time 191.980s, from the full disposable PostgreSQL
+run using a 300-second harness-child ceiling. Focused evidence records 16 passes
+in 12.93s. These are prior observed results, not a new full-suite run on October 21.
+The current changes affect frontend CSP/tests and retained evidence/documentation;
+the backend implementation has not changed from that tested snapshot.
+
+After the user explicitly approved one search, scripts.accept_research --live ran
+once as a child of the disposable DB harness. Only TAVILY_API_KEY and feature
+enablement were loaded into memory; credentials were not printed or written.
+The actual broker returned SUCCESS / REMOTE_SERVICE, two public sources and one
+reported usage credit. Canonical record: m3-live-research.json, SHA256
+0272b42fec7ac4d270e256ae0fc6d5c56f2e5efd67ea7563e7f3766594202d0a.
+The record was read back from PostgreSQL before the harness removed its DB/roles.
+The 50,000-microusd budget reservation is declared, not confirmed billing. Returned
+ranking included an Indonesian 3.12 index and a current 3.15 reference; no
+version-specific correctness is claimed, and no retry occurred.
+
+Final browser command: scripts.test_postgres --web, administrator secret provided
+only in memory. Seven tests passed, zero skipped, 20.5s, exit 0. One journey uses
+the real API/PostgreSQL to create, inspect, cancel and reload a tiny incident.
+Three UI contracts use synthetic provider data; one renders archived live research
+with mocked surrounding HTTP and a fixed checksum. Two pure bridge/parser checks
+cover cross-origin/path denial and cursor semantics. No source code executes.
+Screenshots were visually reviewed at desktop and 390px mobile; overflow checks,
+missing-gate display, inert diff/log rendering and interrupted replay passed.
+The timeline archive check adds no provider requests.
+
+UI lint/typecheck/production build passed. Production CSP no longer permits
+unsafe-eval or development WebSockets; project-local build roots avoid the unrelated
+parent-lockfile warning. npm audit reports zero known vulnerabilities. Final Ruff
+check/format (169 files), strict mypy (86 files), scoped credential checks and Git
+diff checks passed. M2_FIXTURE_ACCEPTED remains intact. Backend tests were not
+repeated merely to restate unchanged evidence. No dependency versions changed in
+this update, and no public-readiness or WCAG audit claim is made.
+
+The local UI/research/reconnect rows are accepted. M3 itself remains open because
+live seven-gate verification needs genuine runner/image/configuration evidence
+and a trusted deterministic producer/signing deployment. Fixed-fixture reports
+and test keys are not substituted for those facts. Physical purge, storage
+deployment guarantees and public deployment remain separate. This update made
+no inference/sandbox call, repository write, merge or deployment. See m3-acceptance.md.

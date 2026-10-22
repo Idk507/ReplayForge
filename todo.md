@@ -135,6 +135,90 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] Prepared-image Nebius REST backend, offline acceptance (2026-10-22):
+  exact prepared image/OCI/plan/execution/tree bindings, capability checks,
+  network-disabled one-use POST, owned status/cancellation, explicit live opt-in
+  and TEST_TRANSPORT provenance. Real adapter/controller composition prevents
+  duplicate HTTP on restart. Source was concurrently checkpointed in `d56714e`.
+  Contract: **21 passed** (`m3-prepared-backend-contract.xml`); initial focused
+  database composition: **1 passed** (`m3-prepared-dispatch-focused.xml`). Final
+  full database regression: **1026 passed**, zero failures/errors/skips, 289.65s,
+  one upstream warning, exit 0 (`m3-prepared-backend-postgres.xml`), including the
+  successful and timed-out HTTP/restart paths. Global Ruff lint/format (186 files),
+  strict mypy (93 files), diff and scoped credential-pattern checks passed.
+  Formatted the now-committed smoke.py whitespace without behavior change.
+  Initial full run: 1025 passed and one existing crash-test child-process timeout;
+  unchanged isolated and final full runs passed. Failed report preserved in
+  `m3-prepared-backend-first-run.xml.gz`; no deadline/assertion was weakened.
+  The transient cause was not reproduced. No live API/cloud calls or remote
+  writes; authentication unchanged. Materialization and JUnit export/retention
+  remain open: the disposable command cannot expose its guest JUnit file after
+  completion. No live VERIFIED/M3 closure claimed. See `docs/prepared-nebius-backend.md`.
+- [x] One-shot admitted replay dispatch controller, contract acceptance
+  (2026-10-22): migration 0020 retains per-phase submission claims before backend
+  I/O and globally unique provider operation bindings afterward. Current scope,
+  owner/lease/version/cancellation, exact reserved plans, signed capabilities and
+  backend identity are checked; live ports additionally require explicit
+  authorization. Concurrent/restarted calls cannot repeat submission; uncertain
+  outcomes stay sticky. Added bounded audit event vocabulary after the initial
+  focused tests exposed its missing database allowlist entries. Retained focused
+  evidence: **21 passed**, zero skips (`m3-replay-dispatch-focused.xml`, completed
+  before the interruption). Final current-tree regression: **1009 passed**, zero
+  failures/errors/skips, 315.38s, one upstream warning, exit 0
+  (`m3-replay-dispatch-postgres.xml`), base `399a424` plus this change. Ruff lint,
+  strict mypy (92 files), changed-file formatting and scoped credential-pattern
+  scans passed. The unrelated smoke.py whitespace edit is preserved. All backend
+  calls used a labelled fake port and ephemeral assessment keys; no cloud request
+  or remote write occurred. No production prepared-workspace backend is installed;
+  real materialization, polling/cleanup, collector configuration and live M3 gates
+  remain pending. See `docs/replay-dispatch.md`.
+- [x] Immutable replay-pair intent and atomic accounting (2026-10-21): migration
+  0019 and ReplayJournal reserve exact candidate/clean plans and distinct action
+  identities against current checkpoint/baseline/consent/fence. Both commands and
+  full 120-second requested time commit once with the intent and budget event;
+  exhaustion closes INCONCLUSIVE without partial debit. Delivery now requires
+  the exact retained reservation. Runtime update/delete are denied. Fixed an
+  observed duplicate-delivery race without weakening transactional fencing; a
+  deterministic interleaving test covers it. Focused PostgreSQL: **28 passed**,
+  zero skips, exit 0 (`m3-replay-reservations-focused.xml`). Full regression:
+  **988 passed**, zero failures/errors/skips, 243.39s, one upstream warning,
+  exit 0 (`m3-replay-reservations-postgres.xml`), base `76840a2` plus this change.
+  Ruff lint, strict mypy (91 files), changed-file format/diff and scoped
+  credential-pattern checks passed. The unrelated smoke.py trailing-space edit
+  remains untouched. No cloud calls or remote writes. This reserves intent only;
+  assessed admission, actual submission/polling, collector and live seven-gate
+  acceptance remain open. See `docs/replay-reservations.md`.
+- [x] Durable candidate/replay receipt delivery (2026-10-21): internal worker
+  receiver binds current source/repository/patch/test and accepted baseline,
+  authenticates both reports using database time, and atomically retains exact
+  plans/receipts/JUnit bytes in the private evidence bundle. Duplicate restart
+  and concurrent delivery commit once; conflicting evidence, stale workers,
+  cancellation, revoked consent and audit rollback are rejected. Authentic
+  failing results remain evidence and never manufacture VERIFIED. Focused real
+  PostgreSQL acceptance: **13 passed**, zero skips, exit 0
+  (`m3-replay-delivery-focused.xml`). See `docs/replay-delivery.md`.
+  Final full regression from base `3315bca` plus this increment: **973 passed**,
+  zero failures/errors/skips, 217.31s, one upstream AnyIO warning, exit 0
+  (`m3-delivery-m4-approval-postgres.xml`). Ruff lint, strict mypy (90 source
+  files), changed-file formatting and credential-pattern checks passed. Global
+  formatting still has the preserved unrelated trailing space in smoke.py:97.
+  No dependencies/UI changed; no cloud requests or remote writes occurred.
+- [x] Candidate/clean-replay report qualification core (2026-10-21): separate
+  signature purpose, exact planned operation/tree/report binding, exit-zero
+  regression presence and strict JUnit outcome checks. Pair validation requires
+  identical immutable inputs and distinct baseline/candidate/replay operations.
+  Tiny synthetic focused acceptance: **81 passed**, zero skips, exit 0
+  (`m3-replay-receipts-focused.xml`). Full disposable-PostgreSQL regression:
+  **940 passed**, zero skips, one upstream warning, 198.07s, exit 0
+  (`m3-replay-receipts-postgres.xml`), tested from base `27c854e` plus this change.
+  Ruff lint and strict mypy (87 files) pass; changed-file formatting/diff checks
+  and credential-pattern scan pass. Repository-wide formatting/diff checks found
+  a concurrent unrelated trailing-space edit in `services/runner/smoke.py:97`,
+  left untouched. Initial negative-test data reused its original digest; corrected
+  before this final full run. No dependency/UI changes, cloud calls or remote
+  writes. This is authenticated protocol testing with ephemeral test keys,
+  not deployed collector evidence. Durable candidate delivery, scheduling and
+  live gate production remain pending; see `docs/replay-receipts.md`.
 - [ ] Clean replay in independent fresh runner. Acceptance: image/source/test digests recorded.
 - [~] Mandatory deterministic gate evaluator: authenticated core `f1b7acf` now requires seven architecture gates, signed run/source/patch/test/image/configuration context, intact manifest bytes and independent baseline/candidate/replay identities. Unsigned records return GATES_SATISFIED with no authority. Forgery/tamper/context/omission negatives passed within 830 tests (`m3-gates-postgres.xml`). Live producer deployment and live end-to-end acceptance remain pending; no live VERIFIED result is claimed. See `docs/verification-gates.md`.
 - [~] Manifest hashing, artifact access control and retention: `d62d607` adds atomic private bundles, owner/lease/version/consent checks, integrity-checked restart reads, authenticated manifest/download endpoints and fixed 24-hour read expiry. Final 845 tests passed with zero skips (`m3-evidence-store-postgres.xml`); runtime mutation/deletion and unauthorized/expired/tampered downloads are denied. Physical purge, backup retention, encryption-at-rest deployment and full M3 integration remain pending. See `docs/evidence-storage.md`.
@@ -157,10 +241,36 @@ general dispatch, worker integration and measured usage reconciliation remain op
   Full disposable-PostgreSQL regression: **889 passed, zero skips**, one upstream
   warning, 192.93s, exit 0 (`m3-verdict-postgres.xml`); Ruff lint/format (161 files),
   strict mypy (82 files), scoped secret and diff checks passed. No cloud use.
-- [ ] Tavily documentation retrieval in at least one authentic agent path. Acceptance: retrieved citations appear in investigation timeline.
-- [ ] Next.js dashboard, intake, run timeline, diff and evidence matrix. Acceptance: real run displayed without fake statuses.
-- [ ] SSE reconnect and accessible errors. Acceptance: disconnect/reconnect retains sequence.
+- [x] On-demand research broker and citation timeline: migration 0018 persists
+  sticky query intent, run-level search/time/declared-spend budgets, private
+  hashed reports and RESEARCH_RETAINED events. Triage consumes citations only as
+  untrusted context. One explicitly approved live lookup on 2026-10-21 returned
+  two sources / one usage credit (m3-live-research.json). Archive hash and timeline
+  rendering pass without another request. Provider ranking was not version-exact;
+  the record is advisory and does not prove a diagnosis. See docs/m3-acceptance.md.
+- [x] Local Next.js workbench: actual recent-run discovery, incident intake,
+  persisted timeline, cancel/reload, candidate diff, gate matrix and SHA256-checked
+  text artifact previews. Server-only API bearer and closed loopback BFF; no mock
+  statuses ship in the app. The real API/database browser journey passed;
+  rejected-candidate rendering uses explicitly synthetic contract evidence.
+  Local-only scope; no public auth/deployment or live VERIFIED repair is claimed.
+- [x] Browser finite-SSE replay reconnects with last validated ID, bounded backoff
+  and deduplication; interrupted delivery preserves cursor. Error/missing/loading
+  states, keyboard-native controls and mobile overflow were checked. Final browser
+  harness: 7 passed, zero skips, 20.5s (m3-web-browser.xml); production build, UI
+  lint/typecheck and npm audit (zero known vulnerabilities) passed.
 **Gate:** judge can inspect a complete verified or rejected outcome in UI.
+
+**M3 status (2026-10-21): NOT CLOSED.** Local UI/research/reconnect acceptance
+passes, but required live seven-gate clean replay still lacks the trusted producer,
+assessed runner configuration/image binding and correlated signed reports. The
+existing fixed-fixture replay is not promoted to production VERIFIED. Physical
+retention/deployment storage guarantees remain open. See docs/m3-acceptance.md.
+Retained full backend evidence at 65bccad: 905 passed, zero skips, suite time
+191.980s (m3-workbench-research-postgres.xml). It was not redundantly rerun for
+this frontend-only/retained-evidence update; current Ruff/mypy and browser checks
+passed. Exactly one approved Tavily lookup ran; no inference, sandbox execution,
+remote repository write, merge or deployment occurred.
 
 M3 local validation update (2026-10-20): Ruff lint/format (157 files), strict
 mypy (81 files), targeted credential-value scans and Git diff checks passed.
@@ -170,6 +280,15 @@ calls or remote writes occurred; production VERIFIED, UI and PR authority are
 not implied by these primitives.
 
 ## M4 — Oct 24–26: External write and benchmark
+- [~] M4 started (2026-10-21): deterministic human approval binding policy
+  validates exact run/repository/owner/source/diff/verdict/branch/policy,
+  independently supplied reviewer permission, explicit approval, TTL and nonce
+  availability. **20 unit cases passed**, zero skips, exit 0
+  (`m4-approval-policy.xml`), included in the 973-test full run above. This
+  validation kernel has no publication authority. Durable approval journal,
+  independently authenticated human endpoint and atomic nonce consumption are
+  still required before the approval task below can close. See
+  `docs/approval-policy.md`. No GitHub action was performed.
 - [ ] Approval bound to immutable patch digest and reviewer authorization. Acceptance: changed patch invalidates approval.
 - [ ] One-use GitHub PR publisher. Acceptance: retry creates exactly one PR.
 - [ ] Incident B aggregation fixture. Acceptance: hidden oracle identifies truth.

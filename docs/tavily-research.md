@@ -1,7 +1,10 @@
 # Optional documentation research
 
-This M0 adapter is implemented locally; no live Tavily request has been made.
-It is not yet connected to a ResearchAgent or timeline and does not satisfy M3.
+The adapter is connected to the durable on-demand research broker and triage's
+untrusted context, with advisory timeline citations. One user-approved live lookup
+succeeded on 2026-10-21 with two sources and one reported usage credit. See
+research-broker.md and m3-acceptance.md for provenance and remaining boundaries.
+This does not complete M3's authenticated clean-replay gate.
 
 `uv run python -m scripts.check_tavily` makes no network request and exits 2.
 After explicit authorization for potential credit consumption, set
@@ -28,8 +31,9 @@ invented. Failures expose stable codes instead of raw provider responses.
 
 Two attempted searches are admitted per client, including failed requests;
 concurrent callers cannot exceed this limit. This process-local cap is not a
-durable run budget. Before agent integration, the broker must enforce run-level
-policy, persistent spend accounting and artifact access/retention. Tests use
-HTTPX MockTransport and reports explicitly identify TEST_TRANSPORT evidence.
+durable run budget. The integrated broker separately enforces run-level policy,
+durable search/time/declared-spend reservation and private report reads. Tests use
+HTTPX MockTransport and identify TEST_TRANSPORT; the retained live acceptance
+record identifies REMOTE_SERVICE. Neither origin grants execution authority.
 
 API reference consulted: [Tavily Search](https://docs.tavily.com/documentation/api-reference/endpoint/search).
