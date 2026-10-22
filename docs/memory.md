@@ -59,8 +59,7 @@ policy result, artifact refs and explicit false execution/verification authority
 Recall does not change checkpoints, events, budgets, jobs or TTLs. Completed
 triage still reconciles before recall and makes no additional inference request.
 No memory endpoint, UI, free-form memory writer or authentication change ships
-in this increment. Harness requirements beyond the existing workflow/tests have
-not yet been supplied by the user.
+in this increment. The subsequent bounded scheduler is documented in docs/agent-harness.md.
 
 ## Reproducible checks
 

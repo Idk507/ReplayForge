@@ -118,6 +118,16 @@ Triage may include cards only within its existing request budget; every new run
 still requires fresh reproduction and verification. See `docs/memory.md` for the
 implemented contract, retention boundary and limitations.
 
+### 11.2 Bounded agent harness
+
+The opt-in worker harness alternates durable collection and triage queues with
+bounded steps, cooperative shutdown and explicit live-inference cost policy.
+Existing stage controllers retain scope, context/memory limits, request-identity
+reservations and recovery authority. Exceptions stop scheduling without a blind
+retry. The current loop reaches REPRODUCING; later execution/verification and
+human approval integrations remain required. See `docs/agent-harness.md` for the
+source-informed design and runnable entry point.
+
 ## 12. Observability, SLOs and operations
 
 Every stage spans one OTel trace with nested inference/tool/sandbox spans and propagation of `run_id`, stage, attempt, model and sanitized error class. Do not record raw source code, prompts with secrets, or access tokens in spans. Metrics: run duration, stage latency, baseline reproduction rate, verified patch rate, inconclusive rate, gateway error rate, token spend, sandbox launch failures, artifact verification failures, approval wait time, queue depth, PR create failure, policy-block counts. Initial *targets*, not claims: API uptime 99% for demo hours; zero unauthorized write operations; zero sandbox-to-control-plane egress; 100% of `VERIFIED` runs have every required gate and artifact; all demo incidents work from clean state. Alerts: excessive model spend, lease backlog, failures in clean replay, sandbox policy violation, failed storage checksum and unusual PR creation attempts.

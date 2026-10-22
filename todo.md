@@ -297,7 +297,17 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
   (`m3-memory-postgres.xml`); Ruff lint/format and strict mypy pass. Existing
   per-run recovery is preserved. This is structured historical outcome recall,
   not semantic learning, longer retention, live accuracy or M3 completion.
-  See docs/memory.md. Separate harness requirements remain unspecified.
+  See docs/memory.md; the source-informed harness follow-up is recorded below.
+
+- [x] Source-informed bounded collection/triage harness (2026-10-22, base
+  d5cf18e): combined fair scheduling, cooperative shutdown, finite steps/waits,
+  durable restart/uncertain-request handling and CLI inference/cost opt-in.
+  Small real-PostgreSQL/mock-provider handoff and failure/restart cases pass;
+  full regression **1074 passed**, zero skips, 333.06s, exit 0
+  (`m3-harness-postgres.xml`). Ruff lint/format and strict mypy pass. The runnable
+  portion reaches REPRODUCING; admitted execution, signed report production and
+  live seven-gate acceptance remain pending. M3 remains open. Source rationale,
+  commands and boundaries: docs/agent-harness.md.
 
 ## M4 — Oct 24–26: External write and benchmark
 - [~] M4 started (2026-10-21): deterministic human approval binding policy

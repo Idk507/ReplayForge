@@ -1,4 +1,4 @@
-"""Explicit local collection worker startup; offline by default, no model calls."""
+"""Explicit local worker startup; offline by default, opt-in budgeted triage."""
 
 import argparse
 import json
@@ -13,7 +13,10 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretStr
 
+from packages.contracts.inference import ModelCostPolicy
 from packages.policies.repository import safe_tree_path
+from packages.providers.nebius import NebiusConfig
+from services.orchestrator.harness import serve_harness
 from services.orchestrator.source import github_inputs
 from services.orchestrator.worker import bind_incident, serve
 from services.persistence.store import Store
@@ -94,10 +97,33 @@ def main() -> int:
         action="store_true",
         help="Queue collected context for a separately authorized triage worker",
     )
+    parser.add_argument(
+        "--harness",
+        action="store_true",
+        help="Use bounded collection/triage scheduling (inference off by default)",
+    )
+    parser.add_argument(
+        "--allow-live-inference",
+        action="store_true",
+        help="Explicitly permit budgeted Nebius inference in harness mode",
+    )
+    parser.add_argument(
+        "--estimated-call-microusd",
+        type=int,
+        help="Declared per-call estimate, not verified provider billing",
+    )
     args = parser.parse_args()
     if not args.run:
         print(json.dumps({"status": "NOT_RUN", "reason": "Explicit --run required"}))
         return 2
+    if args.allow_live_inference and (
+        not args.harness
+        or args.estimated_call_microusd is None
+        or not 1 <= args.estimated_call_microusd <= 2_000_000
+    ):
+        parser.error("live inference requires --harness and an estimate in 1..2000000")
+    if args.estimated_call_microusd is not None and not args.allow_live_inference:
+        parser.error("a call estimate requires explicit --allow-live-inference")
     stop = Event()
     previous = {}
     try:
@@ -114,15 +140,39 @@ def main() -> int:
         loader = bind_incident(store, github_inputs(config.read_token, config.paths))
         for sig in (signal.SIGINT, signal.SIGTERM):
             previous[sig] = signal.signal(sig, lambda signum, frame: stop.set())
-        result = serve(
-            store,
-            uuid4(),
-            loader,
-            stop,
-            max_ticks=args.max_ticks,
-            queue_triage=args.queue_triage,
-        )
-        print(result.model_dump_json())
+        if args.harness:
+            model = NebiusConfig.from_env() if args.allow_live_inference else None
+            cost = (
+                ModelCostPolicy(
+                    model=model.model,
+                    base_url=model.base_url,
+                    policy_version="operator-estimate-v1",
+                    estimated_spend_microusd=args.estimated_call_microusd,
+                )
+                if model is not None
+                else None
+            )
+            result = serve_harness(
+                store,
+                uuid4(),
+                loader,
+                stop,
+                model_config=model,
+                cost_policy=cost,
+                allow_live_inference=args.allow_live_inference,
+                max_steps=args.max_ticks,
+            )
+            print(result.model_dump_json())
+        else:
+            collection_result = serve(
+                store,
+                uuid4(),
+                loader,
+                stop,
+                max_ticks=args.max_ticks,
+                queue_triage=args.queue_triage,
+            )
+            print(collection_result.model_dump_json())
         return 0
     except WorkerConfigError as error:
         print(json.dumps({"status": "FAILED", "error_class": str(error)}))

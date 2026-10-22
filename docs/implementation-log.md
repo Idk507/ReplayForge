@@ -2471,3 +2471,50 @@ Limitations: structured outcome recall, not semantic/root-cause learning;
 retention remains tied to source evidence (currently 24h default); future
 approval/publication stage recall and a UI view remain unimplemented. M3 is not
 closed by memory. Separate requested harness specifications are still missing.
+
+
+## 2026-10-22 — Source-informed bounded collection/triage harness
+
+Base d5cf18e. Reviewed official Anthropic long-running-agent guidance and its
+reference README, plus LangChain's harness anatomy and harness-engineering posts.
+Sources and decisions are linked in docs/agent-harness.md. Implemented an original
+fixed-stage scheduler using existing workers, typed state, memory, leases,
+request reservations and journals; no framework/model/provider was replaced.
+
+The harness alternates collection/triage fairly, queues handoff atomically, caps
+steps/waits and stops cooperatively. Exceptions propagate without blind retry.
+The existing CLI adds --harness and explicitly gated live inference with a
+required declared per-call cost estimate. Default invocation performs no I/O;
+inference-off never reads the model key. Signal handlers restore on exit/error.
+The currently integrated path reaches REPRODUCING, not a repair verdict.
+
+Observed checks, final exit 0:
+- `uv run pytest tests/unit/test_agent_harness.py tests/unit/test_worker_startup.py -q --junitxml=docs/evidence/m3-harness-unit.xml`: **25 passed**.
+- Focused isolated PostgreSQL harness selection: **13 passed**, 1060 deselected,
+  zero skips, 10.13s (`m3-harness-focused.xml`). This preceded the additional
+  positive CLI configuration parameter; the full run includes that case.
+- Full disposable-PostgreSQL regression: **1074 passed**, zero failures/errors/
+  skips, **333.06s**, `m3-harness-postgres.xml`. One existing upstream
+  Starlette/AnyIO warning. Task-owned local DB/roles cleaned by the harness.
+- Global Ruff lint/format passed (194 files); strict mypy passed (97 source
+  files). Scoped credential-value scan and Git diff checks pass.
+- `uv run python -m scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+Initial TDD run failed on the absent harness module (8 cases, exit 1).
+The first integration collection exposed duplicate test basenames; the new
+integration module was renamed without changing pytest mode or weakening tests.
+Formatting/import findings were corrected. The final source has no suppressed
+checks. The CLI description was corrected to describe opt-in inference after
+starting the full run; that edit changes help text only.
+
+The tiny integration fixture uses synthetic source/model HTTP, real PostgreSQL
+collection-to-triage and replay/restart assertions. Failure mode confirms exactly
+one outbound mock request across uncertain recovery. No inference/sandbox/Tavily
+call or remote repository write, merge or deployment occurred. Public docs and
+an official reference README were read online without provider credentials.
+No dependency/UI changes required repeating prior audits/browser checks.
+
+M3 remains NOT CLOSED. The remaining critical work is admitted baseline/candidate/
+clean execution, trusted report production and live seven-gate acceptance, then
+approval/publication and submission packaging. This closes the combined
+collection/triage scheduling increment, not the whole runtime graph.
