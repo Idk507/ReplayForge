@@ -2387,3 +2387,42 @@ and a trusted deterministic producer/signing deployment. Fixed-fixture reports
 and test keys are not substituted for those facts. Physical purge, storage
 deployment guarantees and public deployment remain separate. This update made
 no inference/sandbox call, repository write, merge or deployment. See m3-acceptance.md.
+
+
+## 2026-10-22 — Explicit JUnit result-image export
+
+Base commit f5f1c54. Implemented PYTEST_FILES_SAVED_JUNIT_V1 as an opt-in
+closed command template, with distinct canonical plan identity and unchanged
+pytest argv/network/shell/environment bounds. Existing disposable plans remain
+unchanged. Added owned terminal-result-image JUnit collection with private exact
+bytes/SHA256, 64 KB HTTP bound, fixed report path and explicit unavailable/error
+outcomes. Failed test operations may export reports; unrelated, running/cancelled,
+source-image, empty/oversized/redirect/missing-file cases fail closed. Candidate
+and clean replay retention policies must match before reservation/inspection.
+See docs/prepared-nebius-backend.md for provider sources and retention impact.
+
+Observed commands (all exit 0):
+- `uv run pytest tests/contract/test_prepared_backend.py tests/unit/test_rest_plan.py tests/unit/test_command_policy.py tests/unit/test_replay_pair.py -q --junitxml=docs/evidence/m3-junit-export-contract.xml`: 69 passed, zero skips.
+- `scripts.test_postgres --evidence-name m3-junit-export-postgres.xml`, invoked
+  through the documented Python wrapper with the outer suite ceiling 420s:
+  **1041 passed**, zero failures/errors/skips, **300.91s**. One existing upstream
+  Starlette/AnyIO deprecation warning. Task-owned DB/roles cleaned by harness.
+- `uv run ruff check .`, `uv run ruff format --check .`: pass, 186 files.
+- `uv run mypy`: pass, 93 source files.
+- `git diff --check` and scoped credential-value-pattern scan: pass.
+- `uv run python -m scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+The new pair-policy negative was observed failing at the wrong (later receipt)
+binding guard before the earlier pair/reservation policy checks were added; it
+then passed. HTTP cases are tiny synthetic transport exchanges, not remote
+execution. No repository code ran on the host; no paid inference/sandbox/Tavily
+call, GitHub write, deploy or merge occurred. Authentication is unchanged.
+No dependency/UI changes required repeating their previous audits/browser suite.
+
+M3 remains NOT CLOSED: general materialization, bounded runtime orchestration,
+trusted receipt producer and assessed live seven-gate acceptance remain open.
+Saving an image retains the entire filesystem and does not establish deletion.
+The new collector does not sign reports or establish final-tree identity; those
+require the independently configured producer. Next implementation is connecting
+collection to that producer and owned operation recovery/cleanup, followed by
+small explicitly authorized live acceptance. No production readiness is claimed.

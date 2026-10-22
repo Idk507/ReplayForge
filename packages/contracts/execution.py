@@ -70,7 +70,9 @@ class TestCommandPlan(BaseModel):
     __test__ = False
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     schema_version: Literal["1.0"] = "1.0"
-    command_id: Literal["PYTEST_FILES_V1"] = "PYTEST_FILES_V1"
+    command_id: Literal["PYTEST_FILES_V1", "PYTEST_FILES_SAVED_JUNIT_V1"] = (
+        "PYTEST_FILES_V1"
+    )
     status: Literal["PLANNED"] = "PLANNED"
     observed_at: datetime
     trace_id: UUID

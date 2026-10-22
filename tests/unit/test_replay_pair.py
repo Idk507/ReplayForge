@@ -86,3 +86,16 @@ def test_reused_operation_or_different_replay_inputs_are_denied(change):
         )
     with pytest.raises(ReceiptDenied):
         inspect_replay_pair(actions, candidate, clean, verifier, now=now)
+
+
+def test_pair_requires_identical_report_retention_policy():
+    actions, candidate, clean, verifier, now = inputs()
+    actions = actions.model_copy(
+        update={
+            "clean_plan": actions.clean_plan.model_copy(
+                update={"command_id": "PYTEST_FILES_SAVED_JUNIT_V1"}
+            )
+        }
+    )
+    with pytest.raises(ReceiptDenied, match="REPLAY_PAIR_BINDING_INVALID"):
+        inspect_replay_pair(actions, candidate, clean, verifier, now=now)

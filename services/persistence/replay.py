@@ -103,6 +103,7 @@ class ReplayJournal:
                 or run.cancellation_requested
                 or not run.patch_attempt_refs
                 or before.phase != "CANDIDATE"
+                or actions.candidate_plan.command_id != actions.clean_plan.command_id
                 or after.phase != "CLEAN_REPLAY"
                 or before.model_dump(exclude={"phase"})
                 != after.model_dump(exclude={"phase"})

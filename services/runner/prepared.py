@@ -1,11 +1,12 @@
 """REST backend for an operator-prepared immutable image; no host execution."""
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Literal, Self
 from uuid import UUID
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from packages.contracts.execution import TestCommandPlan
 from packages.contracts.run import ArtifactID
@@ -71,6 +72,7 @@ class PreparedNebiusBackend:
         self._operation: UUID | None = None
         self._submitted = False
         self._closed = False
+        self._exports_junit = False
 
     @property
     def origin(self) -> Literal["TEST_TRANSPORT", "REMOTE_SERVICE"]:
@@ -123,6 +125,7 @@ class PreparedNebiusBackend:
         ):
             raise RunnerError("S_PREPARED_ADMISSION_DENIED")
         payload = build_test_spawn(plan, binding.image_uuid)
+        self._exports_junit = plan.command_id == "PYTEST_FILES_SAVED_JUNIT_V1"
         self._submitted = True
         try:
             body = self._http._request("POST", "v1/instances", 201, payload)
@@ -161,3 +164,47 @@ class PreparedNebiusBackend:
         """Request cancellation only; caller must inspect to confirm terminality."""
         self._owned(operation_id)
         self._http._request("DELETE", f"v1/operations/{operation_id}", 202)
+
+    def collect_junit(self, operation_id: UUID) -> "CollectedJUnit":
+        """Read bounded raw bytes from this operation's terminal result image.
+
+        The bytes are untrusted evidence, not a passing verdict or signed receipt.
+        Saving an image retains the whole filesystem; no deletion is implied.
+        """
+        self._owned(operation_id)
+        if not self._exports_junit:
+            raise RunnerError("S_REPORT_EXPORT_DISABLED")
+        operation = self.inspect(operation_id)
+        if operation.status not in {"SUCCESS", "FAILED"}:
+            raise RunnerError("S_REPORT_NOT_READY")
+        image = operation.result_image_uuid
+        if image is None or image == self._binding.image_uuid:
+            raise RunnerError("S_REPORT_IMAGE_INVALID")
+        content = self._http._request(
+            "GET",
+            f"v1/inspect/{image}/download?path=/tmp/replayforge-result.xml&text=true",
+            200,
+        )
+        if not content:
+            raise RunnerError("S_REPORT_EMPTY")
+        return CollectedJUnit(
+            operation_id=operation_id,
+            result_image_uuid=image,
+            content=content,
+            report_ref="sha256:" + sha256(content).hexdigest(),
+            origin=self.origin,
+            observed_at=datetime.now(UTC),
+        )
+
+
+class CollectedJUnit(BaseModel):
+    """Private exact bytes; authenticity/target checks belong to the verifier."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    operation_id: UUID
+    result_image_uuid: UUID
+    content: bytes = Field(min_length=1, max_length=65536, repr=False)
+    report_ref: ArtifactID
+    origin: Literal["TEST_TRANSPORT", "REMOTE_SERVICE"]
+    observed_at: datetime
+    can_authorize_verification: Literal[False] = False

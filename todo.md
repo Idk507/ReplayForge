@@ -279,6 +279,16 @@ with one upstream AnyIO warning. M2 fixture acceptance remains intact. No cloud
 calls or remote writes occurred; production VERIFIED, UI and PR authority are
 not implied by these primitives.
 
+M3 implementation evidence (2026-10-22, base f5f1c54): explicit saved-image
+JUnit export now passes owned-image/status/report-size/retention-policy negatives.
+The default disposable template is preserved; saving filesystem state changes the
+canonical plan hash. Full local PostgreSQL regression: **1041 passed**, zero skips,
+300.91s, exit 0 (`m3-junit-export-postgres.xml`); focused contracts: 69 passed.
+Ruff lint/format and strict mypy pass. No live execution or VERIFIED claim.
+Trusted producer, materialization/orchestration and assessed live seven-gate
+acceptance remain pending; M3 stays open. Whole-filesystem retention and lack of
+physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
+
 ## M4 — Oct 24–26: External write and benchmark
 - [~] M4 started (2026-10-21): deterministic human approval binding policy
   validates exact run/repository/owner/source/diff/verdict/branch/policy,
