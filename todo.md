@@ -135,6 +135,24 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] One-shot admitted replay dispatch controller, contract acceptance
+  (2026-10-22): migration 0020 retains per-phase submission claims before backend
+  I/O and globally unique provider operation bindings afterward. Current scope,
+  owner/lease/version/cancellation, exact reserved plans, signed capabilities and
+  backend identity are checked; live ports additionally require explicit
+  authorization. Concurrent/restarted calls cannot repeat submission; uncertain
+  outcomes stay sticky. Added bounded audit event vocabulary after the initial
+  focused tests exposed its missing database allowlist entries. Retained focused
+  evidence: **21 passed**, zero skips (`m3-replay-dispatch-focused.xml`, completed
+  before the interruption). Final current-tree regression: **1009 passed**, zero
+  failures/errors/skips, 315.38s, one upstream warning, exit 0
+  (`m3-replay-dispatch-postgres.xml`), base `399a424` plus this change. Ruff lint,
+  strict mypy (92 files), changed-file formatting and scoped credential-pattern
+  scans passed. The unrelated smoke.py whitespace edit is preserved. All backend
+  calls used a labelled fake port and ephemeral assessment keys; no cloud request
+  or remote write occurred. No production prepared-workspace backend is installed;
+  real materialization, polling/cleanup, collector configuration and live M3 gates
+  remain pending. See `docs/replay-dispatch.md`.
 - [x] Immutable replay-pair intent and atomic accounting (2026-10-21): migration
   0019 and ReplayJournal reserve exact candidate/clean plans and distinct action
   identities against current checkpoint/baseline/consent/fence. Both commands and
