@@ -12,7 +12,8 @@ Current work and acceptance evidence: [delivery tracker](todo.md),
 [M3 acceptance](docs/m3-acceptance.md), [implementation log](docs/implementation-log.md).
 Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
 [prepared runner](docs/prepared-nebius-backend.md),
-[durable replay collection](docs/replay-collection.md). Latest full backend regression
+[durable replay collection](docs/replay-collection.md),
+[measured receipt producer](docs/receipt-producer.md). Latest full backend regression
 at `c949e1e`: 1104 passed, zero skips; see the retained report linked in the tracker.
 
 

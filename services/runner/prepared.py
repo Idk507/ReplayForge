@@ -100,10 +100,10 @@ class PreparedNebiusBackend:
             self._http.close()
             self._closed = True
 
-    def submit(
+    def _validate_submission(
         self, plan: TestCommandPlan, execution_id: UUID, expected_tree_ref: str
-    ) -> UUID:
-        """Submit the exact reserved plan once; ambiguous failures stay unknown."""
+    ) -> TestCommandPlan:
+        """Check admission before any provider I/O; reused by measured submission."""
         if self._closed or self._submitted:
             raise RunnerError("S_CLOSED_OR_ALREADY_SUBMITTED")
         plan = TestCommandPlan.model_validate(plan.model_dump())
@@ -124,8 +124,19 @@ class PreparedNebiusBackend:
             or self._attestation.payload.configuration_ref != binding.configuration_ref
         ):
             raise RunnerError("S_PREPARED_ADMISSION_DENIED")
+        return plan
+
+    def submit(
+        self, plan: TestCommandPlan, execution_id: UUID, expected_tree_ref: str
+    ) -> UUID:
+        """Submit the exact reserved plan once; ambiguous failures stay unknown."""
+        plan = self._validate_submission(plan, execution_id, expected_tree_ref)
+        binding = self._binding
         payload = build_test_spawn(plan, binding.image_uuid)
-        self._exports_junit = plan.command_id == "PYTEST_FILES_SAVED_JUNIT_V1"
+        self._exports_junit = plan.command_id in {
+            "PYTEST_FILES_SAVED_JUNIT_V1",
+            "PYTEST_FILES_MEASURED_V1",
+        }
         self._submitted = True
         try:
             body = self._http._request("POST", "v1/instances", 201, payload)

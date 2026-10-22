@@ -113,7 +113,10 @@ def read_replay_observation(
     if transport is None and allow_live is not True:
         raise RunnerError("S_LIVE_NOT_AUTHORIZED")
     plan = TestCommandPlan.model_validate(plan.model_dump())
-    if plan.command_id != "PYTEST_FILES_SAVED_JUNIT_V1":
+    if plan.command_id not in {
+        "PYTEST_FILES_SAVED_JUNIT_V1",
+        "PYTEST_FILES_MEASURED_V1",
+    }:
         raise RunnerError("S_REPORT_EXPORT_DISABLED")
     if not isinstance(operation_id, UUID) or not isinstance(execution_id, UUID):
         raise RunnerError("S_CORRELATION_FAILED")

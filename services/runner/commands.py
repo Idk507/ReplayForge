@@ -24,6 +24,7 @@ def plan_pytest(
     caller: UUID,
     *,
     save_junit_image: bool = False,
+    measured_workspace: bool = False,
 ) -> TestCommandPlan:
     """Bind a fixed command to consent/checkpoint; reserve nothing and run nothing.
 
@@ -58,10 +59,14 @@ def plan_pytest(
         raise CommandPolicyError("COMMAND_PATCH_DENIED")
     return TestCommandPlan(
         command_id=(
-            "PYTEST_FILES_SAVED_JUNIT_V1" if save_junit_image else "PYTEST_FILES_V1"
+            "PYTEST_FILES_MEASURED_V1"
+            if measured_workspace
+            else (
+                "PYTEST_FILES_SAVED_JUNIT_V1" if save_junit_image else "PYTEST_FILES_V1"
+            )
         ),
         request=request,
-        argv=pytest_argv(request),
+        argv=pytest_argv(request, no_bytecode=measured_workspace),
         observed_at=datetime.now(UTC),
         trace_id=uuid4(),
     )

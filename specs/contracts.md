@@ -77,3 +77,21 @@ from the reservation. Cached reads verify canonical bytes/checksum/bindings and
 perform no HTTP. A committed terminal beats an earlier pending read; conflicting
 terminal facts are rejected. This contract does not prove fresh compute, tree
 identity, image OCI mapping, signing authenticity or physical cleanup.
+
+
+## Measured prepared receipt production — 2026-10-22
+
+The opt-in PYTEST_FILES_MEASURED_V1 command saves the result image and inserts
+Python -B before the existing isolated pytest template. Old command argv/IDs
+remain unchanged; no-bytecode is part of the new exact plan hash. Both the
+transport and durable report reader accept the new closed command ID.
+
+MeasuredPreparedBackend reuses the admitted prepared submission port. A trusted
+worker injects the receipt signing key; neither guests nor models receive it.
+Actual pre/post saved-image archives and JUnit bytes determine the signed facts;
+expected hashes are only comparisons. Baseline/replay signature domains remain
+separate. TEST_TRANSPORT remains test evidence regardless of which key signs it.
+ProducedReceipt is private, not a verdict or publication authority. Repeated
+successful reads preserve the original signature/time without I/O. Durable
+producer-state restoration remains open; sticky dispatch never repeats a POST.
+See docs/receipt-producer.md for trust inputs, limits and executable evidence.

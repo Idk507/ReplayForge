@@ -30,3 +30,10 @@ Starlette/AnyIO deprecation warning, 5.96 seconds, exit 0. Includes 20 tiny iner
 archive/HTTP cases for this module. Ruff check, Ruff format check and strict mypy
 (100 source files) pass. Database integration and live provider acceptance were
 not rerun; this change has no DB, UI, dependency or dispatch mutation.
+
+
+Follow-up: MeasuredPreparedBackend now consumes archive_identity directly on
+its already admitted owned HTTP transport, binds measured facts to actual process
+and JUnit observations, and signs through an explicit worker-held key. See
+receipt-producer.md. The standalone measure_workspace primitive remains unsigned;
+production provisioning and durable producer recovery remain incomplete.

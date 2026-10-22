@@ -200,3 +200,13 @@ to the submission adapter; it neither resumes submission nor issues signed
 receipts. It does not establish source/final-tree or OCI identity and is not
 wired into the combined collection/triage scheduler. The remaining producer and
 live acceptance requirements above still apply.
+
+
+## Opt-in measured producer follow-up — 2026-10-22
+
+MeasuredPreparedBackend now extends this port with actual pre/post workspace
+measurement and explicit trusted-worker receipt signing. It requires the new
+PYTEST_FILES_MEASURED_V1 plan and does not alter existing plan identities.
+See receipt-producer.md for tested behavior and remaining durable recovery,
+materialization, provisioning and live acceptance boundaries. The original
+backend stays usable independently; it does not automatically gain signing.

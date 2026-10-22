@@ -43,10 +43,13 @@ class TestCommandRequest(BaseModel):
         return self
 
 
-def pytest_argv(request: TestCommandRequest) -> tuple[str, ...]:
+def pytest_argv(
+    request: TestCommandRequest, *, no_bytecode: bool = False
+) -> tuple[str, ...]:
     """Application-owned version-one template; no shell interpolation."""
     return (
         "/usr/local/bin/python",
+        *(("-B",) if no_bytecode else ()),
         "-I",
         "-m",
         "pytest",
@@ -70,9 +73,9 @@ class TestCommandPlan(BaseModel):
     __test__ = False
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     schema_version: Literal["1.0"] = "1.0"
-    command_id: Literal["PYTEST_FILES_V1", "PYTEST_FILES_SAVED_JUNIT_V1"] = (
-        "PYTEST_FILES_V1"
-    )
+    command_id: Literal[
+        "PYTEST_FILES_V1", "PYTEST_FILES_SAVED_JUNIT_V1", "PYTEST_FILES_MEASURED_V1"
+    ] = "PYTEST_FILES_V1"
     status: Literal["PLANNED"] = "PLANNED"
     observed_at: datetime
     trace_id: UUID
@@ -91,8 +94,8 @@ class TestCommandPlan(BaseModel):
 
     @model_validator(mode="after")
     def exact_template(self) -> Self:
-        if self.argv != pytest_argv(self.request) or self.env != (
-            ("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1"),
-        ):
+        if self.argv != pytest_argv(
+            self.request, no_bytecode=self.command_id == "PYTEST_FILES_MEASURED_V1"
+        ) or self.env != (("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1"),):
             raise ValueError("COMMAND_TEMPLATE_DENIED")
         return self

@@ -50,3 +50,22 @@ def test_saved_image_mode_is_explicit_and_changes_plan_identity():
     assert saved.argv == disposable.argv
     assert plan_ref(saved) != plan_ref(disposable)
     assert build_test_spawn(saved, uuid4())["disposable"] is False
+
+
+def test_measured_template_saves_junit_without_writing_bytecode():
+    from packages.contracts.execution import TestCommandPlan
+    from services.runner.receipts import plan_ref
+
+    run, grant, owner, request = inputs()
+    previous = plan_pytest(request, run, grant, owner, save_junit_image=True)
+    measured = plan_pytest(request, run, grant, owner, measured_workspace=True)
+    assert measured.command_id == "PYTEST_FILES_MEASURED_V1"
+    assert measured.argv == (previous.argv[0], "-B", *previous.argv[1:])
+    assert plan_ref(measured) != plan_ref(previous)
+    assert build_test_spawn(measured, uuid4())["disposable"] is False
+    for altered in (
+        measured.model_copy(update={"argv": previous.argv}),
+        previous.model_copy(update={"argv": measured.argv}),
+    ):
+        with pytest.raises(ValidationError):
+            TestCommandPlan.model_validate(altered.model_dump())

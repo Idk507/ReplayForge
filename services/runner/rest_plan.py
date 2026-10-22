@@ -25,7 +25,8 @@ def build_test_spawn(plan: TestCommandPlan, image_uuid: UUID) -> dict[str, objec
         "env": dict(plan.env),
         "preserve_env": False,
         "networking": {"enabled": False},
-        "disposable": plan.command_id != "PYTEST_FILES_SAVED_JUNIT_V1",
+        "disposable": plan.command_id
+        not in {"PYTEST_FILES_SAVED_JUNIT_V1", "PYTEST_FILES_MEASURED_V1"},
         "uid": 1000,
         "gid": 1000,
         "cwd": plan.cwd,
