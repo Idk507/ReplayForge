@@ -58,3 +58,22 @@ requirements remain mandatory for the later repair/publication path.
 Executable contracts: `tests/unit/test_memory_context.py`,
 `tests/integration/test_memory.py`, `tests/unit/test_agent_harness.py`,
 `tests/integration/test_harness_handoff.py`, and worker startup/recovery tests.
+
+
+## Known replay observation contract — 2026-10-22
+
+`ReplayObservation` (schema 1.0, services/runner/observations.py) carries PENDING,
+REPORT_COLLECTED or TERMINAL_NO_REPORT. Provider status and strict process-state
+facts are separate from a verification verdict. Optional private JUnit bytes are
+bounded to 65536, base64-encoded and checked against the actual SHA256. Records
+carry exact run/execution/operation/image/plan/capability identities, origin,
+trace and observation time; execution/verification authority is always false.
+
+The durable collect_replay controller accepts an existing leased run and closed
+replay phase, never a caller-supplied operation UUID. Submission identity is
+loaded from the journal. Current bindings/consent are checked before and after
+I/O. Terminal record plus audit event commit atomically; expiry is inherited
+from the reservation. Cached reads verify canonical bytes/checksum/bindings and
+perform no HTTP. A committed terminal beats an earlier pending read; conflicting
+terminal facts are rejected. This contract does not prove fresh compute, tree
+identity, image OCI mapping, signing authenticity or physical cleanup.

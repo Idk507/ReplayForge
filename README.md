@@ -11,7 +11,8 @@ public deployment remain incomplete. Local test success is not production readin
 Current work and acceptance evidence: [delivery tracker](todo.md),
 [M3 acceptance](docs/m3-acceptance.md), [implementation log](docs/implementation-log.md).
 Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
-[prepared runner](docs/prepared-nebius-backend.md). Latest full backend regression
+[prepared runner](docs/prepared-nebius-backend.md),
+[durable replay collection](docs/replay-collection.md). Latest full backend regression
 at `715831d`: 1074 passed, zero skips; see the retained report linked in the tracker.
 
 

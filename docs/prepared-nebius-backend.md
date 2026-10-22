@@ -189,3 +189,14 @@ The new collector does not sign reports or establish final-tree identity; those
 require the independently configured producer. Next implementation is connecting
 collection to that producer and owned operation recovery/cleanup, followed by
 small explicitly authorized live acceptance. No production readiness is claimed.
+
+
+## Durable collection follow-up
+
+Known candidate/clean operation results can now be collected through the fenced
+controller in [replay-collection.md](replay-collection.md), with private immutable
+terminal observations and restart reconciliation. This is a read-only companion
+to the submission adapter; it neither resumes submission nor issues signed
+receipts. It does not establish source/final-tree or OCI identity and is not
+wired into the combined collection/triage scheduler. The remaining producer and
+live acceptance requirements above still apply.

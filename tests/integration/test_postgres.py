@@ -36,6 +36,9 @@ def prepare_store() -> Store:
             sql.SQL("GRANT SELECT,INSERT ON replay_reservations TO {}").format(role)
         )
         conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON replay_observations TO {}").format(role)
+        )
+        conn.execute(
             sql.SQL(
                 "GRANT SELECT,INSERT ON replay_submissions,"
                 "replay_submission_results TO {}"
