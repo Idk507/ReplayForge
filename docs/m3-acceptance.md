@@ -90,3 +90,17 @@ sandbox or inference ran. This closes read-only collection/retention locally;
 it does not establish trusted workspace measurements, receipt signatures or
 live seven-gate acceptance. M3 remains open. See replay-collection.md and the
 current-focus block in todo.md.
+
+
+## 22 October measured producer acceptance
+
+Implementation 40e2c40 adds an explicit trusted-worker receipt producer over
+actual pre/post saved-image workspace bytes and owned process/JUnit observations.
+Existing baseline/replay verifiers authenticate these receipts; changed trees,
+timeouts and failed tests do not pass. The new exact measured template suppresses
+Python bytecode writes while preserving earlier command identities. Full local
+regression: m3-receipt-producer-postgres.xml, 1145 passed, zero failures/errors/skips,
+419.35 seconds, exit 0. Provider HTTP and signing authorities are synthetic in
+tests. No live M3 acceptance is asserted. Durable producer-state retention,
+materialization, deployed trusted identities/assessment and seven-gate production
+remain open. See receipt-producer.md and todo.md for the next critical task.

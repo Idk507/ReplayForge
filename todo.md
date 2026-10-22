@@ -5,9 +5,11 @@
 ## Current focus — reconciled 2026-10-22
 
 Implementation checkpoints: `f1a25d5` report export; `d5cf18e` scoped memory;
-`715831d` bounded collection/triage harness; `c949e1e` durable replay collection.
-Latest full local backend evidence: `docs/evidence/m3-replay-collection-postgres.xml`,
-**1104 passed**, zero failures/errors/skips, 373.37s, exit 0. This is regression evidence, not live M3 acceptance.
+`715831d` bounded collection/triage harness; `c949e1e` durable replay collection;
+`69651b4` actual workspace measurement; `40e2c40` measured execution receipts.
+Latest full local backend evidence: `docs/evidence/m3-receipt-producer-postgres.xml`,
+**1145 passed**, zero failures/errors/skips, 419.35s, exit 0. This is regression
+evidence with synthetic provider HTTP, not live M3 acceptance.
 
 M2 is accepted within the fixed-checkout contingency; M3 remains open. M4 has
 an approval validation kernel; PR publication/evaluation remain open. M5
@@ -15,19 +17,24 @@ packaging/deployment/submission remain open. Authentication is owned by the user
 teammate. Memory is structured, scoped and evidence-expiring; the combined
 harness currently reaches REPRODUCING.
 
-Local increment (2026-10-22): bounded saved-image workspace measurement now hashes
-actual file bytes through the documented archive endpoint. Unit/contract regression:
-811 passed, exit 0 (`m3-workspace-regression.xml`); strict types and Ruff pass.
-This small-fixture primitive is not yet integrated into signed receipt production;
-M3 remains open. See `docs/workspace-measurement.md`.
+MeasuredPreparedBackend now independently measures the prepared image before
+submission, measures the owned terminal result workspace and actual JUnit bytes,
+and signs the facts with an explicit trusted-worker key. Baseline/replay signature
+purposes interoperate with existing verifiers. The new opt-in measured template
+prevents Python bytecode writes; existing plan hashes remain unchanged. Real
+PostgreSQL dispatch/restart tests prove one POST even on connection loss. Ruff,
+strict mypy and scoped credential-pattern/diff checks pass. No cloud calls ran.
+Details: `docs/receipt-producer.md`, `docs/workspace-measurement.md`.
 
-Next critical implementation: bind independently measured workspaces and admitted
-execution to a trusted receipt producer. Known replay report collection is now
-durable; baseline/general materialization and producer wiring remain. Demonstrate all
-seven gates on a small fixture and expose the authentic outcome in the UI.
-Follow with durable human approval/idempotent PR publication and submission
-packaging. Preserve the approved architecture and acceptance gates while closing
-this journey; do not add optional frameworks or repeat paid probes routinely.
+Next critical implementation: durable pre-measurement/receipt retention and fenced
+producer handoff, then admitted baseline/general materialization and trusted
+seven-gate production. The receipt producer currently retains state only in its
+backend instance; worker death cannot be repaired by inventing measurements or
+resubmitting. Production signer provisioning and real OCI/image/configuration
+assessment remain required for live acceptance. Demonstrate all seven gates on
+a small fixture and expose the authentic outcome in the UI. Follow with durable
+human approval/idempotent PR publication and submission packaging. Preserve
+acceptance gates; do not add optional frameworks or repeat paid probes routinely.
 Detailed limits: `docs/m3-acceptance.md`, `docs/memory.md`,
 `docs/agent-harness.md`, `docs/prepared-nebius-backend.md`.
 

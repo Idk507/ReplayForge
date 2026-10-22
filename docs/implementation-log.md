@@ -2612,3 +2612,53 @@ Ruff lint/format passed. Initial oversized-test parameter naming exceeded Window
 per-test path limits; explicit short test IDs corrected the test harness.
 No cloud execution, inference, credential access or remote writes occurred.
 M3 remains open: this primitive is not yet wired to a trusted receipt producer.
+
+
+## 2026-10-22 — independently measured execution receipt producer
+
+Implementation commit: 40e2c40, based on 69651b4. Implemented the opt-in
+MeasuredPreparedBackend using the existing admitted prepared REST backend.
+Checks exact bindings/capabilities before provider reads; measures the actual
+prepared image before POST and owned terminal workspace/report before signing.
+Explicit worker-held Ed25519 keys use existing baseline/replay signature domains.
+No expected hash is substituted for an observation. Mutation/nonzero exit/
+timeout facts remain honest failures for the verifier; pending/malformed/missing
+facts cannot yield receipts. Cached successful reads preserve signature/time.
+Added a distinct PYTEST_FILES_MEASURED_V1 template with Python -B to avoid
+bytecode changing the measured workspace. Old argv/plan identities are preserved.
+
+Observed commands/results, all final exit 0:
+- Initial focused contracts: 69 passed, m3-receipt-producer-focused.xml.
+- Real disposable-PostgreSQL measured dispatch/restart composition: 2 passed,
+  1143 deselected, 8.23s, m3-measured-dispatch-focused.xml. Exactly one POST for
+  success and uncertain connection-loss paths; no new HTTP after restart.
+- Full disposable-PostgreSQL regression through scripts.test_postgres with a
+  480-second outer-suite override: 1145 passed, zero failures/errors/skips,
+  419.35s console / 419.312s JUnit. One pre-existing Starlette/AnyIO warning.
+  Report m3-receipt-producer-postgres.xml, SHA256
+  2514150c0ced2ef82fc0271fad0d44997570a7777b586e3d7f64539777175c51.
+- uv run ruff check; uv run ruff format --check: 204 files pass.
+- uv run mypy: 101 source files pass.
+- git diff --check and scoped credential-value pattern scan pass.
+- uv run python -m scripts.check_checkout: M2_FIXTURE_ACCEPTED, authority false.
+
+The initial module-absent RED is retained as m3-receipt-producer-red.xml.gz.
+No tests, assertions or individual deadlines were weakened. The outer override
+only accommodates the observed ~419-second aggregate suite; product execution
+limits remain unchanged. Task-created disposable DB and roles were removed.
+No UI/dependency changes warranted repeating unchanged browser/dependency audits.
+No cloud inference/sandbox/Tavily call, external write or deployment occurred;
+only synthetic HTTP/ephemeral test signatures were used. Auth remains untouched.
+
+Threat review: key stays outside guests; admission precedes measurement; exact
+owned IDs constrain reads; existing bounded transport/archive parser prevents
+extraction and oversized input; provider stdout is discarded and raw JUnit stays
+private. This is a low-level trusted-worker port, not a public signing endpoint.
+
+M3 remains open. The producer currently loses its pre-measurement/receipt cache
+on worker death: the sticky dispatcher prevents resubmission but cannot restore
+this state. Durable producer retention/handoff is the next software task. Real
+source/test/patch materialization, assessed OCI/provider/configuration mapping,
+production key provisioning and all seven authenticated gates are still required
+before live VERIFIED/UI acceptance. No manufactured PASS assessment/key was
+installed. See docs/receipt-producer.md for the exact contract and limits.

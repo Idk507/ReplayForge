@@ -84,3 +84,26 @@ implementation log after completion.
 The transport routes/limits reuse the existing documented REST adapters; the
 archive endpoint reference is the [official provider OpenAPI](https://eu-north.nebius.computer/static/api.yaml).
 No new provider package or dependency is introduced.
+
+
+## Final regression — implementation 40e2c40
+
+`docs/evidence/m3-receipt-producer-postgres.xml`: 1145 passed, zero failures,
+errors or skips, 419.35 seconds console / 419.312 seconds JUnit, exit 0.
+SHA256: 2514150c0ced2ef82fc0271fad0d44997570a7777b586e3d7f64539777175c51.
+One existing upstream Starlette/AnyIO deprecation warning remains. Ruff check,
+Ruff format --check (204 files), strict mypy (101 source files), scoped credential
+value-pattern and git diff checks pass. Offline check_checkout still reports
+M2_FIXTURE_ACCEPTED. No dependency/UI changes required repeating their prior
+audits/browser runs. The disposable database and test roles were cleaned up.
+
+Reproduce full PostgreSQL regression (prompts for local administrator password):
+
+```powershell
+uv run python -c "import sys,subprocess; from scripts import test_postgres as t; call=subprocess.run; subprocess.run=lambda args,**kw:call(args,**{**kw,'timeout':480}); sys.argv=['test_postgres','--evidence-name','m3-receipt-producer-postgres.xml']; sys.exit(t.main())"
+```
+
+The 480-second override bounds the whole growing test suite, whose measured run
+is now about 419 seconds. It changes no individual test timeout, product budget,
+security control or verifier acceptance threshold. No test was skipped/suppressed.
+No inference, sandbox, Tavily, remote repository write or deployment occurred.

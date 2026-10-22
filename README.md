@@ -14,7 +14,7 @@ Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md)
 [prepared runner](docs/prepared-nebius-backend.md),
 [durable replay collection](docs/replay-collection.md),
 [measured receipt producer](docs/receipt-producer.md). Latest full backend regression
-at `c949e1e`: 1104 passed, zero skips; see the retained report linked in the tracker.
+at `40e2c40`: 1145 passed, zero skips; see the retained report linked in the tracker.
 
 
 ## Local development (PowerShell)
@@ -40,7 +40,7 @@ exact NVIDIA Nemotron catalog ID.
 With local PostgreSQL installed, `uv run python -m scripts.test_postgres` prompts
 for administrator credentials and runs real integration tests in a disposable
 database with separate migration/runtime roles. The full current suite needs the
-documented 420-second outer harness override in [memory verification](docs/memory.md);
+documented 480-second outer harness override in [receipt production](docs/receipt-producer.md);
 individual product/test timeouts remain unchanged. Direct pytest without the
 isolated DB does not prove PostgreSQL acceptance. See the
 [local database/API guide](docs/postgres-local.md) for behavior and limitations.
