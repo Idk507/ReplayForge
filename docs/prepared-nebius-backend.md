@@ -69,3 +69,46 @@ pre-materialized images. General source materialization, artifact collection,
 bounded orchestration/cleanup and live seven-gate acceptance remain open. The
 existing SDK runner and M0 smoke command were preserved and are not enabled as
 an unsafe fallback. No authentication UI or API changes were made.
+
+## Observed acceptance — 2026-10-22
+
+Base `afe7788`; the implementation was concurrently checkpointed as `d56714e`
+without changing the tested backend bytes. This follow-up also formats the
+committed smoke.py trailing whitespace, with no behavior change.
+
+- `uv run pytest tests/contract/test_prepared_backend.py
+  tests/unit/test_rest_plan.py -q
+  --junitxml=docs/evidence/m3-prepared-backend-contract.xml`: exit 0, **21 passed**,
+  zero failures/errors/skips. Small mocked HTTP exchanges cover exact settings,
+  denied binding/signature/live calls, sticky timeout/schema/auth/redirect outcomes,
+  ownership and mismatched status responses.
+- Initial focused PostgreSQL composition: **1 passed**, 1021 deselected, exit 0
+  (`m3-prepared-dispatch-focused.xml`). The full run includes the subsequently
+  added timeout path across backend/controller restart, with exactly one POST.
+- Final full disposable-PostgreSQL regression: exit 0, **1026 passed**, zero
+  failures/errors/skips, **289.65 seconds**;
+  `docs/evidence/m3-prepared-backend-postgres.xml`. One upstream Starlette/AnyIO
+  deprecation warning remains.
+- Global Ruff lint and formatting passed (186 files), strict mypy passed
+  (93 source files), and diff/scoped credential-pattern checks passed. No
+  dependency/UI changes, so their audits/browser checks were not repeated.
+  The offline M2 checker still returns M2_FIXTURE_ACCEPTED.
+
+The first full run had 1025 passes and one timeout in the existing subprocess
+crash/rollback test's 10-second child-process guard. It is retained losslessly as
+`docs/evidence/m3-prepared-backend-first-run.xml.gz`. A separate child import
+probe completed in 0.58s and the unchanged targeted test passed in 3.38s
+(`m3-worker-crash-rerun.xml`). The cause could not be reproduced and is not
+claimed fixed. No timeout/product constraint was relaxed or assertion removed.
+
+Reproduce the full regression (prompts for the local administrator password):
+
+```powershell
+uv run python -c "import sys,subprocess; from scripts import test_postgres as t; call=subprocess.run; subprocess.run=lambda args,**kw:call(args,**{**kw,'timeout':420}); sys.argv=['test_postgres','--evidence-name','m3-prepared-backend-postgres.xml']; sys.exit(t.main())"
+```
+
+The 420-second ceiling is only the outer suite harness ceiling; the crash test's
+own 10-second limit and execution-policy timeouts were unchanged. The harness
+cleaned its random task-owned local databases/roles. The local database password
+was supplied in memory only. No live inference, sandbox, Tavily or GitHub request,
+deployment, merge or remote write occurred. Authentication was left unchanged.

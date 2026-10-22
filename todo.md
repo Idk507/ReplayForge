@@ -135,6 +135,25 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+- [x] Prepared-image Nebius REST backend, offline acceptance (2026-10-22):
+  exact prepared image/OCI/plan/execution/tree bindings, capability checks,
+  network-disabled one-use POST, owned status/cancellation, explicit live opt-in
+  and TEST_TRANSPORT provenance. Real adapter/controller composition prevents
+  duplicate HTTP on restart. Source was concurrently checkpointed in `d56714e`.
+  Contract: **21 passed** (`m3-prepared-backend-contract.xml`); initial focused
+  database composition: **1 passed** (`m3-prepared-dispatch-focused.xml`). Final
+  full database regression: **1026 passed**, zero failures/errors/skips, 289.65s,
+  one upstream warning, exit 0 (`m3-prepared-backend-postgres.xml`), including the
+  successful and timed-out HTTP/restart paths. Global Ruff lint/format (186 files),
+  strict mypy (93 files), diff and scoped credential-pattern checks passed.
+  Formatted the now-committed smoke.py whitespace without behavior change.
+  Initial full run: 1025 passed and one existing crash-test child-process timeout;
+  unchanged isolated and final full runs passed. Failed report preserved in
+  `m3-prepared-backend-first-run.xml.gz`; no deadline/assertion was weakened.
+  The transient cause was not reproduced. No live API/cloud calls or remote
+  writes; authentication unchanged. Materialization and JUnit export/retention
+  remain open: the disposable command cannot expose its guest JUnit file after
+  completion. No live VERIFIED/M3 closure claimed. See `docs/prepared-nebius-backend.md`.
 - [x] One-shot admitted replay dispatch controller, contract acceptance
   (2026-10-22): migration 0020 retains per-phase submission claims before backend
   I/O and globally unique provider operation bindings afterward. Current scope,
