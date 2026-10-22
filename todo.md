@@ -15,6 +15,12 @@ packaging/deployment/submission remain open. Authentication is owned by the user
 teammate. Memory is structured, scoped and evidence-expiring; the combined
 harness currently reaches REPRODUCING.
 
+Local increment (2026-10-22): bounded saved-image workspace measurement now hashes
+actual file bytes through the documented archive endpoint. Unit/contract regression:
+811 passed, exit 0 (`m3-workspace-regression.xml`); strict types and Ruff pass.
+This small-fixture primitive is not yet integrated into signed receipt production;
+M3 remains open. See `docs/workspace-measurement.md`.
+
 Next critical implementation: bind independently measured workspaces and admitted
 execution to a trusted receipt producer. Known replay report collection is now
 durable; baseline/general materialization and producer wiring remain. Demonstrate all

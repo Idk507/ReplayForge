@@ -2600,3 +2600,15 @@ Next: independent workspace measurements and trusted receipt production, with
 admitted baseline/candidate/clean execution and authentic UI evidence. Actual
 assessed deployment facts/keys must not be invented or replaced with test keys.
 Details and retention/privacy limits: docs/replay-collection.md.
+
+## 2026-10-22 — bounded saved-image workspace measurement
+
+Implemented actual file-byte measurement through the official image archive API,
+without extraction, guest execution or signing. See `docs/workspace-measurement.md`
+for the exact identity format, limits and remaining controller trust boundary.
+Acceptance: 811 unit/contract tests passed in 5.96 seconds, exit 0,
+`docs/evidence/m3-workspace-regression.xml`; strict mypy 100 source files passed;
+Ruff lint/format passed. Initial oversized-test parameter naming exceeded Windows
+per-test path limits; explicit short test IDs corrected the test harness.
+No cloud execution, inference, credential access or remote writes occurred.
+M3 remains open: this primitive is not yet wired to a trusted receipt producer.
