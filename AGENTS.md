@@ -84,6 +84,21 @@ established workspace/image/configuration and collector trust bindings. Keep raw
 JUnit out of events, memory and public output; cached reads must preserve original
 observation time/expiry. See `docs/replay-collection.md`.
 
+Durable measured execution must commit its actual preparation before POST and
+retain signed receipts before returning them. Restore only a durably bound
+operation under a current lease/consent/version fence. Never reconstruct missing
+measurements from expected hashes or renew timestamps/expiry on restart. The
+producer-to-evidence handoff does not itself grant VERIFIED. See
+`docs/durable-producer.md`.
+
+The approval journal is an internal privileged boundary: ReviewPermission must
+come from independently authenticated human identity and current membership, not
+browser/model JSON. Exact source/patch/verification/target/nonce/TTL checks and
+one-use publication intent remain mandatory. PR_CREATING records intent, not an
+opened PR; no publisher may treat serialized intent as reusable authority. Keep
+authentication implementation with its assigned owner. See
+`docs/approval-journal.md`.
+
 ## Budgets and retry discipline
 Default proposed limits: 3 root-cause hypotheses, 2 reproduction attempts per hypothesis, 3 patch attempts, 15 model calls, 20 sandbox commands, 2 Tavily searches, 15-minute active execution, configurable $2 estimated inference spend per run, 500 KB patch limit and 25 changed files maximum. These are design defaults, not confirmed Nebius pricing or resource guarantees. On exhaustion return `INCONCLUSIVE` or `NOT_VERIFIED` with reasons. Only retry transient model/network/sandbox setup faults where safe and bounded; never retry a denied policy action. During repeated failed patches, reset to source commit and preserve every prior attempt for evidence.
 

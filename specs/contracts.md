@@ -95,3 +95,23 @@ ProducedReceipt is private, not a verdict or publication authority. Repeated
 successful reads preserve the original signature/time without I/O. Durable
 producer-state restoration remains open; sticky dispatch never repeats a POST.
 See docs/receipt-producer.md for trust inputs, limits and executable evidence.
+
+
+## Durable producer and approval contracts — 2026-10-22
+
+ProducerJournal persists exact measured preparation before submission and private
+base64 ProducedReceipt records after collection. Canonical bytes/checksum,
+configured signature key and actual report hash are revalidated at fenced reads.
+Expiry inherits the reservation. completed() resolves provider IDs from durable
+submission state; at_version() only rebinds the current CAS fence. Neither can
+authorize another POST. deliver_produced_replays consumes the two completed
+journals through the existing authenticated pair/evidence reducer, never a verdict.
+
+ApprovalJournal records one HumanDecision per verified run under current human
+permission/consent/source/patch/target/TTL checks. claim() consumes its nonce into
+one immutable PublicationIntent with a durable external UUID/head branch.
+Concurrent/exact retries return that intent, without refreshing approval or
+creating another consumption. The intent cannot authorize publication on its
+own; no public approval route or GitHub writer is installed. Migrations 0022 and
+0023 require append-only runtime grants. See durable-producer.md and
+approval-journal.md for recovery limits, privacy and test provenance.

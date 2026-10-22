@@ -13,7 +13,9 @@ Current work and acceptance evidence: [delivery tracker](todo.md),
 Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
 [prepared runner](docs/prepared-nebius-backend.md),
 [durable replay collection](docs/replay-collection.md),
-[measured receipt producer](docs/receipt-producer.md). Latest full backend regression
+[measured receipt producer](docs/receipt-producer.md),
+[durable producer recovery](docs/durable-producer.md),
+[human approval journal](docs/approval-journal.md). Latest full backend regression
 at `40e2c40`: 1145 passed, zero skips; see the retained report linked in the tracker.
 
 

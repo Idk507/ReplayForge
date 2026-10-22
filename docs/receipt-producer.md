@@ -107,3 +107,12 @@ The 480-second override bounds the whole growing test suite, whose measured run
 is now about 419 seconds. It changes no individual test timeout, product budget,
 security control or verifier acceptance threshold. No test was skipped/suppressed.
 No inference, sandbox, Tavily, remote repository write or deployment occurred.
+
+
+## Durable follow-up
+
+DurableMeasuredBackend now adds append-only pre-measurement/receipt recovery and
+producer-to-evidence handoff without changing this low-level single-instance
+backend. The in-memory limitation above still describes MeasuredPreparedBackend
+itself; opt into the durable wrapper through dispatch_replay. See
+durable-producer.md. No production key/assessment or live acceptance is implied.

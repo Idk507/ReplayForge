@@ -124,3 +124,11 @@ Limitations: structured outcome recall, not semantic/root-cause learning;
 retention remains tied to source evidence (currently 24h default); future
 approval/publication stage recall and a UI view remain unimplemented. M3 is not
 closed by memory. Separate requested harness specifications are still missing.
+
+
+Review lifecycle integration: accepted VERIFIED outcomes remain recallable after
+approval/rejection/publication claim only when matching durable review/intent
+provenance exists. The original verifier outcome and evidence expiry are
+preserved; reviewer permission is never recalled as authority. Missing/corrupt
+review provenance fails closed. See approval-journal.md and the implementation
+log for the reproduced regression and final test evidence.

@@ -4,12 +4,87 @@ import json
 from datetime import datetime
 from uuid import UUID
 
+import psycopg
+
 from packages.contracts.memory import MemoryRecall, RepairLesson
 from packages.contracts.repository import RepositoryGrant
-from packages.contracts.run import RunState
+from packages.contracts.run import RunState, Stage
 from packages.policies.repository import admit
+from services.approval.journal import PublicationIntent
+from services.approval.journal import _decode as decode_approval
+from services.approval.policy import ApprovalDenied, HumanDecision
 from services.persistence.store import Store, StoreError
-from services.persistence.verification import _decode
+from services.persistence.verification import RetainedVerification, _decode
+
+
+def _accepted_lifecycle(
+    conn: psycopg.Connection[dict[str, object]],
+    previous: RunState,
+    owner: UUID,
+    record: RetainedVerification,
+) -> bool:
+    """Review changes workflow state, never the historical repair verdict.
+
+    Require immutable review/claim provenance for later states. Expired review
+    permission is not reused: only the original, separately expiring verifier
+    outcome is recalled, with no approval or publication authority.
+    """
+    if previous.current_stage.value == record.verdict.status:
+        return True
+    if record.verdict.status != "VERIFIED" or previous.current_stage not in {
+        Stage.AWAITING_APPROVAL,
+        Stage.CLOSED,
+        Stage.PR_CREATING,
+        Stage.PR_OPENED,
+        Stage.PR_FAILED,
+    }:
+        return False
+    row = conn.execute(
+        "SELECT payload,digest,nonce FROM approval_decisions WHERE run_id=%s",
+        (previous.run_id,),
+    ).fetchone()
+    if row is None:
+        return False
+    try:
+        decision = decode_approval(row, HumanDecision)
+    except ApprovalDenied:
+        return False
+    binding = decision.binding
+    if (
+        decision.nonce != row["nonce"]
+        or binding.owner_id != owner
+        or binding.run_id != previous.run_id
+        or binding.repository_id != previous.repository_id
+        or binding.source_commit != previous.source_commit
+        or binding.patch_ref != record.verdict.context.patch_ref
+        or binding.verification_ref != previous.verification_ref
+        or binding.policy_version != previous.policy_version
+    ):
+        return False
+    if previous.current_stage == Stage.CLOSED:
+        return True
+    if decision.decision != "approve":
+        return False
+    if previous.current_stage == Stage.AWAITING_APPROVAL:
+        return True
+    row = conn.execute(
+        "SELECT payload,digest,approval_nonce,external_id "
+        "FROM publication_intents WHERE run_id=%s",
+        (previous.run_id,),
+    ).fetchone()
+    if row is None:
+        return False
+    try:
+        intent = decode_approval(row, PublicationIntent)
+    except ApprovalDenied:
+        return False
+    return (
+        intent.binding == binding
+        and intent.approval_nonce == decision.nonce
+        and row["approval_nonce"] == decision.nonce
+        and row["external_id"] == intent.external_id
+        and intent.reviewer_id == decision.reviewer_id
+    )
 
 
 class RunMemory:
@@ -72,7 +147,7 @@ class RunMemory:
                 record = _decode(row, previous)
                 expires_at = row["expires_at"]
                 if (
-                    previous.current_stage.value != record.verdict.status
+                    not _accepted_lifecycle(conn, previous, owner, record)
                     or previous.cancellation_requested
                     or record.signed.payload.origin != "REMOTE_SERVICE"
                     or not isinstance(expires_at, datetime)

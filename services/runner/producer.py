@@ -33,7 +33,13 @@ from services.runner.workspace import WorkspaceMeasurement, archive_identity
 class ProducedReceipt(BaseModel):
     """Private signed facts, not a complete verdict or publication authority."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        hide_input_in_errors=True,
+        ser_json_bytes="base64",
+        val_json_bytes="base64",
+    )
     operation_id: UUID
     source: WorkspaceMeasurement
     final: WorkspaceMeasurement
