@@ -2387,3 +2387,351 @@ and a trusted deterministic producer/signing deployment. Fixed-fixture reports
 and test keys are not substituted for those facts. Physical purge, storage
 deployment guarantees and public deployment remain separate. This update made
 no inference/sandbox call, repository write, merge or deployment. See m3-acceptance.md.
+
+
+## 2026-10-22 — Explicit JUnit result-image export
+
+Base commit f5f1c54. Implemented PYTEST_FILES_SAVED_JUNIT_V1 as an opt-in
+closed command template, with distinct canonical plan identity and unchanged
+pytest argv/network/shell/environment bounds. Existing disposable plans remain
+unchanged. Added owned terminal-result-image JUnit collection with private exact
+bytes/SHA256, 64 KB HTTP bound, fixed report path and explicit unavailable/error
+outcomes. Failed test operations may export reports; unrelated, running/cancelled,
+source-image, empty/oversized/redirect/missing-file cases fail closed. Candidate
+and clean replay retention policies must match before reservation/inspection.
+See docs/prepared-nebius-backend.md for provider sources and retention impact.
+
+Observed commands (all exit 0):
+- `uv run pytest tests/contract/test_prepared_backend.py tests/unit/test_rest_plan.py tests/unit/test_command_policy.py tests/unit/test_replay_pair.py -q --junitxml=docs/evidence/m3-junit-export-contract.xml`: 69 passed, zero skips.
+- `scripts.test_postgres --evidence-name m3-junit-export-postgres.xml`, invoked
+  through the documented Python wrapper with the outer suite ceiling 420s:
+  **1041 passed**, zero failures/errors/skips, **300.91s**. One existing upstream
+  Starlette/AnyIO deprecation warning. Task-owned DB/roles cleaned by harness.
+- `uv run ruff check .`, `uv run ruff format --check .`: pass, 186 files.
+- `uv run mypy`: pass, 93 source files.
+- `git diff --check` and scoped credential-value-pattern scan: pass.
+- `uv run python -m scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+The new pair-policy negative was observed failing at the wrong (later receipt)
+binding guard before the earlier pair/reservation policy checks were added; it
+then passed. HTTP cases are tiny synthetic transport exchanges, not remote
+execution. No repository code ran on the host; no paid inference/sandbox/Tavily
+call, GitHub write, deploy or merge occurred. Authentication is unchanged.
+No dependency/UI changes required repeating their previous audits/browser suite.
+
+M3 remains NOT CLOSED: general materialization, bounded runtime orchestration,
+trusted receipt producer and assessed live seven-gate acceptance remain open.
+Saving an image retains the entire filesystem and does not establish deletion.
+The new collector does not sign reports or establish final-tree identity; those
+require the independently configured producer. Next implementation is connecting
+collection to that producer and owned operation recovery/cleanup, followed by
+small explicitly authorized live acceptance. No production readiness is claimed.
+
+
+## 2026-10-22 — Durable recovery and repository-scoped lesson recall
+
+Base f1a25d5. Preserved existing PostgreSQL checkpoint, lease and sticky-intent
+recovery. Added bounded read-through RunMemory over accepted verification records:
+same owner/repository/policy, currently consented source commits, canonical/hash
+and checkpoint binding, verification/evidence expiry and cancellation checks.
+Cards retain source/patch/manifest/verdict identities and failed/missing gates;
+there is no free-form memory writer, extra model call or new vector/database
+service. Recall is advisory and cannot authorize actions or verification.
+
+Connected recall to run_triage within existing 8-entry/4096-byte request bounds,
+without displacing current evidence. The exact budgeted request hash includes
+selected lesson bytes. Completed triage still reconciles without another request.
+Moved the unchanged closed GateName vocabulary into contracts while preserving
+its existing verifier import. Auth/UI and provider keys were unchanged.
+
+Observed evidence (all final checks exit 0):
+- Focused unit/gateway run: **14 passed**, zero skips.
+- Real PostgreSQL + synthetic HTTP memory-to-triage/restart handoff:
+  **1 passed**, 1056 deselected, m3-memory-handoff.xml.
+- Final full disposable-PostgreSQL suite: **1057 passed**, zero failures/errors/
+  skips, **303.33s**, m3-memory-postgres.xml. One existing upstream Starlette/AnyIO
+  deprecation warning. The harness cleaned its task-owned DB/roles.
+- `uv run ruff check .`, `uv run ruff format --check .`: pass (191 files).
+- `uv run mypy`: pass (96 source files). Diff and scoped credential-value checks
+  pass. `scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+Initial missing-module RED and intermediate focused failure reports are retained
+as m3-memory-red.xml.gz and m3-memory-focused.xml.gz. An overly strong grant row
+lock initially required privileges unavailable to the runtime role; recall now
+uses the existing read-only grant permission, without broadening grants. New
+handoff-test setup was corrected to use triage_only and a source-manifest ref;
+no production gate was weakened. The full suite covers the corrected test.
+
+No paid inference, sandbox, Tavily call, remote repository write, merge or deploy
+occurred. Gate signatures/provider responses in memory tests are synthetic; this
+is not live memory accuracy or live VERIFIED acceptance. No dependency/UI changes
+required repeating their earlier audits/browser checks. Details: docs/memory.md.
+
+Limitations: structured outcome recall, not semantic/root-cause learning;
+retention remains tied to source evidence (currently 24h default); future
+approval/publication stage recall and a UI view remain unimplemented. M3 is not
+closed by memory. Separate requested harness specifications are still missing.
+
+
+## 2026-10-22 — Source-informed bounded collection/triage harness
+
+Base d5cf18e. Reviewed official Anthropic long-running-agent guidance and its
+reference README, plus LangChain's harness anatomy and harness-engineering posts.
+Sources and decisions are linked in docs/agent-harness.md. Implemented an original
+fixed-stage scheduler using existing workers, typed state, memory, leases,
+request reservations and journals; no framework/model/provider was replaced.
+
+The harness alternates collection/triage fairly, queues handoff atomically, caps
+steps/waits and stops cooperatively. Exceptions propagate without blind retry.
+The existing CLI adds --harness and explicitly gated live inference with a
+required declared per-call cost estimate. Default invocation performs no I/O;
+inference-off never reads the model key. Signal handlers restore on exit/error.
+The currently integrated path reaches REPRODUCING, not a repair verdict.
+
+Observed checks, final exit 0:
+- `uv run pytest tests/unit/test_agent_harness.py tests/unit/test_worker_startup.py -q --junitxml=docs/evidence/m3-harness-unit.xml`: **25 passed**.
+- Focused isolated PostgreSQL harness selection: **13 passed**, 1060 deselected,
+  zero skips, 10.13s (`m3-harness-focused.xml`). This preceded the additional
+  positive CLI configuration parameter; the full run includes that case.
+- Full disposable-PostgreSQL regression: **1074 passed**, zero failures/errors/
+  skips, **333.06s**, `m3-harness-postgres.xml`. One existing upstream
+  Starlette/AnyIO warning. Task-owned local DB/roles cleaned by the harness.
+- Global Ruff lint/format passed (194 files); strict mypy passed (97 source
+  files). Scoped credential-value scan and Git diff checks pass.
+- `uv run python -m scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+Initial TDD run failed on the absent harness module (8 cases, exit 1).
+The first integration collection exposed duplicate test basenames; the new
+integration module was renamed without changing pytest mode or weakening tests.
+Formatting/import findings were corrected. The final source has no suppressed
+checks. The CLI description was corrected to describe opt-in inference after
+starting the full run; that edit changes help text only.
+
+The tiny integration fixture uses synthetic source/model HTTP, real PostgreSQL
+collection-to-triage and replay/restart assertions. Failure mode confirms exactly
+one outbound mock request across uncertain recovery. No inference/sandbox/Tavily
+call or remote repository write, merge or deployment occurred. Public docs and
+an official reference README were read online without provider credentials.
+No dependency/UI changes required repeating prior audits/browser checks.
+
+M3 remains NOT CLOSED. The remaining critical work is admitted baseline/candidate/
+clean execution, trusted report production and live seven-gate acceptance, then
+approval/publication and submission packaging. This closes the combined
+collection/triage scheduling increment, not the whole runtime graph.
+
+
+## 2026-10-22 — Requirements and tracking reconciliation
+
+Reviewed tracking against implementation 715831d and retained acceptance artifacts.
+Updated AGENTS.md with ongoing memory/harness/recovery, evidence tracking,
+authorization and delivery-focus rules. Updated README's stale claims that UI and
+agents were absent and all live integrations unverified. Current-focus metadata
+now points to actual commits/evidence in todo.md. Added scope FR-16/FR-17 for the
+user-requested memory/harness capabilities, executable contract pointers, dated
+milestone/M3 status and runtime playbook links. Existing milestone exit criteria,
+verification gates, approval and isolation requirements were preserved.
+
+Corrected specs/contracts.md's illustrative gate status vocabulary to the actual
+PASS/FAIL/MISSING schema. Unknown/blocked/unavailable evidence still never passes.
+M3 remains open; M4 publication/evaluation and M5 deployment/submission remain open.
+The next task is admitted execution/report collection plus trusted receipt
+production and live seven-gate acceptance on a small fixture. The teammate owns
+authentication. Earlier dated implementation-log entries remain historical.
+
+Documentation validation: all 17 checked implementation/document paths exist;
+retained JUnit parses as 1074 tests and zero failures/errors/skips; Markdown fences
+are balanced; git diff --check passes (exit 0). Initial validation incorrectly
+assumed console elapsed time must exactly equal JUnit time: console 333.06s vs
+JUnit 333.023s. The corrected consistency check accepts the measured sub-0.1s
+reporting overhead, without editing test evidence or any product/test threshold.
+The offline check_checkout still returns M2_FIXTURE_ACCEPTED (exit 0).
+
+Documentation-only change; the unchanged backend suite was not repeated.
+No provider call, remote write, authentication code or runtime behavior changed.
+
+
+## 2026-10-22 — Durable known-replay report collection
+
+Implementation commit **c949e1e**, base d009dd3. Added the bounded read-only
+observation reader, owner/lease/version/source/test/patch/consent fenced replay
+collector and migration 0021 private terminal observation journal. Known IDs come
+only from durable submission results. Only GETs are allowed; unknown submissions
+are never guessed or repeated. Strict process state and exact bounded JUnit bytes
+are retained independently of provider SUCCESS. Private report SHA256/canonical
+record bindings, immutable runtime role and reservation-derived expiry apply.
+
+Pending reads are not retained as terminal. Restart reconciles without HTTP.
+A reproduced pending-vs-terminal race was fixed: validated durable terminal facts
+win over an older pending read. Concurrent terminal reads produce one record/event;
+conflicting terminal facts fail. Cancellation/lease/version changes during I/O
+reject retention, and an audit failure rolls the private insert back. No checkpoint,
+stage, budget or job is changed by observation retention.
+
+Observed checks (final exit 0):
+- `uv run pytest tests/contract/test_observation_reader.py -q --junitxml=docs/evidence/m3-observation-reader.xml`: **13 passed**, zero skips.
+- Focused disposable-PostgreSQL collection run: **15 passed**, 1087 deselected,
+  zero skips, 34.80s (`m3-replay-collection-focused.xml`).
+- Additional atomic rollback/concurrent-read run: **2 passed**, 1102 deselected,
+  zero skips, 7.89s (`m3-replay-collection-atomic.xml`).
+- Full disposable-PostgreSQL regression with the existing 420-second outer
+  harness override: **1104 passed**, zero failures/errors/skips, **373.37s console**,
+  one existing upstream Starlette/AnyIO warning. JUnit suite time: 373.324s.
+  Report: m3-replay-collection-postgres.xml, SHA256 `0d8bc9ccac92099d6c20b77ca6e967269f74a0bf31069c605a5beee5f7ebbaa8`.
+- Global Ruff lint/format passed (199 files); strict mypy passed (99 source files).
+  Scoped credential-value scan and git diff checks passed. The offline retained
+  checkout checker still returned M2_FIXTURE_ACCEPTED.
+
+Initial missing-module RED and pending/terminal race RED are retained losslessly
+as m3-replay-collection-red.xml.gz and m3-replay-collection-race-red.xml.gz. No test
+was weakened, skipped or suppressed. Task-owned disposable DB/roles were cleaned.
+No dependency or UI changes required repeating their previous audits/browser runs.
+
+Provider-status HTML was unavailable; the official index-linked OpenAPI spec was
+read without credentials, alongside existing smoke response contracts. No live
+inference/sandbox/Tavily request, remote repository write, merge or deployment
+occurred. Actual report provenance in tests is synthetic HTTP and ephemeral test
+capabilities, never proof of a production admitted runner. Auth remains unchanged.
+
+M3 remains NOT CLOSED. Observations are unsigned and cannot authorize verification;
+source/final-tree identity, OCI/image/configuration assessment, trusted receipt
+production and live seven-gate acceptance remain required. The combined harness
+still reaches REPRODUCING; this collector is an explicit separate internal action.
+Next: independent workspace measurements and trusted receipt production, with
+admitted baseline/candidate/clean execution and authentic UI evidence. Actual
+assessed deployment facts/keys must not be invented or replaced with test keys.
+Details and retention/privacy limits: docs/replay-collection.md.
+
+## 2026-10-22 — bounded saved-image workspace measurement
+
+Implemented actual file-byte measurement through the official image archive API,
+without extraction, guest execution or signing. See `docs/workspace-measurement.md`
+for the exact identity format, limits and remaining controller trust boundary.
+Acceptance: 811 unit/contract tests passed in 5.96 seconds, exit 0,
+`docs/evidence/m3-workspace-regression.xml`; strict mypy 100 source files passed;
+Ruff lint/format passed. Initial oversized-test parameter naming exceeded Windows
+per-test path limits; explicit short test IDs corrected the test harness.
+No cloud execution, inference, credential access or remote writes occurred.
+M3 remains open: this primitive is not yet wired to a trusted receipt producer.
+
+
+## 2026-10-22 � independently measured execution receipt producer
+
+Implementation commit: 40e2c40, based on 69651b4. Implemented the opt-in
+MeasuredPreparedBackend using the existing admitted prepared REST backend.
+Checks exact bindings/capabilities before provider reads; measures the actual
+prepared image before POST and owned terminal workspace/report before signing.
+Explicit worker-held Ed25519 keys use existing baseline/replay signature domains.
+No expected hash is substituted for an observation. Mutation/nonzero exit/
+timeout facts remain honest failures for the verifier; pending/malformed/missing
+facts cannot yield receipts. Cached successful reads preserve signature/time.
+Added a distinct PYTEST_FILES_MEASURED_V1 template with Python -B to avoid
+bytecode changing the measured workspace. Old argv/plan identities are preserved.
+
+Observed commands/results, all final exit 0:
+- Initial focused contracts: 69 passed, m3-receipt-producer-focused.xml.
+- Real disposable-PostgreSQL measured dispatch/restart composition: 2 passed,
+  1143 deselected, 8.23s, m3-measured-dispatch-focused.xml. Exactly one POST for
+  success and uncertain connection-loss paths; no new HTTP after restart.
+- Full disposable-PostgreSQL regression through scripts.test_postgres with a
+  480-second outer-suite override: 1145 passed, zero failures/errors/skips,
+  419.35s console / 419.312s JUnit. One pre-existing Starlette/AnyIO warning.
+  Report m3-receipt-producer-postgres.xml, SHA256
+  2514150c0ced2ef82fc0271fad0d44997570a7777b586e3d7f64539777175c51.
+- uv run ruff check; uv run ruff format --check: 204 files pass.
+- uv run mypy: 101 source files pass.
+- git diff --check and scoped credential-value pattern scan pass.
+- uv run python -m scripts.check_checkout: M2_FIXTURE_ACCEPTED, authority false.
+
+The initial module-absent RED is retained as m3-receipt-producer-red.xml.gz.
+No tests, assertions or individual deadlines were weakened. The outer override
+only accommodates the observed ~419-second aggregate suite; product execution
+limits remain unchanged. Task-created disposable DB and roles were removed.
+No UI/dependency changes warranted repeating unchanged browser/dependency audits.
+No cloud inference/sandbox/Tavily call, external write or deployment occurred;
+only synthetic HTTP/ephemeral test signatures were used. Auth remains untouched.
+
+Threat review: key stays outside guests; admission precedes measurement; exact
+owned IDs constrain reads; existing bounded transport/archive parser prevents
+extraction and oversized input; provider stdout is discarded and raw JUnit stays
+private. This is a low-level trusted-worker port, not a public signing endpoint.
+
+M3 remains open. The producer currently loses its pre-measurement/receipt cache
+on worker death: the sticky dispatcher prevents resubmission but cannot restore
+this state. Durable producer retention/handoff is the next software task. Real
+source/test/patch materialization, assessed OCI/provider/configuration mapping,
+production key provisioning and all seven authenticated gates are still required
+before live VERIFIED/UI acceptance. No manufactured PASS assessment/key was
+installed. See docs/receipt-producer.md for the exact contract and limits.
+
+
+## 2026-10-22 � durable producer-to-evidence and human review workflow
+
+Implementation commit 9df1ac9 (base dc245ca). Migrations 0022/0023 add append-only
+producer preparation/receipt and human decision/publication intent records.
+DurableMeasuredBackend commits actual preparation before POST, restores only a
+known journal operation and returns a receipt only after retention/audit commit.
+Unknown submissions remain sticky. Corruption, expiry, current scope/fences and
+signature/report/hash binding are rechecked; cached reads preserve timestamps.
+ProducedReceipt uses bounded private base64 serialization. Completed producer
+pairs now feed the existing signed replay/evidence reducer through a fenced
+handoff that reconciles exact duplicates and leaves VERIFYING unchanged.
+
+ApprovalJournal records exact independently authenticated human permission,
+source/patch/verdict/target, nonce and <=900-second TTL. It rehashes retained
+artifacts and current consent. Decision/checkpoint/audit commit atomically;
+publication claim consumes one nonce into one stable external UUID/head branch.
+Repeated/concurrent claims reconcile one intent. No GitHub implementation/public
+approval endpoint/login was introduced; permission objects remain trusted
+identity-adapter inputs. Authentication stays with its assigned owner.
+
+Integration root cause fixed: RunMemory formerly required the current workflow
+stage to equal its historical verifier verdict, so approve, reject and claim
+made otherwise valid lessons fail MEMORY_INTEGRITY. Three focused cases failed
+before the fix (m4-review-memory-red.xml.gz). Memory now requires matching durable
+review/claim provenance for later stages, preserving original verifier outcome
+and evidence expiry without recalling approval as authority. A forged later
+stage without those records is still rejected. No exception was silenced.
+
+Observed checks (final exit 0):
+- Durable producer contracts: 17 passed, zero skips, 39.27s,
+  m3-durable-producer-focused.xml.
+- Producer/evidence handoff: 4 passed, 1183 deselected, 15.76s,
+  m3-produced-delivery-focused.xml. Remote-shaped fake ports/signatures are
+  explicitly synthetic and are not live runner acceptance.
+- Approval journal: 21 passed, zero skips, 19.95s,
+  m4-approval-journal-focused.xml.
+- Combined approval/memory: 40 passed, 1150 deselected, 48.19s,
+  m4-approval-memory-focused.xml; extra provenance negative: 1 passed,
+  1190 deselected, 9.61s, m4-review-memory-negative.xml.
+- Full disposable-PostgreSQL run through scripts.test_postgres with a 600-second
+  outer aggregate ceiling: 1191 passed, zero failures/errors/skips,
+  449.25s console / 449.212s JUnit, m3-m4-durable-workflow-postgres.xml.
+  SHA256 d709171cdedbf5725f1446d330db593c0ff9f37d9dba604021d241e6282a9c2e.
+- uv run ruff check; uv run ruff format --check: 213 files pass.
+- uv run mypy: 105 source files pass. Scoped credential-value pattern and git
+  diff checks pass. uv run python -m scripts.check_checkout still returns
+  M2_FIXTURE_ACCEPTED with execution/verification authority false.
+
+The first combined full run was intentionally interrupted after finding the
+review/memory gap, before acceptance; its task-owned pytest launcher/interpreter
+were stopped and the wrapper cleaned its database/roles. It is not a pass.
+Initial absent-module REDs are retained losslessly as m3-durable-producer-red.xml.gz
+and m4-approval-journal-red.xml.gz. Final run cleaned disposable DB/roles. No
+individual test deadline, assertion, product budget or security gate was relaxed.
+The aggregate ceiling only accommodates the measured growing suite. One existing
+upstream Starlette/AnyIO warning remains. UI/dependency changes were absent, so
+unchanged browser/dependency audits were not repeated.
+
+Threat review: admission precedes provider measurement; preparation/audit failure
+prevents POST; recovery cannot attach guessed IDs; records are immutable to the
+runtime role; receipt keys remain outside guests. Every review/claim rechecks
+current scope/bindings/TTL, verification custody and actual artifact integrity.
+No serialized decision/intent grants publication on its own. Source content,
+JUnit, credentials and hidden reasoning are not emitted in public events.
+
+M2 fixed fixture exit stays accepted. M3/M4/M5 remain open: next is deterministic
+seven-gate production/admitted materialization/full worker-UI flow; then actual
+idempotent GitHub branch/PR/result recovery and hidden evaluation; then deployment
+and submission packaging. Production signer/OCI/configuration assessment and
+separate human identity integration remain deployment prerequisites. No cloud
+inference/sandbox/Tavily call, external repository write, deployment or merge ran.

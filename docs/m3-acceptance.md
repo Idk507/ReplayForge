@@ -62,3 +62,57 @@ and other deployment guarantees. This is a missing evidence/integration boundary
 not a claim that the provider is insecure:
 [security and data handling](https://docs.tokenfactory.nebius.com/sandboxes/operate/security-and-data-handling),
 [limits and retention](https://docs.tokenfactory.nebius.com/sandboxes/operate/limits-retention-and-usage).
+
+
+## 22 October follow-up â€” current implementation alignment
+
+Report export (`f1a25d5`), scoped memory (`d5cf18e`) and the bounded combined
+collection/triage harness (`715831d`) are implemented locally. Latest full backend
+report: docs/evidence/m3-harness-postgres.xml, 1074 passed, zero skips, 333.06s,
+exit 0. These updates preserve the fixed fixture acceptance and existing UI.
+They use synthetic provider/gate evidence in tests, not a new live repair.
+
+The active runtime currently reaches REPRODUCING. Completing M3 requires admitted
+execution/report collection, a trusted receipt producer with actual image/config
+assessment, fresh correlated reports for all seven mandatory gates, and the real
+outcome visible in the UI. Whole-filesystem saved-image retention and deployment
+storage guarantees remain open. Do not mark M3 complete from harness or memory
+unit tests. See todo.md's current focus; acceptance criteria are not relaxed.
+
+
+## 22 October durable collection acceptance
+
+Implementation c949e1e adds known candidate/clean operation observation collection,
+private terminal records and audit/fencing/restart checks. Full local backend
+report: m3-replay-collection-postgres.xml, 1104 passed, zero failures/errors/skips,
+373.37s console, exit 0. Provider HTTP is synthetic in these tests. No live
+sandbox or inference ran. This closes read-only collection/retention locally;
+it does not establish trusted workspace measurements, receipt signatures or
+live seven-gate acceptance. M3 remains open. See replay-collection.md and the
+current-focus block in todo.md.
+
+
+## 22 October measured producer acceptance
+
+Implementation 40e2c40 adds an explicit trusted-worker receipt producer over
+actual pre/post saved-image workspace bytes and owned process/JUnit observations.
+Existing baseline/replay verifiers authenticate these receipts; changed trees,
+timeouts and failed tests do not pass. The new exact measured template suppresses
+Python bytecode writes while preserving earlier command identities. Full local
+regression: m3-receipt-producer-postgres.xml, 1145 passed, zero failures/errors/skips,
+419.35 seconds, exit 0. Provider HTTP and signing authorities are synthetic in
+tests. No live M3 acceptance is asserted. Durable producer-state retention,
+materialization, deployed trusted identities/assessment and seven-gate production
+remain open. See receipt-producer.md and todo.md for the next critical task.
+
+
+## Durable follow-up — 9df1ac9
+
+The in-memory producer gap is closed locally: actual preparation commits before
+POST; owned operation/receipt recovery survives a fresh backend; two completed
+producer journals feed existing evidence retention. Full regression: 1191 passed,
+zero failures/errors/skips, 449.25s, exit 0, m3-m4-durable-workflow-postgres.xml.
+Tests use synthetic provider/assessment/signing facts, not a new live repair.
+Baseline/general materialization, deterministic seven-gate production and the
+complete admitted worker/UI workflow remain required. Human review/intent now
+persists independently, but no public approval or GitHub write is enabled.

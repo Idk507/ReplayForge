@@ -2,6 +2,42 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
+## Current focus — reconciled 2026-10-22
+
+Implementation checkpoints: `c949e1e` durable replay observation;
+`69651b4` workspace measurement; `40e2c40` measured receipts;
+`9df1ac9` durable producer recovery, evidence handoff and human review journal.
+Latest full local backend evidence: `docs/evidence/m3-m4-durable-workflow-postgres.xml`,
+**1191 passed**, zero failures/errors/skips, 449.25s, exit 0. Provider HTTP,
+capability/signing facts and human permissions in these tests are synthetic;
+this is regression evidence, not live M3/M4 acceptance.
+
+M2 remains accepted within the fixed-checkout contingency. M3 remains open.
+M4 now has durable human decision/one-use publication intent in addition to its
+policy kernel; actual GitHub publication and evaluation remain open. M5
+packaging/deployment/submission remain open. Authentication stays with the user's
+teammate. No public approval route or external write was enabled.
+
+Accepted local integration: DurableMeasuredBackend commits actual preparation
+before POST, restores only durably owned operations under current fences, and
+retains signed receipts without renewing expiry or resubmitting. Completed
+candidate/clean journals now hand off through the existing evidence reducer;
+TEST_TRANSPORT still cannot supply production evidence. ApprovalJournal binds
+current trusted human permission to exact source/patch/verdict/target/TTL and
+consumes one nonce into a stable publication identity. Approval/rejection/claim
+no longer break historical repair memory; matching immutable provenance is
+required. Ruff, format, strict mypy, scoped secret-pattern and diff checks pass.
+See `docs/durable-producer.md`, `docs/approval-journal.md` and implementation log.
+
+Next critical M3 task: deterministic seven-gate production and admitted
+baseline/general materialization, then the complete worker-to-UI journey on a
+small fixture. Real OCI/provider/configuration assessment and production signer
+provisioning remain prerequisites for live VERIFIED acceptance. M4 next needs
+actual idempotent GitHub branch/PR publication and result recovery, followed by
+hidden evaluation. M5 still needs hosted packaging, truthful demo and submission
+assets. Preserve acceptance gates; do not add optional frameworks or routine
+paid probes. Authentication integration is coordinated with its assigned owner.
+
 ## Status conventions
 `[ ]` not evidenced; `[x]` verified by committed change and test artifact; `[!]` blocked; `[~]` working but not acceptance-ready (replace symbols manually when appropriate). A task is complete only when its acceptance test has been actually run and evidence logged in `docs/implementation-log.md`. Track owner, commit, observed execution date and blocker there. Critical path is M0 -> M1 -> M2 -> M3 -> M4 -> M5.
 
@@ -279,6 +315,47 @@ with one upstream AnyIO warning. M2 fixture acceptance remains intact. No cloud
 calls or remote writes occurred; production VERIFIED, UI and PR authority are
 not implied by these primitives.
 
+M3 implementation evidence (2026-10-22, base f5f1c54): explicit saved-image
+JUnit export now passes owned-image/status/report-size/retention-policy negatives.
+The default disposable template is preserved; saving filesystem state changes the
+canonical plan hash. Full local PostgreSQL regression: **1041 passed**, zero skips,
+300.91s, exit 0 (`m3-junit-export-postgres.xml`); focused contracts: 69 passed.
+Ruff lint/format and strict mypy pass. No live execution or VERIFIED claim.
+Trusted producer, materialization/orchestration and assessed live seven-gate
+acceptance remain pending; M3 stays open. Whole-filesystem retention and lack of
+physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
+
+- [x] Repository-scoped advisory outcome memory (2026-10-22, base f1a25d5):
+  durable accepted records recall across restart with owner/repository/policy/
+  consent/expiry/integrity bounds; triage includes cards inside the existing
+  hashed request/context budget and completed recovery makes no duplicate call.
+  Full disposable-PostgreSQL suite **1057 passed**, zero skips, 303.33s, exit 0
+  (`m3-memory-postgres.xml`); Ruff lint/format and strict mypy pass. Existing
+  per-run recovery is preserved. This is structured historical outcome recall,
+  not semantic learning, longer retention, live accuracy or M3 completion.
+  See docs/memory.md; the source-informed harness follow-up is recorded below.
+
+- [x] Source-informed bounded collection/triage harness (2026-10-22, base
+  d5cf18e): combined fair scheduling, cooperative shutdown, finite steps/waits,
+  durable restart/uncertain-request handling and CLI inference/cost opt-in.
+  Small real-PostgreSQL/mock-provider handoff and failure/restart cases pass;
+  full regression **1074 passed**, zero skips, 333.06s, exit 0
+  (`m3-harness-postgres.xml`). Ruff lint/format and strict mypy pass. The runnable
+  portion reaches REPRODUCING; admitted execution, signed report production and
+  live seven-gate acceptance remain pending. M3 remains open. Source rationale,
+  commands and boundaries: docs/agent-harness.md.
+
+- [x] Durable known-replay observation collection (`c949e1e`, 2026-10-22):
+  bounded GET-only report/process collection, exact plan/operation correlation,
+  live lease/version/consent fencing, private atomic retention/audit, checksum/
+  expiry checks and restart without HTTP. Pending/terminal race and concurrent
+  terminal delivery reconcile; audit rollback and immutable runtime role pass.
+  Full local PostgreSQL regression **1104 passed**, zero skips, 373.37s, exit 0
+  (`m3-replay-collection-postgres.xml`); Ruff lint/format and strict mypy pass.
+  Observations remain unsigned and cannot authorize verification. M3 stays open
+  for independent workspace/image assessment, trusted receipt production and
+  live seven-gate acceptance. See docs/replay-collection.md.
+
 ## M4 — Oct 24–26: External write and benchmark
 - [~] M4 started (2026-10-21): deterministic human approval binding policy
   validates exact run/repository/owner/source/diff/verdict/branch/policy,
@@ -311,7 +388,7 @@ not implied by these primitives.
 ## Kill-switch and contingency decisions
 If runner isolation is not ready by Oct 17, reduce scope to a *trusted synthetic benchmark-only* remote runner and explicitly constrain accepted repositories to fixed fixtures; never fall back to arbitrary local execution. If reproduction cannot be achieved by Oct 20, freeze UI work and concentrate on one verified checkout case. If GitHub write permission cannot be safely obtained by Oct 25, ship reviewable patch artifacts with a clearly marked PR integration limitation; do not claim full feature completion. If Nebius credits are low, disable speculative multi-agent calls, use one supported NVIDIA model and cached deterministic fixtures; live user actions must still call Token Factory. If B/C are unstable by Oct 26, demonstrate A thoroughly and publish truthful benchmark gaps.
 
-## Final acceptance ledger template
+## Final acceptance ledger template (not current status)
 | Gate | Expected evidence | Observed result | Commit / artifact | Date |
 |---|---|---|---|---|
 | Live NVIDIA on Nebius | request ID + model + timestamp | Pending | — | — |

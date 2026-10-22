@@ -37,12 +37,21 @@ def prepare_store() -> Store:
         )
         conn.execute(
             sql.SQL(
+                "GRANT SELECT,INSERT ON replay_observations,replay_preparations,"
+                "replay_produced_receipts TO {}"
+            ).format(role)
+        )
+        conn.execute(
+            sql.SQL(
                 "GRANT SELECT,INSERT ON replay_submissions,"
                 "replay_submission_results TO {}"
             ).format(role)
         )
         conn.execute(
-            sql.SQL("GRANT SELECT,INSERT ON evidence_bundles TO {}").format(role)
+            sql.SQL(
+                "GRANT SELECT,INSERT ON evidence_bundles,approval_decisions,"
+                "publication_intents TO {}"
+            ).format(role)
         )
         conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON verification_results TO {}").format(role)

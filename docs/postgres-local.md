@@ -99,3 +99,18 @@ For separately named test evidence, run
 `uv run python -m scripts.test_postgres --evidence-name m1-worker-tests.xml`.
 The harness accepts only a simple lowercase XML filename under docs/evidence
 and rejects traversal before requesting database credentials.
+
+
+Migration 0021 adds private replay_observations, linked to a known replay
+submission. The worker role needs SELECT/INSERT only, with no UPDATE/DELETE.
+The disposable test harness provisions those test permissions; production/local
+persistent deployment grants remain an operator task. The controller appends a
+metadata-only REPLAY_OBSERVATION_RETAINED audit event and leaves checkpoints and
+jobs unchanged. See replay-collection.md for owner/lease/expiry/read boundaries.
+
+
+Migrations 0022/0023 add replay_preparations, replay_produced_receipts,
+approval_decisions and publication_intents. The disposable integration harness
+grants runtime SELECT/INSERT only on these tables. Production must provision
+restricted worker and human-approval identities separately; no production grants
+or schema were applied. See durable-producer.md and approval-journal.md.

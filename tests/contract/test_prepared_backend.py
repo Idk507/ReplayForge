@@ -163,3 +163,112 @@ def test_polling_rejects_mismatched_or_invalid_provider_observations(fault):
         backend.submit(plan, binding.execution_id, binding.tree_ref)
         with pytest.raises(RunnerError):
             backend.inspect(operation)
+
+
+@pytest.mark.parametrize("status", ["SUCCESS", "FAILED"])
+def test_saved_junit_collects_exact_private_bytes(status):
+    from hashlib import sha256
+
+    plan, binding, signed, verifier = inputs()
+    plan = plan.model_copy(update={"command_id": "PYTEST_FILES_SAVED_JUNIT_V1"})
+    binding = binding.model_copy(update={"plan_ref": plan_ref(plan)})
+    operation, result_image = uuid4(), uuid4()
+    report = b'<testsuite tests="1"><testcase name="demo"/></testsuite>'
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        if request.method == "POST":
+            assert json.loads(request.content)["disposable"] is False
+            return httpx.Response(201, json={"uuid": str(operation)})
+        if "/operations/" in request.url.path:
+            return httpx.Response(
+                200,
+                json={
+                    "uuid": str(operation),
+                    "kind": "instance",
+                    "status": status,
+                    "image_uuid": str(binding.image_uuid),
+                    "result_image_uuid": str(result_image),
+                },
+            )
+        assert request.url.path == f"/sandboxes/v1/inspect/{result_image}/download"
+        assert request.url.params["path"] == "/tmp/replayforge-result.xml"
+        return httpx.Response(200, content=report)
+
+    with PreparedNebiusBackend(
+        config(), binding, signed, verifier, transport=httpx.MockTransport(handler)
+    ) as backend:
+        backend.submit(plan, binding.execution_id, binding.tree_ref)
+        result = backend.collect_junit(operation)
+        assert result.content == report
+        assert result.report_ref == "sha256:" + sha256(report).hexdigest()
+        assert result.origin == "TEST_TRANSPORT"
+        assert not result.can_authorize_verification
+        assert "<testsuite" not in repr(result)
+    assert len(calls) == 3
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "disabled",
+        "unowned",
+        "running",
+        "cancelled",
+        "missing_image",
+        "source_image",
+        "empty",
+        "oversize",
+        "redirect",
+        "missing_file",
+    ],
+)
+def test_junit_export_denies_invalid_or_unavailable_reports(fault):
+    plan, binding, signed, verifier = inputs()
+    if fault != "disabled":
+        plan = plan.model_copy(update={"command_id": "PYTEST_FILES_SAVED_JUNIT_V1"})
+        binding = binding.model_copy(update={"plan_ref": plan_ref(plan)})
+    operation = uuid4()
+    downloads = []
+
+    def handler(request):
+        if request.method == "POST":
+            return httpx.Response(201, json={"uuid": str(operation)})
+        if "/operations/" in request.url.path:
+            image = (
+                None
+                if fault == "missing_image"
+                else str(binding.image_uuid)
+                if fault == "source_image"
+                else str(uuid4())
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "uuid": str(operation),
+                    "kind": "instance",
+                    "status": "EXECUTING"
+                    if fault == "running"
+                    else "CANCELLED"
+                    if fault == "cancelled"
+                    else "SUCCESS",
+                    "image_uuid": str(binding.image_uuid),
+                    "result_image_uuid": image,
+                },
+            )
+        downloads.append(request)
+        return httpx.Response(
+            302 if fault == "redirect" else 404 if fault == "missing_file" else 200,
+            content=b"x" * 65537 if fault == "oversize" else b"",
+        )
+
+    with PreparedNebiusBackend(
+        config(), binding, signed, verifier, transport=httpx.MockTransport(handler)
+    ) as backend:
+        backend.submit(plan, binding.execution_id, binding.tree_ref)
+        with pytest.raises(RunnerError):
+            backend.collect_junit(uuid4() if fault == "unowned" else operation)
+    assert len(downloads) == (
+        1 if fault in {"empty", "oversize", "redirect", "missing_file"} else 0
+    )

@@ -58,6 +58,7 @@ def inspect_replay_pair(
     before, after = actions.candidate_plan, actions.clean_plan
     if (
         before.request.phase != "CANDIDATE"
+        or before.command_id != after.command_id
         or after.request.phase != "CLEAN_REPLAY"
         or before.request.model_dump(exclude={"phase"})
         != after.request.model_dump(exclude={"phase"})

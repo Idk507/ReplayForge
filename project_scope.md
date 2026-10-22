@@ -35,3 +35,22 @@ GitHub/GitLab enterprise installations, Sentry/Datadog/OpenTelemetry incident so
 
 ## Competition compliance
 Official submission deadline Oct 30 2026 at 10:00 PDT (22:30 IST). Coding and Agentic Engineering track. Runnable application must call Token Factory at runtime and use NVIDIA open model; public repository with OSI license; working demo URL; public YouTube video shorter than 3 minutes; technology feedback and text description. Verify Devpost status manually before deadline; judging is Dec 1–15, so keep the demonstration available through judging. Follow rules and no guarantees of prizes.
+
+
+## Additional user requirements — memory and harness (22 October 2026)
+
+FR-16: preserve durable per-run recovery and recall reusable, evidence-backed
+lessons across authorized runs. Accepted local scope is structured historical
+outcomes with owner/repository/policy/commit and evidence-expiry bounds, advisory
+use in triage and no extra model call. Longer retention, semantic learning and a
+memory UI are not implemented. Contracts/tests: docs/memory.md.
+
+FR-17: provide a source-informed agent harness suitable for the existing typed,
+budgeted, remote-execution architecture. Accepted local scope is bounded combined
+collection/triage scheduling, cooperative shutdown, explicit live-inference cost
+configuration and restart/uncertainty tests. Later runner/verification/publication
+stage connections remain necessary for the original FR-06 through FR-13 journey.
+Contracts/tests and external design references: docs/agent-harness.md.
+
+These additions support the existing MVP and do not waive its verification,
+independent human approval, remote isolation or submission requirements.

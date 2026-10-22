@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="5.172" timestamp="2026-10-22T20:04:40.682963+05:30" hostname="dhanu"><testcase classname="tests.integration.test_memory" name="test_memory_is_included_in_exact_budgeted_triage_request" time="2.456" /></testsuite></testsuites>

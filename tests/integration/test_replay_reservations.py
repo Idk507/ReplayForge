@@ -201,3 +201,19 @@ def test_private_immutable_storage(store, fault):
                 )
     with pytest.raises(StoreError):
         ReplayJournal(store).load(run.run_id, uuid4() if fault == "owner" else owner)
+
+
+def test_report_policy_mismatch_is_rejected_before_reservation(store):
+    lease, owner, run, actions, *_ = prepared(store, reserve=False)
+    actions = actions.model_copy(
+        update={
+            "clean_plan": actions.clean_plan.model_copy(
+                update={"command_id": "PYTEST_FILES_SAVED_JUNIT_V1"}
+            )
+        }
+    )
+    with pytest.raises(StoreError, match="REPLAY_RESERVATION_BINDING_DENIED"):
+        ReplayJournal(store).reserve(
+            lease, owner, actions, expected_version=run.version
+        )
+    assert store.get(run.run_id, owner) == run

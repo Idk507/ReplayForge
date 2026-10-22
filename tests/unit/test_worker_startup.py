@@ -71,3 +71,81 @@ def test_startup_rejects_config_before_io_without_secret_output(
     )
     assert run_worker.main() == 2
     assert json.loads(capsys.readouterr().out)["error_class"] == "WORKER_CONFIG_INVALID"
+
+
+@pytest.mark.parametrize(
+    "extra", [[], ["--harness"], ["--harness", "--estimated-call-microusd", "0"]]
+)
+def test_live_harness_rejects_missing_authorization_configuration(monkeypatch, extra):
+    monkeypatch.setattr(
+        "sys.argv", ["run_worker", "--run", "--allow-live-inference", *extra]
+    )
+    monkeypatch.setattr(
+        run_worker.WorkerConfig,
+        "from_env",
+        lambda: pytest.fail("read config before permission"),
+    )
+    with pytest.raises(SystemExit) as error:
+        run_worker.main()
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_harness_cli_preserves_inference_choice_and_restores_signals(
+    monkeypatch, capsys, enabled
+):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+
+    from services.orchestrator.harness import HarnessResult
+
+    argv = ["run_worker", "--run", "--harness"]
+    if enabled:
+        argv += ["--allow-live-inference", "--estimated-call-microusd", "100000"]
+    monkeypatch.setattr("sys.argv", argv)
+    config = run_worker.WorkerConfig.from_env(env())
+    monkeypatch.setattr(run_worker.WorkerConfig, "from_env", lambda: config)
+
+    model = run_worker.NebiusConfig.from_env({"NEBIUS_API_KEY": "synthetic"})
+    monkeypatch.setattr(
+        run_worker.NebiusConfig,
+        "from_env",
+        lambda: model if enabled else pytest.fail("read model key"),
+    )
+
+    @contextmanager
+    def connect(*a, **k):
+        yield SimpleNamespace(
+            execute=lambda *a: SimpleNamespace(
+                fetchone=lambda: (False, False, False, False)
+            )
+        )
+
+    monkeypatch.setattr(run_worker.psycopg, "connect", connect)
+    signals = []
+    monkeypatch.setattr(
+        run_worker.signal,
+        "signal",
+        lambda sig, handler: signals.append((sig, handler)) or "old",
+    )
+
+    def harness(*a, **k):
+        assert (k["model_config"] is not None) == enabled
+        assert (k["cost_policy"] is not None) == enabled
+        assert k["allow_live_inference"] == enabled
+        if enabled:
+            assert k["cost_policy"].estimated_spend_microusd == 100000
+        return HarnessResult(
+            steps=1,
+            processed=0,
+            collected=0,
+            triaged=0,
+            idle=1,
+            inference_enabled=enabled,
+            stop_requested=False,
+        )
+
+    monkeypatch.setattr(run_worker, "serve_harness", harness)
+    assert run_worker.main() == 0
+    assert json.loads(capsys.readouterr().out)["inference_enabled"] == enabled
+    assert len(signals) == 4 and all(handler == "old" for _, handler in signals[2:])
