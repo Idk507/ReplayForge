@@ -66,3 +66,10 @@ three real review/memory regression failures are retained losslessly in gzip.
 M4 is not complete: authenticated UI/API integration, actual idempotent GitHub
 publication/result recovery and hidden evaluation remain open. Claiming
 PR_CREATING means only a durable intent exists; it does not claim a PR is open.
+
+
+Final combined regression at 9df1ac9: 1191 passed, zero failures/errors/skips,
+449.25s, exit 0 (m3-m4-durable-workflow-postgres.xml). The initial approval/memory
+regression failed all three approve/reject/claim cases before the fix; no test was
+weakened. Unproven later-stage checkpoints remain denied. See durable-producer.md
+and implementation-log.md for report hash, reproducible command and boundaries.

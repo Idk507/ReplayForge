@@ -63,3 +63,14 @@ execution and trusted report production to close the original M3 exit; do not
 substitute scheduler counts or historical lessons for a verified repair.
 Authentication is assigned to the user's teammate. Coordinate interfaces while
 prioritizing one complete checkout repair, approval/PR flow and submission assets.
+
+
+## Durable execution/review guides (22 October follow-up)
+
+Use docs/durable-producer.md for measured preparation/receipt recovery and the
+producer-to-evidence handoff. Use docs/approval-journal.md for internal human
+review/nonce contracts. These do not automatically enable later harness stages
+or public approval routes. The authentication owner supplies independent current
+human identity/membership; never accept ReviewPermission JSON as proof. Real
+GitHub publication, deterministic seven-gate production and deployment remain
+tracked in todo.md. Production role grants/migrations require deployment review.

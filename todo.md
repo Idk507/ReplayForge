@@ -4,39 +4,39 @@
 
 ## Current focus — reconciled 2026-10-22
 
-Implementation checkpoints: `f1a25d5` report export; `d5cf18e` scoped memory;
-`715831d` bounded collection/triage harness; `c949e1e` durable replay collection;
-`69651b4` actual workspace measurement; `40e2c40` measured execution receipts.
-Latest full local backend evidence: `docs/evidence/m3-receipt-producer-postgres.xml`,
-**1145 passed**, zero failures/errors/skips, 419.35s, exit 0. This is regression
-evidence with synthetic provider HTTP, not live M3 acceptance.
+Implementation checkpoints: `c949e1e` durable replay observation;
+`69651b4` workspace measurement; `40e2c40` measured receipts;
+`9df1ac9` durable producer recovery, evidence handoff and human review journal.
+Latest full local backend evidence: `docs/evidence/m3-m4-durable-workflow-postgres.xml`,
+**1191 passed**, zero failures/errors/skips, 449.25s, exit 0. Provider HTTP,
+capability/signing facts and human permissions in these tests are synthetic;
+this is regression evidence, not live M3/M4 acceptance.
 
-M2 is accepted within the fixed-checkout contingency; M3 remains open. M4 has
-an approval validation kernel; PR publication/evaluation remain open. M5
-packaging/deployment/submission remain open. Authentication is owned by the user's
-teammate. Memory is structured, scoped and evidence-expiring; the combined
-harness currently reaches REPRODUCING.
+M2 remains accepted within the fixed-checkout contingency. M3 remains open.
+M4 now has durable human decision/one-use publication intent in addition to its
+policy kernel; actual GitHub publication and evaluation remain open. M5
+packaging/deployment/submission remain open. Authentication stays with the user's
+teammate. No public approval route or external write was enabled.
 
-MeasuredPreparedBackend now independently measures the prepared image before
-submission, measures the owned terminal result workspace and actual JUnit bytes,
-and signs the facts with an explicit trusted-worker key. Baseline/replay signature
-purposes interoperate with existing verifiers. The new opt-in measured template
-prevents Python bytecode writes; existing plan hashes remain unchanged. Real
-PostgreSQL dispatch/restart tests prove one POST even on connection loss. Ruff,
-strict mypy and scoped credential-pattern/diff checks pass. No cloud calls ran.
-Details: `docs/receipt-producer.md`, `docs/workspace-measurement.md`.
+Accepted local integration: DurableMeasuredBackend commits actual preparation
+before POST, restores only durably owned operations under current fences, and
+retains signed receipts without renewing expiry or resubmitting. Completed
+candidate/clean journals now hand off through the existing evidence reducer;
+TEST_TRANSPORT still cannot supply production evidence. ApprovalJournal binds
+current trusted human permission to exact source/patch/verdict/target/TTL and
+consumes one nonce into a stable publication identity. Approval/rejection/claim
+no longer break historical repair memory; matching immutable provenance is
+required. Ruff, format, strict mypy, scoped secret-pattern and diff checks pass.
+See `docs/durable-producer.md`, `docs/approval-journal.md` and implementation log.
 
-Next critical implementation: durable pre-measurement/receipt retention and fenced
-producer handoff, then admitted baseline/general materialization and trusted
-seven-gate production. The receipt producer currently retains state only in its
-backend instance; worker death cannot be repaired by inventing measurements or
-resubmitting. Production signer provisioning and real OCI/image/configuration
-assessment remain required for live acceptance. Demonstrate all seven gates on
-a small fixture and expose the authentic outcome in the UI. Follow with durable
-human approval/idempotent PR publication and submission packaging. Preserve
-acceptance gates; do not add optional frameworks or repeat paid probes routinely.
-Detailed limits: `docs/m3-acceptance.md`, `docs/memory.md`,
-`docs/agent-harness.md`, `docs/prepared-nebius-backend.md`.
+Next critical M3 task: deterministic seven-gate production and admitted
+baseline/general materialization, then the complete worker-to-UI journey on a
+small fixture. Real OCI/provider/configuration assessment and production signer
+provisioning remain prerequisites for live VERIFIED acceptance. M4 next needs
+actual idempotent GitHub branch/PR publication and result recovery, followed by
+hidden evaluation. M5 still needs hosted packaging, truthful demo and submission
+assets. Preserve acceptance gates; do not add optional frameworks or routine
+paid probes. Authentication integration is coordinated with its assigned owner.
 
 ## Status conventions
 `[ ]` not evidenced; `[x]` verified by committed change and test artifact; `[!]` blocked; `[~]` working but not acceptance-ready (replace symbols manually when appropriate). A task is complete only when its acceptance test has been actually run and evidence logged in `docs/implementation-log.md`. Track owner, commit, observed execution date and blocker there. Critical path is M0 -> M1 -> M2 -> M3 -> M4 -> M5.

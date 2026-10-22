@@ -104,3 +104,15 @@ regression: m3-receipt-producer-postgres.xml, 1145 passed, zero failures/errors/
 tests. No live M3 acceptance is asserted. Durable producer-state retention,
 materialization, deployed trusted identities/assessment and seven-gate production
 remain open. See receipt-producer.md and todo.md for the next critical task.
+
+
+## Durable follow-up — 9df1ac9
+
+The in-memory producer gap is closed locally: actual preparation commits before
+POST; owned operation/receipt recovery survives a fresh backend; two completed
+producer journals feed existing evidence retention. Full regression: 1191 passed,
+zero failures/errors/skips, 449.25s, exit 0, m3-m4-durable-workflow-postgres.xml.
+Tests use synthetic provider/assessment/signing facts, not a new live repair.
+Baseline/general materialization, deterministic seven-gate production and the
+complete admitted worker/UI workflow remain required. Human review/intent now
+persists independently, but no public approval or GitHub write is enabled.

@@ -60,3 +60,26 @@ Remaining M3 work: baseline/general materialization, configured production
 signer/OCI/configuration assessment, deterministic seven-gate production, live
 acceptance and the complete admitted worker-to-UI journey. Existing M2 fixture
 acceptance is preserved; no security gate or milestone exit was weakened.
+
+
+## Full acceptance evidence — implementation 9df1ac9
+
+`m3-m4-durable-workflow-postgres.xml`: 1191 passed, zero failures/errors/skips,
+449.25 seconds console / 449.212 seconds JUnit, exit 0. SHA256:
+d709171cdedbf5725f1446d330db593c0ff9f37d9dba604021d241e6282a9c2e.
+Ruff check/format pass (213 files); strict mypy passes (105 source files).
+The retained M2 checker still returns M2_FIXTURE_ACCEPTED. One upstream
+Starlette/AnyIO deprecation warning remains. No UI/dependency changes required
+repeating their unchanged browser/dependency audits. No live provider ran.
+
+Reproduce full regression (prompts for local PostgreSQL administrator password):
+
+```powershell
+uv run python -c "import sys,subprocess; from scripts import test_postgres as t; call=subprocess.run; subprocess.run=lambda args,**kw:call(args,**{**kw,'timeout':600}); sys.argv=['test_postgres','--evidence-name','m3-m4-durable-workflow-postgres.xml']; sys.exit(t.main())"
+```
+
+The 600-second ceiling applies only to the aggregate test process, whose actual
+suite time is recorded above. No individual test timeout, product budget,
+security requirement or verifier gate was weakened. Disposable DB/roles cleaned.
+An earlier full run was intentionally terminated before completion to fix the
+reproduced approval/memory integration bug; it supplied no acceptance result.

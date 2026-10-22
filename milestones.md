@@ -45,3 +45,11 @@ Use todo.md's current-focus block for the next task and implementation-log.md fo
 actual test commands/results. Complete the checkout journey before optional
 integrations. The teammate owns authentication; required human write approval
 and public access boundaries still apply. Submit packaging remains mandatory.
+
+
+Follow-up implementation 9df1ac9: durable producer recovery/evidence handoff and
+persisted human decisions/one-use publication intents pass local contracts,
+including 1191 full backend cases. M3 remains open for the complete authentic
+seven-gate workflow; M4 remains open for actual GitHub publication/evaluation;
+M5 remains open. Existing exit criteria are unchanged. Human authentication
+implementation remains assigned to the user's teammate.

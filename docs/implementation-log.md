@@ -2662,3 +2662,76 @@ source/test/patch materialization, assessed OCI/provider/configuration mapping,
 production key provisioning and all seven authenticated gates are still required
 before live VERIFIED/UI acceptance. No manufactured PASS assessment/key was
 installed. See docs/receipt-producer.md for the exact contract and limits.
+
+
+## 2026-10-22 — durable producer-to-evidence and human review workflow
+
+Implementation commit 9df1ac9 (base dc245ca). Migrations 0022/0023 add append-only
+producer preparation/receipt and human decision/publication intent records.
+DurableMeasuredBackend commits actual preparation before POST, restores only a
+known journal operation and returns a receipt only after retention/audit commit.
+Unknown submissions remain sticky. Corruption, expiry, current scope/fences and
+signature/report/hash binding are rechecked; cached reads preserve timestamps.
+ProducedReceipt uses bounded private base64 serialization. Completed producer
+pairs now feed the existing signed replay/evidence reducer through a fenced
+handoff that reconciles exact duplicates and leaves VERIFYING unchanged.
+
+ApprovalJournal records exact independently authenticated human permission,
+source/patch/verdict/target, nonce and <=900-second TTL. It rehashes retained
+artifacts and current consent. Decision/checkpoint/audit commit atomically;
+publication claim consumes one nonce into one stable external UUID/head branch.
+Repeated/concurrent claims reconcile one intent. No GitHub implementation/public
+approval endpoint/login was introduced; permission objects remain trusted
+identity-adapter inputs. Authentication stays with its assigned owner.
+
+Integration root cause fixed: RunMemory formerly required the current workflow
+stage to equal its historical verifier verdict, so approve, reject and claim
+made otherwise valid lessons fail MEMORY_INTEGRITY. Three focused cases failed
+before the fix (m4-review-memory-red.xml.gz). Memory now requires matching durable
+review/claim provenance for later stages, preserving original verifier outcome
+and evidence expiry without recalling approval as authority. A forged later
+stage without those records is still rejected. No exception was silenced.
+
+Observed checks (final exit 0):
+- Durable producer contracts: 17 passed, zero skips, 39.27s,
+  m3-durable-producer-focused.xml.
+- Producer/evidence handoff: 4 passed, 1183 deselected, 15.76s,
+  m3-produced-delivery-focused.xml. Remote-shaped fake ports/signatures are
+  explicitly synthetic and are not live runner acceptance.
+- Approval journal: 21 passed, zero skips, 19.95s,
+  m4-approval-journal-focused.xml.
+- Combined approval/memory: 40 passed, 1150 deselected, 48.19s,
+  m4-approval-memory-focused.xml; extra provenance negative: 1 passed,
+  1190 deselected, 9.61s, m4-review-memory-negative.xml.
+- Full disposable-PostgreSQL run through scripts.test_postgres with a 600-second
+  outer aggregate ceiling: 1191 passed, zero failures/errors/skips,
+  449.25s console / 449.212s JUnit, m3-m4-durable-workflow-postgres.xml.
+  SHA256 d709171cdedbf5725f1446d330db593c0ff9f37d9dba604021d241e6282a9c2e.
+- uv run ruff check; uv run ruff format --check: 213 files pass.
+- uv run mypy: 105 source files pass. Scoped credential-value pattern and git
+  diff checks pass. uv run python -m scripts.check_checkout still returns
+  M2_FIXTURE_ACCEPTED with execution/verification authority false.
+
+The first combined full run was intentionally interrupted after finding the
+review/memory gap, before acceptance; its task-owned pytest launcher/interpreter
+were stopped and the wrapper cleaned its database/roles. It is not a pass.
+Initial absent-module REDs are retained losslessly as m3-durable-producer-red.xml.gz
+and m4-approval-journal-red.xml.gz. Final run cleaned disposable DB/roles. No
+individual test deadline, assertion, product budget or security gate was relaxed.
+The aggregate ceiling only accommodates the measured growing suite. One existing
+upstream Starlette/AnyIO warning remains. UI/dependency changes were absent, so
+unchanged browser/dependency audits were not repeated.
+
+Threat review: admission precedes provider measurement; preparation/audit failure
+prevents POST; recovery cannot attach guessed IDs; records are immutable to the
+runtime role; receipt keys remain outside guests. Every review/claim rechecks
+current scope/bindings/TTL, verification custody and actual artifact integrity.
+No serialized decision/intent grants publication on its own. Source content,
+JUnit, credentials and hidden reasoning are not emitted in public events.
+
+M2 fixed fixture exit stays accepted. M3/M4/M5 remain open: next is deterministic
+seven-gate production/admitted materialization/full worker-UI flow; then actual
+idempotent GitHub branch/PR/result recovery and hidden evaluation; then deployment
+and submission packaging. Production signer/OCI/configuration assessment and
+separate human identity integration remain deployment prerequisites. No cloud
+inference/sandbox/Tavily call, external repository write, deployment or merge ran.
