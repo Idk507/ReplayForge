@@ -107,6 +107,17 @@ Model calls use Nebius Token Factory OpenAI-compatible HTTP, `NEBIUS_API_KEY` fr
 
 Tavily is an opt-in `search_docs(query, allowed_domains?, max_results=5)` tool for package changes and upstream behavior. Return URL, retrieval timestamp, title, snippet, provenance and sanitized content; URLs are never authority to execute. Do not expose private incident text in broad web queries. Web research is advisory; only tests can verify repairs. Track that Tavily is called on a real incident path for optional bonus eligibility.
 
+### 11.1 Durable memory
+
+Run recovery remains checkpoint/journal based. Cross-run advisory memory is a
+bounded read-through view of accepted verification records, scoped to the same
+owner, repository, policy and currently consented commits. Recall retains source
+artifact identities and historical outcomes, never raw logs or model reasoning.
+It expires with underlying evidence and cannot authorize a new action or verdict.
+Triage may include cards only within its existing request budget; every new run
+still requires fresh reproduction and verification. See `docs/memory.md` for the
+implemented contract, retention boundary and limitations.
+
 ## 12. Observability, SLOs and operations
 
 Every stage spans one OTel trace with nested inference/tool/sandbox spans and propagation of `run_id`, stage, attempt, model and sanitized error class. Do not record raw source code, prompts with secrets, or access tokens in spans. Metrics: run duration, stage latency, baseline reproduction rate, verified patch rate, inconclusive rate, gateway error rate, token spend, sandbox launch failures, artifact verification failures, approval wait time, queue depth, PR create failure, policy-block counts. Initial *targets*, not claims: API uptime 99% for demo hours; zero unauthorized write operations; zero sandbox-to-control-plane egress; 100% of `VERIFIED` runs have every required gate and artifact; all demo incidents work from clean state. Alerts: excessive model spend, lease backlog, failures in clean replay, sandbox policy violation, failed storage checksum and unusual PR creation attempts.

@@ -2426,3 +2426,48 @@ The new collector does not sign reports or establish final-tree identity; those
 require the independently configured producer. Next implementation is connecting
 collection to that producer and owned operation recovery/cleanup, followed by
 small explicitly authorized live acceptance. No production readiness is claimed.
+
+
+## 2026-10-22 — Durable recovery and repository-scoped lesson recall
+
+Base f1a25d5. Preserved existing PostgreSQL checkpoint, lease and sticky-intent
+recovery. Added bounded read-through RunMemory over accepted verification records:
+same owner/repository/policy, currently consented source commits, canonical/hash
+and checkpoint binding, verification/evidence expiry and cancellation checks.
+Cards retain source/patch/manifest/verdict identities and failed/missing gates;
+there is no free-form memory writer, extra model call or new vector/database
+service. Recall is advisory and cannot authorize actions or verification.
+
+Connected recall to run_triage within existing 8-entry/4096-byte request bounds,
+without displacing current evidence. The exact budgeted request hash includes
+selected lesson bytes. Completed triage still reconciles without another request.
+Moved the unchanged closed GateName vocabulary into contracts while preserving
+its existing verifier import. Auth/UI and provider keys were unchanged.
+
+Observed evidence (all final checks exit 0):
+- Focused unit/gateway run: **14 passed**, zero skips.
+- Real PostgreSQL + synthetic HTTP memory-to-triage/restart handoff:
+  **1 passed**, 1056 deselected, m3-memory-handoff.xml.
+- Final full disposable-PostgreSQL suite: **1057 passed**, zero failures/errors/
+  skips, **303.33s**, m3-memory-postgres.xml. One existing upstream Starlette/AnyIO
+  deprecation warning. The harness cleaned its task-owned DB/roles.
+- `uv run ruff check .`, `uv run ruff format --check .`: pass (191 files).
+- `uv run mypy`: pass (96 source files). Diff and scoped credential-value checks
+  pass. `scripts.check_checkout`: M2_FIXTURE_ACCEPTED.
+
+Initial missing-module RED and intermediate focused failure reports are retained
+as m3-memory-red.xml.gz and m3-memory-focused.xml.gz. An overly strong grant row
+lock initially required privileges unavailable to the runtime role; recall now
+uses the existing read-only grant permission, without broadening grants. New
+handoff-test setup was corrected to use triage_only and a source-manifest ref;
+no production gate was weakened. The full suite covers the corrected test.
+
+No paid inference, sandbox, Tavily call, remote repository write, merge or deploy
+occurred. Gate signatures/provider responses in memory tests are synthetic; this
+is not live memory accuracy or live VERIFIED acceptance. No dependency/UI changes
+required repeating their earlier audits/browser checks. Details: docs/memory.md.
+
+Limitations: structured outcome recall, not semantic/root-cause learning;
+retention remains tied to source evidence (currently 24h default); future
+approval/publication stage recall and a UI view remain unimplemented. M3 is not
+closed by memory. Separate requested harness specifications are still missing.

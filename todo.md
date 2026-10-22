@@ -289,6 +289,16 @@ Trusted producer, materialization/orchestration and assessed live seven-gate
 acceptance remain pending; M3 stays open. Whole-filesystem retention and lack of
 physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
 
+- [x] Repository-scoped advisory outcome memory (2026-10-22, base f1a25d5):
+  durable accepted records recall across restart with owner/repository/policy/
+  consent/expiry/integrity bounds; triage includes cards inside the existing
+  hashed request/context budget and completed recovery makes no duplicate call.
+  Full disposable-PostgreSQL suite **1057 passed**, zero skips, 303.33s, exit 0
+  (`m3-memory-postgres.xml`); Ruff lint/format and strict mypy pass. Existing
+  per-run recovery is preserved. This is structured historical outcome recall,
+  not semantic learning, longer retention, live accuracy or M3 completion.
+  See docs/memory.md. Separate harness requirements remain unspecified.
+
 ## M4 — Oct 24–26: External write and benchmark
 - [~] M4 started (2026-10-21): deterministic human approval binding policy
   validates exact run/repository/owner/source/diff/verdict/branch/policy,

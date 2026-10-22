@@ -5,18 +5,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from packages.contracts.gates import GateName as GateName
 from packages.contracts.run import ArtifactID, CommitSHA
 
-GateName = Literal[
-    "BASELINE_REPRODUCED",
-    "PATCHED_REGRESSION_PASS",
-    "EXISTING_SUITE_PASS",
-    "CLEAN_REPLAY_PASS",
-    "PATCH_SCOPE_PASS",
-    "ARTIFACT_INTEGRITY_PASS",
-    "SECURITY_GATE_PASS",
-    "STATIC_ANALYSIS_PASS",
-]
 REQUIRED_GATES: tuple[GateName, ...] = (
     "BASELINE_REPRODUCED",
     "PATCHED_REGRESSION_PASS",

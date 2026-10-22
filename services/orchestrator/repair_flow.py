@@ -14,6 +14,7 @@ from packages.providers.patch import request_patch
 from packages.providers.triage import request_triage
 from services.orchestrator.research import ResearchBroker
 from services.persistence.baseline import BaselineJournal
+from services.persistence.memory import RunMemory, with_advisory_memory
 from services.persistence.patch import PatchJournal
 from services.persistence.reproduction import ReproductionJournal
 from services.persistence.store import Lease, Store, StoreError
@@ -215,6 +216,7 @@ def run_triage(
             raise StoreError("TRIAGE_RESEARCH_UNAVAILABLE")
         for index, report in enumerate(reports):
             context[f"untrusted_documentation_{index}"] = report.model_dump_json()
+    context = with_advisory_memory(context, RunMemory(store).recall(run.run_id, owner))
     # Match the gateway's byte/count bounds before reserving a paid attempt.
     if (
         not context
