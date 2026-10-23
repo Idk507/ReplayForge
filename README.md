@@ -82,3 +82,10 @@ new-branch and draft-PR operations. It is disabled for live writes by default.
 Local contract tests cover approval checks and restart discovery; no live PR
 acceptance or completed M4 milestone is asserted. Authentication remains a
 separate teammate-owned integration.
+
+The [GitHub OAuth/session foundation](docs/github-authentication.md) provides a
+separate loopback-only auth app factory, browser-bound one-use PKCE attempts,
+encrypted user credentials and opaque PostgreSQL sessions. Existing local API
+and web startup remain unchanged. Session-based run/repository authorization,
+frontend integration and live browser acceptance are still pending; this is not
+an enabled public login deployment.

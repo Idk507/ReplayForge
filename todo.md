@@ -17,7 +17,7 @@ authentic seven-gate production, admitted baseline/materialization and the full
 worker/UI journey. M4 now has a locally tested actual REST publisher and durable
 PR result journal, beyond its approval/intent policy. Live approved publication
 and hidden evaluation remain open; M4 is not complete. M5 packaging/deployment/
-submission remain open. Authentication stays with the user's teammate.
+submission remain open. Authentication was reassigned to this workstream on 2026-10-23; see tasks/plan.md.
 
 The publisher loads the exact reviewed diff from retained evidence, reloads
 trusted human permission/approval/current consent before every POST, checks actual
@@ -400,3 +400,23 @@ If runner isolation is not ready by Oct 17, reduce scope to a *trusted synthetic
 | Approval-gated PR | exact digest + PR URL | Pending | — | — |
 | Deployment accessible | public health/demo screenshot | Pending | — | — |
 | Devpost submission | public submission URL | Pending | — | — |
+
+## GitHub authentication workstream — planned 2026-10-23
+
+User has reassigned authentication implementation to this workstream. The earlier
+teammate ownership statements describe the prior arrangement; the new plan is
+`tasks/plan.md` with proposed ADR `docs/adr/014-github-authentication.md`.
+No authentication code or live login is claimed by this planning increment.
+- [x] A: explicit auth settings and bounded mocked GitHub transport (51e4343,
+  43 focused/auth and 1277 full backend cases; auth-foundation-checks.json).
+- [x] B: browser-bound one-use OAuth/PKCE and durable opaque sessions
+  (51e4343, same full local evidence; provider/human identities synthetic).
+- [~] C: /me/logout/CSRF foundation passes local tests; session principal and
+  all private API/SSE/artifact checks remain open
+  and minimal browser integration, preserving explicit local mode.
+- [ ] D: live-checked installation/repository discovery and consent mapping.
+- [ ] E: authenticated exact review and scoped installation write-token broker.
+- [ ] F: browser regression and separately authorized real login/list/logout smoke.
+A/B are accepted locally, not as real login acceptance. Continue C/D session and
+repository integration. No real credentials are required for offline tests.
+Authentication completion is separate from seven-gate/M4 evaluation acceptance.

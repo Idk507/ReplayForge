@@ -122,3 +122,12 @@ trusted membership/approval before every write. Exact Git object and durable
 result contracts live in `docs/github-publication.md`. Live writes remain opt-in;
 TEST transport cannot become real PR evidence. Serialized intent alone is not
 permission, and uncertain writes require admitted discovery, not blind retry.
+
+## GitHub identity foundation — 2026-10-23
+
+Authentication implementation was reassigned by the user to this workstream.
+The separate loopback OAuth/session foundation is documented in
+`docs/github-authentication.md`. Preserve the current local bearer API while
+session-principal and repository authorization are integrated. Never expose the
+shared local bridge as GitHub user identity or infer repository/reviewer authority
+from successful login. No public startup or live acceptance has been enabled.

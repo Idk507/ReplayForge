@@ -59,3 +59,9 @@ journal are implemented with local synthetic contracts. This supersedes the
 snapshot's absence-of-publisher implementation, not its live acceptance gap.
 M4 remains open until actual approved exactly-once PR publication and hidden
 variation evaluation pass; M3's authentic seven-gate exit is still required.
+
+GitHub authentication follow-up 2026-10-23: a separate internal OAuth/session
+foundation is implemented, but owner/repository enforcement on the existing API,
+frontend integration, installation write brokerage and real browser acceptance
+remain open. This does not close M3/M4 or alter their original acceptance tests.
+See docs/github-authentication.md and current todo.md for observed test evidence.

@@ -130,3 +130,13 @@ No public route, auth implementation, model tool or default harness dispatch was
 added. See docs/github-publication.md for bounds, recovery and live acceptance.
 This supersedes the earlier statement that no writer implementation is installed;
 no live writer acceptance or M4 completion is claimed.
+
+## GitHub identity foundation — 2026-10-23
+
+Implementation 51e4343 adds a separate typed auth app, bounded GitHub App user
+OAuth client, browser-bound one-use journal and opaque session custody. Migration
+0025 adds auth-specific tables without reassigning existing owner/repository UUIDs.
+No execution grants or reviewer roles result from login. Existing local bearer
+API and bridge are preserved; session-principal/repository authorization and UI
+integration remain open. See docs/github-authentication.md for exact boundaries,
+key/retention limits, trusted dependencies and acceptance provenance.

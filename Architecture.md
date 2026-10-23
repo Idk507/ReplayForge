@@ -168,3 +168,12 @@ remote-result custody. See docs/github-publication.md for exact source/tree/blob
 checks, draft PR creation and restart discovery. New migration 0024 adds observed
 result persistence; no public write route or automatic approval is installed.
 Live acceptance and hidden evaluation remain required by the unchanged M4 exit.
+
+## GitHub identity follow-up — 2026-10-23
+
+The separate loopback-only OAuth/session foundation uses explicit typed settings,
+fixed-origin provider calls, single-use browser-bound PKCE attempts, encrypted user
+credentials and opaque PostgreSQL sessions (migration 0025). It does not mount
+execution endpoints, issue execution grants or derive reviewer authority.
+Existing local API/bridge behavior is preserved. See docs/github-authentication.md;
+session-principal/repository/UI integration and real login acceptance remain open.

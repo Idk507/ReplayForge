@@ -82,3 +82,12 @@ Keep identity loading and installation credentials with the authentication owner
 Never invoke the adapter from model tools or accept ReviewPermission from JSON.
 Live writes are opt-in and require the concrete exact reviewed fixture approval;
 local synthetic contract success is not M4 acceptance.
+
+## GitHub identity follow-up — 2026-10-23
+
+The user reassigned authentication implementation into this workstream. Follow
+`tasks/plan.md` and `docs/github-authentication.md`; the initial separate loopback
+OAuth/session foundation does not replace the existing local startup. Trusted
+host dependencies supply auth-only keys/settings and an AuthJournal; callback
+query access logging must be disabled/redacted. Keep test-origin sessions denied
+outside explicit synthetic tests. No live or public setup has been enabled.

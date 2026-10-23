@@ -2804,3 +2804,80 @@ seven-gate production/admitted tiny-fixture worker flow, authentic assessed
 signer/configuration, then independently authenticated exact review plus explicit
 live write approval and one-PR discovery acceptance, hidden evaluation, and M5
 packaging. No milestone exit was replaced with a weaker test.
+
+## 2026-10-23 — GitHub authentication assessment and proposed implementation plan
+
+Read the user-supplied GitHub authentication specification and inspected existing
+LocalAuth/API routes, local startup, Next.js shared-bearer bridge, migrations,
+approval and publication interfaces. Rechecked official GitHub user token/PKCE,
+refresh and installation token documentation. Created tasks/plan.md and proposed
+ADR 014; root todo.md records planned unchecked slices and changed ownership.
+
+Key integration findings: the current BFF token maps every local browser to one
+operator; it cannot serve as GitHub-session identity. Internal owner/repository
+UUIDs must be explicitly mapped to GitHub numeric IDs without taking over legacy
+runs or replacing immutable execution grants. Existing approval/result journals
+are reusable through trusted current identity and repository permission loaders.
+
+Plan/ADR existence checks and scoped git diff --check pass, exit 0. No application
+code, dependencies or database schema changed; tests were not rerun for this
+planning-only increment. No provider credentials, authenticated API calls, remote
+writes or paid services were used. Offline slice A can begin without keys; real
+browser acceptance later requires registered App/client settings and human login.
+No authentication acceptance checkbox or milestone was marked complete.
+
+## 2026-10-23 — GitHub OAuth/session foundation accepted locally
+
+Implementation 51e4343. Typed explicit settings and bounded GitHub App user client,
+S256 PKCE URLs, code exchange and stable numeric identity; migration 0025 and
+AuthJournal for browser-bound single-use attempts, encrypted credentials, hashed
+opaque sessions, rotation/logout and append-only security audit. Separate
+create_auth_app remains loopback-only, exposes start/callback/me/logout, has
+trusted Host/CORS/cookie/CSRF boundaries and defaults to refusing synthetic session
+authority. Existing LocalAuth API and bridge were preserved. No live GitHub call,
+credential discovery, external write, paid provider call or deployment occurred.
+See github-authentication.md for interfaces, key/role/retention limits and gaps.
+
+Actual evidence, commands and exits:
+- Absent-module REDs: auth-client-red.xml.gz, auth-journal-red.xml.gz and
+  auth-routes-red.xml.gz (exit 1); preserved losslessly, never called passes.
+- Client first green: 21 passed in 0.22s, auth-client-green.xml. Initial DB/client
+  selection: 28 passed, 7.07s, auth-journal-focused.xml. HTTP selection: 35 passed,
+  7.08s, auth-http-focused.xml. All exit 0 with synthetic provider identities.
+- Durable rate limiting exposed cross-test peer-state leakage. First focused run
+  failed one test (39 passed), auth-foundation-focused.xml.gz. Journal fixtures
+  now use distinct simulated peers. An expanded run later hit the real ten/minute
+  rate limit at the HTTPS-cookie test because browser tests shared an IP/bucket.
+  Targeted reproduction: auth-rate-isolation-red.xml.gz, one failed, ten passed,
+  7.95s. App tests now isolate only their loopback peer/action rate buckets using
+  disposable migration authority. Product limit/permission/assertions unchanged.
+- The first aggregate attempt was stopped after that fixture failure: only the
+  verified task-owned pytest launcher/interpreter were terminated; the wrapper
+  cleaned its random database/roles. It has no final JUnit and is not a pass.
+- Final focused selection via scripts.test_postgres -k auth_app/auth_journal/
+  github_auth: 43 passed, 1234 deselected, 19.76s, exit 0,
+  auth-foundation-final-focused.xml. Covers cookie flags, replay/browser binding,
+  uncertain exchange, concurrent finalization, purpose/key tampering, identity
+  isolation, durable rate caps, session expiry/rotation and CSRF/audit behavior.
+- Final full disposable PostgreSQL regression at 51e4343, outer aggregate ceiling
+  600 seconds: **1277 passed**, zero failures/errors/skips, **429.84s** console,
+  exit 0. auth-foundation-final-postgres.xml; exact JUnit time/checksum recorded
+  in auth-foundation-checks.json. All random test DB/roles cleaned by wrapper.
+- uv run ruff check .; uv run ruff format --check .: pass (233 files).
+  uv run mypy: pass (116 typed source files). Scoped credential-value pattern
+  scan and scoped git diff --check pass. Existing upstream Starlette/AnyIO warning
+  remains. No new dependency or UI changes; those audits were not repeated.
+
+Threat review: code/verifier/client secret only in bounded POST bodies, user token
+only in provider headers, no provider error bodies retained; hashes/encryption
+separate domains/keys; attempts claim before exchange, no blind retries; only
+numeric identities link accounts; no legacy owner adoption; DB session/revocation
+checks and host-only secure production cookie shape; test provenance denied by
+default. Dedicated deployment auth-role/key provisioning, retention/keyring
+rotation, refresh brokerage and public proxy/rate setup remain open. The test
+role combines permissions solely for disposable contracts, not deployment.
+
+A/B local foundation tasks are accepted. C's me/logout/CSRF is implemented but
+existing private API integration is not. D repository authorization, E approval/
+installation brokerage and F browser/live acceptance remain open. M3/M4/M5 exits
+are unchanged. Work continues on C/D using the actual existing owner/grant APIs.
