@@ -140,3 +140,14 @@ No execution grants or reviewer roles result from login. Existing local bearer
 API and bridge are preserved; session-principal/repository authorization and UI
 integration remain open. See docs/github-authentication.md for exact boundaries,
 key/retention limits, trusted dependencies and acceptance provenance.
+
+
+## GitHub session/repository continuation - 2026-10-23
+
+The explicit session API preserves owner-filtered run/SSE/evidence checks and
+adds current user/installation repository authorization. Next.js GitHub mode
+forwards session cookies plus Origin/CSRF, never an operator bearer. Numeric
+repository connection requires exact source and explicit execution/private
+consent. Owner disconnect atomically revokes stored execution consent. These
+local contracts do not grant reviewer permission or authorize publication.
+See docs/github-authentication.md for API routes, startup, limits and evidence.

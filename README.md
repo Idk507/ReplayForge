@@ -80,12 +80,19 @@ The bounded [GitHub publication adapter](docs/github-publication.md) now connect
 retained verified evidence and the durable approval journal to exact Git object,
 new-branch and draft-PR operations. It is disabled for live writes by default.
 Local contract tests cover approval checks and restart discovery; no live PR
-acceptance or completed M4 milestone is asserted. Authentication remains a
-separate teammate-owned integration.
+acceptance or completed M4 milestone is asserted. Authentication is now implemented in this workstream; approval identity/token
+brokerage remains a separate integration boundary.
 
 The [GitHub OAuth/session foundation](docs/github-authentication.md) provides a
 separate loopback-only auth app factory, browser-bound one-use PKCE attempts,
 encrypted user credentials and opaque PostgreSQL sessions. Existing local API
-and web startup remain unchanged. Session-based run/repository authorization,
-frontend integration and live browser acceptance are still pending; this is not
-an enabled public login deployment.
+and web startup remain available. Session-based run/repository authorization and
+frontend integration now have local synthetic acceptance. Live browser acceptance
+remains pending; this is not an enabled public login deployment.
+
+
+GitHub-session development now includes owner-scoped run/evidence access,
+installation/repository selection, exact-commit consent and login/logout UI.
+See [authentication setup and remaining acceptance](docs/github-authentication.md).
+Enable it explicitly with `REPLAYFORGE_WEB_AUTH_MODE=github`; local bearer mode remains
+available. Real GitHub login and approval-token brokerage are still pending.

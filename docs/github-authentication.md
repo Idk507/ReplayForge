@@ -1,6 +1,6 @@
-# GitHub OAuth and session foundation
+# GitHub authentication and repository sessions
 
-Implementation 51e4343, 2026-10-23. This is an internal loopback-only application
+Foundation implementation 51e4343; session/repository continuation 2026-10-23. This is an internal loopback-only application
 factory with offline provider tests and real disposable PostgreSQL tests.
 **It is not a completed public authentication deployment or live login acceptance.**
 
@@ -57,15 +57,16 @@ Path=/ and no Domain. Local HTTP intentionally uses rf_dev_session without
 Secure. OAuth browser binding uses the equivalent distinct cookie. /me returns
 minimal internal/GitHub identity, empty roles and a session-bound CSRF token;
 that token is not the opaque session ID and grants no reviewer permission.
-Logout requires both trusted Origin and exact CSRF token. Other unsafe/private
-endpoints are not mounted, so these checks cannot accidentally enable execution.
+Logout requires both trusted Origin and exact CSRF token. The separate composed
+session API applies these checks to every unsafe core API operation.
 The raw session value is used only in Set-Cookie and trusted private custody.
 
-The factory takes trusted Python dependencies; there is no environment-based
-public startup or request-supplied provider. allow_test is an explicit test-only
+The factory takes trusted Python dependencies; there is no public startup or
+request-supplied provider. allow_test is an explicit test-only
 constructor input and defaults false; do not enable it in deployment. The existing
 LocalAuth API and shared-bearer web bridge remain unchanged and local-only.
-They do NOT accept these sessions yet. /auth/success UI integration is still open.
+They remain available in local mode. Explicit GitHub mode composes session identity
+with the same owner-filtered API and replaces bearer injection with cookie forwarding.
 
 ## Migration and operation
 
@@ -92,24 +93,87 @@ and avoid logging cookies/Authorization. No such public startup was enabled.
 Rate accounting currently uses the actual loopback peer; a public reverse-proxy
 identity/rate design must be tested before removing LocalBoundary.
 
+## Session/repository continuation
+
+`services.auth.access.create_session_app` composes login routes and the existing
+run/SSE/evidence API. Every private run route retains its existing owner-filtered
+lookup and additionally checks current user/installation repository access. No
+bearer fallback exists in this mode. `/me` roles remain empty; browser identity
+is not human review authority.
+
+GET `/api/v1/github/installations` and `/api/v1/github/repositories?installation_id=...`
+use user tokens and require current app/user visibility. Each list is bounded to
+50 records/10 pages; incomplete/changing lists fail explicitly. POST
+`/api/v1/repositories/{numeric_repository_id}/connect` requires matching strict
+numeric body IDs, an exact source SHA, execution consent, and separate private
+repository consent. GitHub confirms the commit before an immutable UUID execution
+grant is created. No existing operator ownership is adopted. Idempotent reconnect
+requires identical bindings; a different pinned commit creates another grant.
+
+POST `/api/v1/repositories/{internal_UUID}/disconnect` requires owner session,
+Origin and CSRF; atomically revokes the connection and clears execution consent.
+It is idempotent and works without GitHub availability. Reconnect requires fresh
+provider checks and creates a new grant. This is currently an API-only action.
+Fresh provider denial blocks API use, but does not yet automatically mirror
+revocation to stored grants. Already running remote compute is not cancelled by
+disconnect; existing worker consent checks apply at their admitted boundaries.
+No webhook revocation/continuous membership watcher is claimed.
+
+Next.js `REPLAYFORGE_WEB_AUTH_MODE=github` enables login, callback landing, session gate,
+identity/logout and installation/repository connection pages. Only the local
+session cookie reaches the API; the shared local bearer is never substituted.
+CSRF is held in memory, never browser storage. Anonymous/expired sessions unmount
+private UI. The connected repository/commit prefill the existing workbench.
+Browser tests use clearly synthetic identities/provider data, not real login.
+
+## Explicit local startup
+
+Keep the current local bearer startup for existing development. Session mode uses:
+
+```powershell
+uv run --env-file .env uvicorn services.auth.local:create_from_env --factory --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+The factory reads only explicit process environment (the command above explicitly
+loads `.env`). Set `REPLAYFORGE_DATABASE_URL` to the restricted execution role and
+`REPLAYFORGE_AUTH_DATABASE_URL` to a distinct restricted auth role on the same
+local database. Migration 0026 adds `auth_repository_connections`. Apply migrations
+with migration authority, never either runtime role. Startup rejects administrator,
+role-creating/database-creating, auth-table-owner-member and combined test roles.
+
+The auth role needs SELECT/INSERT/UPDATE on mutable auth tables including
+connections, SELECT/INSERT on auth_security_events, and SELECT/INSERT/UPDATE on
+repository_grants (UPDATE only for owner-scoped disconnect). It must not INSERT
+runs. The execution role retains its existing grants and must have no SELECT on
+auth_credentials, no INSERT/UPDATE on repository_grants, and no vault keys.
+Role provisioning is an operator step; no real deployment roles were modified.
+
+Set GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET and independent random 32-byte keys
+encoded as 64 hex characters in REPLAYFORGE_AUTH_ENCRYPTION_KEY_HEX and
+REPLAYFORGE_AUTH_HMAC_KEY_HEX. Keep keys outside source; fixed example/test keys
+are never deployment keys. API/web origins default to http://127.0.0.1:8000 and
+http://127.0.0.1:3000. Set REPLAYFORGE_AUTH_ENABLE_GITHUB=true only for explicitly
+authorized actual OAuth/read-only calls. Default false makes no provider calls.
+Set REPLAYFORGE_WEB_AUTH_MODE=github and REPLAYFORGE_API_URL=http://127.0.0.1:8000 for Next.js.
+Register the exact callback http://127.0.0.1:8000/api/v1/auth/github/callback.
+Use 127.0.0.1 consistently; do not mix localhost cookies/origins.
+
 ## Remaining before authentication is complete
 
-1. Wire a typed session principal and current repository checks into all existing
-   run/SSE/artifact endpoints, preserving local mode without bearer fallback.
-2. Add GitHub installation/repository intersection discovery, explicit connection
-   consent and internal UUID associations. Login alone grants no repository scope.
-3. Implement fenced credential refresh, key rotation/retention, dedicated deployed
-   role/startup configuration and operational failure/rate tests.
-4. Connect Next.js login/success/logout/repository UX. Replace the shared-operator
-   bridge only in a separately tested session mode; verify two real browser users.
-5. Derive ReviewPermission from actual identity/current membership and supply
-   reduced installation tokens to the existing publisher. No browser role or
-   serialized intent is sufficient. Live PR testing is separately authorized.
-6. Perform separately authorized real browser login/list/logout acceptance after
-   the GitHub App/client settings are provided. No real credential was used here.
+- Real separately configured GitHub App browser login/list/logout acceptance,
+  with selected tiny repository and independent human consent. No real credential
+  has been used for this implementation. Actual separated-role startup acceptance
+  remains pending; config and disposable API integration are tested separately.
+- Session-derived current reviewer permission, exact ApprovalJournal HTTP binding,
+  and reduced installation-token brokerage for the existing publisher (plan E).
+  Login/connection do not authorize a PR. No public approval/write route is mounted.
+- Fenced refresh, keyring rotation, retention/purge and production secret provisioning.
+  Expired access tokens currently require reauthentication; no blind refresh replay.
+- Public HTTPS/proxy/rate deployment, two real browser users and complete actual
+  browser-to-PostgreSQL-to-GitHub acceptance. The shipped factory remains loopback.
 
-Focused tests: auth-foundation-final-focused.xml; full regression and checksums
-are recorded in the implementation log and auth-foundation-checks.json.
+Test evidence is recorded in docs/implementation-log.md and the corresponding
+checks JSON. These local contracts do not close M3/M4 or enable live publication.
 
 ## Official references verified before implementation
 

@@ -1,6 +1,7 @@
 # Implementation plan: GitHub authentication and repository authorization
 
-Status: implementation in progress, 2026-10-23. A/B foundations at 51e4343 pass
+Status: C/D session/repository and browser implementation under final regression,
+2026-10-23. A/B foundations at 51e4343 pass
 1277 full local backend tests; live acceptance remains unverified. User has reassigned authentication into this workstream.
 Tasks are tracked in root todo.md; this document is the dependency/acceptance plan.
 Specification: ReplayForge_GitHub_Authentication_Codex_Instructions.md.
@@ -162,3 +163,16 @@ credentials, not repository permissions; traditional OAuth scopes do not apply.
 Installation token responses must be treated as bounded opaque secrets; do not
 assume a fixed 40-character format. Scoping repository_ids and permissions must
 be explicit rather than inheriting every installation permission.
+
+
+## Current continuation scope
+
+C/D code composes session identity/current repository access with the existing API;
+Next.js login/logout and repository selection are implemented in explicit GitHub
+mode. Disconnect revokes stored execution consent atomically. Focused session/
+repository/startup tests: 22 passed, auth-session-disconnect-green.xml. Browser
+synthetic session suite: 3 passed, auth-session-browser.xml; desktop and mobile
+screenshots retained and visually inspected. Full regression evidence is recorded
+separately after completion. E remains open; F real GitHub App acceptance needs
+operator configuration and human consent. No private credentials or authenticated
+live GitHub requests were used during this continuation.

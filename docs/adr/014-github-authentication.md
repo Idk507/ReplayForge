@@ -1,7 +1,8 @@
 # ADR 014: GitHub user sessions and separate installation authorization
 
 Status: accepted design, 2026-10-23. A/B foundation implemented at 51e4343;
-repository/UI integration and live acceptance remain open.
+C/D session/repository/UI integration implemented locally; live acceptance and
+E approval/installation-token brokerage remain open.
 
 The user has reassigned authentication implementation to this workstream.
 Adopt one GitHub App's user authorization web flow with state and S256 PKCE,

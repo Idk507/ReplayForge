@@ -24,6 +24,7 @@ def create_auth_app(
     client_factory: Callable[[], GitHubAuthClient],
     *,
     allow_test: bool = False,
+    api_app: FastAPI | None = None,
 ) -> FastAPI:
     """Trusted dependency injection only; not a public-production startup factory.
 
@@ -31,7 +32,11 @@ def create_auth_app(
     The old execution API is deliberately not mounted without repo authorization.
     """
     settings = GitHubAuthSettings.model_validate(settings.model_dump())
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    app = (
+        api_app
+        if api_app is not None
+        else FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],
@@ -39,7 +44,8 @@ def create_auth_app(
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
-    app.add_middleware(LocalBoundary)
+    if api_app is None:
+        app.add_middleware(LocalBoundary)
     public = urlsplit(settings.public_origin)
 
     @app.middleware("http")
@@ -67,7 +73,22 @@ def create_auth_app(
             await run_in_threadpool(journal.denial, code)
         except StoreError:
             return JSONResponse({"error_class": "AUTH_UNAVAILABLE"}, status_code=503)
-        response = JSONResponse({"error_class": code}, status_code=401)
+        status = (
+            429
+            if code == "AUTH_RATE_LIMITED"
+            else 403
+            if code
+            in {
+                "AUTH_CSRF_DENIED",
+                "AUTH_REPOSITORY_DENIED",
+                "AUTH_PRIVATE_CONSENT_REQUIRED",
+                "AUTH_CONSENT_REQUIRED",
+            }
+            else 409
+            if code == "AUTH_CONNECTION_CONFLICT"
+            else 401
+        )
+        response = JSONResponse({"error_class": code}, status_code=status)
         if request.url.path == "/api/v1/auth/github/callback":
             response.delete_cookie(
                 settings.attempt_cookie,
@@ -78,9 +99,11 @@ def create_auth_app(
             )
         return response
 
-    @app.exception_handler(StoreError)
-    async def unavailable(request: Request, error: StoreError) -> Response:
+    async def unavailable(request: Request, error: Exception) -> Response:
         return JSONResponse({"error_class": "AUTH_UNAVAILABLE"}, status_code=503)
+
+    if api_app is None:
+        app.add_exception_handler(StoreError, unavailable)
 
     def secret(request: Request, name: str) -> SecretStr:
         value = request.cookies.get(name, "")

@@ -1,3 +1,4 @@
+import { sessionBridge } from "./session-bridge";
 import { createSchema } from "./contracts";
 
 const id = "[a-fA-F0-9-]{36}";
@@ -6,6 +7,8 @@ const readPath = new RegExp(`^runs(?:/${id}(?:/(?:events|verification|patch|rese
 
 /** Local-only BFF: fixed destination, closed paths, server-side bearer, no retries. */
 export async function bridge(request: Request, segments: string[]): Promise<Response> {
+  if(process.env.REPLAYFORGE_WEB_AUTH_MODE==="github") return sessionBridge(request,segments);
+  if(process.env.REPLAYFORGE_WEB_AUTH_MODE && process.env.REPLAYFORGE_WEB_AUTH_MODE!=="local") return Response.json({error_class:"AUTH_MODE_INVALID"},{status:503});
   const url = new URL(request.url);
   const host = request.headers.get("host") ?? url.host;
   const localOrigin = `http://${host}`;

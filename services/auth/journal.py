@@ -321,3 +321,19 @@ class AuthJournal:
                     "VALUES(%s,%s,'LOGOUT')",
                     (uuid4(), row["user_id"]),
                 )
+
+    def credential(self, user_id: UUID) -> SecretStr:
+        """Trusted auth-service read; caller must first authenticate its session.
+
+        Expired credentials require login. Refresh is not silently retried.
+        """
+        with self.store._connection() as c:
+            row = c.execute(
+                "SELECT t.access_ciphertext FROM auth_credentials t JOIN auth_users u "
+                "ON u.id=t.user_id WHERE t.user_id=%s AND u.active "
+                "AND t.expires_at>clock_timestamp()",
+                (user_id,),
+            ).fetchone()
+            if row is None or not isinstance(row["access_ciphertext"], bytes):
+                raise AuthDenied("AUTH_REAUTH_REQUIRED")
+            return self.vault.open(row["access_ciphertext"], f"access:{user_id}")

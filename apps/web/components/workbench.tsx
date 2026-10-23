@@ -10,7 +10,7 @@ const label = (text: string) => text.replaceAll("_", " ");
 const short = (text: string) => text.slice(0, 8);
 const tone = (status: string) => ["VERIFIED", "PASS"].includes(status) ? "good" : ["FAIL", "NOT_VERIFIED", "POLICY_BLOCKED"].includes(status) ? "bad" : "neutral";
 
-export default function Workbench() {
+export default function Workbench({sessionMode=false,initialRepository="",initialCommit=""}: {sessionMode?:boolean;initialRepository?:string;initialCommit?:string}) {
   const [runs, setRuns] = useState<Run[]>([]), [run, setRun] = useState<Run | null>(null);
   const [selected, setSelected] = useState(""), [view, setView] = useState("timeline");
   const [events, setEvents] = useState<RunEvent[]>([]), [connection, setConnection] = useState("Not connected");
@@ -50,7 +50,7 @@ export default function Workbench() {
         setEvents(items => [...items, ...page].slice(-500));
         if (page.length) cursor = page[page.length - 1].sequence;
         setConnection("Connected"); setDetailError(""); failures = 0;
-        timer = setTimeout(poll, page.length === 100 ? 50 : terminal.has(current.current_stage) ? 10000 : 2500);
+        timer = setTimeout(poll, page.length === 100 ? 50 : terminal.has(current.current_stage) || sessionMode ? 10000 : 2500);
       } catch (e) {
         if (stopped) return;
         setConnection("Reconnecting"); setDetailError(errorMessage(e));
@@ -59,7 +59,7 @@ export default function Workbench() {
     }
     void poll();
     return () => {stopped = true; abort.abort(); clearTimeout(timer);};
-  }, [selected]);
+  }, [selected,sessionMode]);
 
   useEffect(() => {
     if (!run) return;
@@ -128,7 +128,7 @@ export default function Workbench() {
       </aside>
       <main id="main" className="main" tabIndex={-1}>
         {error && <div className="error" role="alert">{error} <button onClick={() => void refresh()}>Retry connection</button></div>}
-        {intake ? <section className="intake"><p className="eyebrow">01 / SCOPE THE INCIDENT</p><h1>Start an investigation</h1><p className="lede">Pin the source. Describe the failure. Build a reviewable trail of evidence.</p><form onSubmit={create} onChange={() => {nonce.current = null;}}><label htmlFor="repository">Approved repository ID</label><input id="repository" name="repository" required placeholder="Repository UUID from operator configuration" /><label htmlFor="commit">Source commit</label><input id="commit" name="commit" required minLength={40} maxLength={40} placeholder="Full 40-character commit SHA" /><label htmlFor="incident">What happened?</label><textarea id="incident" name="incident" required maxLength={20000} rows={7} placeholder="Expected behavior, observed failure, and a small reproducible example. Do not include credentials." /><p className="muted">The backend validates repository consent. Creating a run does not authorize cloud execution or publication.</p><button className="primary" disabled={busy}>{busy ? "Submitting…" : "Create investigation →"}</button><button className="text-button" type="button" onClick={() => setIntake(false)}>Back to workspace</button></form></section>
+        {intake ? <section className="intake"><p className="eyebrow">01 / SCOPE THE INCIDENT</p><h1>Start an investigation</h1><p className="lede">Pin the source. Describe the failure. Build a reviewable trail of evidence.</p><form onSubmit={create} onChange={() => {nonce.current = null;}}><label htmlFor="repository">Approved repository ID</label><input id="repository" name="repository" defaultValue={initialRepository} required placeholder="Repository UUID from operator configuration" /><label htmlFor="commit">Source commit</label><input id="commit" name="commit" defaultValue={initialCommit} required minLength={40} maxLength={40} placeholder="Full 40-character commit SHA" /><label htmlFor="incident">What happened?</label><textarea id="incident" name="incident" required maxLength={20000} rows={7} placeholder="Expected behavior, observed failure, and a small reproducible example. Do not include credentials." /><p className="muted">The backend validates repository consent. Creating a run does not authorize cloud execution or publication.</p><button className="primary" disabled={busy}>{busy ? "Submitting…" : "Create investigation →"}</button><button className="text-button" type="button" onClick={() => setIntake(false)}>Back to workspace</button></form></section>
         : !selected ? <section className="empty"><p className="eyebrow">REPRODUCE / REPAIR / VERIFY</p><h1>Every repair needs<br />a trail of evidence.</h1><p className="lede">Trace an incident from pinned source to observed failure, candidate patch and independent replay.</p><button className="primary" onClick={() => setIntake(true)}>Start an investigation →</button><div className="principles"><span><b>01</b>Pinned source</span><span><b>02</b>Observed failure</span><span><b>03</b>Independent replay</span></div></section>
         : <section className="investigation"><div className="breadcrumb">WORKSPACE <span>/</span> INVESTIGATION <span>/</span> {short(selected)}</div><div className="run-title"><div><p className="eyebrow">INCIDENT REPAIR</p><h1>Investigation <span className="mono">{short(selected)}</span></h1></div><span className={`badge ${tone(run?.current_stage ?? "LOADING")}`}>{label(run?.current_stage ?? "LOADING")}</span></div>
           <div className="identity-strip"><span>SOURCE <code>{run?.source_commit ?? "Loading…"}</code></span><span>VERSION <b>{run?.version ?? "—"}</b></span><span className="connection" role="status">● {connection}</span></div>
