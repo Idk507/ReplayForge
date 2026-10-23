@@ -50,7 +50,7 @@ def prepare_store() -> Store:
         conn.execute(
             sql.SQL(
                 "GRANT SELECT,INSERT ON evidence_bundles,approval_decisions,"
-                "publication_intents TO {}"
+                "publication_intents,publication_results TO {}"
             ).format(role)
         )
         conn.execute(
