@@ -1,6 +1,6 @@
 # Implementation plan: GitHub authentication and repository authorization
 
-Status: C/D session/repository and browser implementation under final regression,
+Status: C/D session/repository and browser implementation locally tested,
 2026-10-23. A/B foundations at 51e4343 pass
 1277 full local backend tests; live acceptance remains unverified. User has reassigned authentication into this workstream.
 Tasks are tracked in root todo.md; this document is the dependency/acceptance plan.
@@ -172,7 +172,7 @@ Next.js login/logout and repository selection are implemented in explicit GitHub
 mode. Disconnect revokes stored execution consent atomically. Focused session/
 repository/startup tests: 22 passed, auth-session-disconnect-green.xml. Browser
 synthetic session suite: 3 passed, auth-session-browser.xml; desktop and mobile
-screenshots retained and visually inspected. Full regression evidence is recorded
-separately after completion. E remains open; F real GitHub App acceptance needs
+screenshots retained and visually inspected. Full regression: auth-session-final-postgres.xml, 1299 passed, zero skips,
+417.46 seconds, exit 0. Implementation 638feb6. E remains open; F real GitHub App acceptance needs
 operator configuration and human consent. No private credentials or authenticated
 live GitHub requests were used during this continuation.

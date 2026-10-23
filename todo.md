@@ -411,12 +411,22 @@ No authentication code or live login is claimed by this planning increment.
   43 focused/auth and 1277 full backend cases; auth-foundation-checks.json).
 - [x] B: browser-bound one-use OAuth/PKCE and durable opaque sessions
   (51e4343, same full local evidence; provider/human identities synthetic).
-- [~] C: /me/logout/CSRF foundation passes local tests; session principal and
-  all private API/SSE/artifact checks remain open
-  and minimal browser integration, preserving explicit local mode.
-- [ ] D: live-checked installation/repository discovery and consent mapping.
+- [x] C: session principal/CSRF and owner-filtered private API/SSE/artifact
+  composition, preserving local mode (638feb6). Full local backend: 1299 pass,
+  zero skips, auth-session-final-postgres.xml; see auth-session-checks.json.
+- [~] D: current user/installation repository discovery, exact-commit consent,
+  UUID mapping and owner disconnect implemented; real GitHub acceptance pending.
 - [ ] E: authenticated exact review and scoped installation write-token broker.
-- [ ] F: browser regression and separately authorized real login/list/logout smoke.
-A/B are accepted locally, not as real login acceptance. Continue C/D session and
-repository integration. No real credentials are required for offline tests.
+- [~] F: login/logout/session/repository UI implemented; auth browser3 pass,
+  local browser6 pass/1 opt-in real-API skip. Lint/types/build pass. Actual human
+  GitHub login and separated-role startup acceptance remain pending.
+C/D local contracts are accepted within synthetic-provider scope. No real
+credentials, paid calls or external writes were used. Next: session-derived exact
+review and reduced installation-token brokerage, then configured human login.
 Authentication completion is separate from seven-gate/M4 evaluation acceptance.
+
+
+Latest local continuation (2026-10-23): 638feb6 adds session/repository API and
+Next.js integration. Full backend1299 pass, zero skips,417.46s. Earlier current-
+focus statements about pending session integration/teammate ownership are
+superseded. M3/M4/M5 exits remain open; see auth-session-checks.json.

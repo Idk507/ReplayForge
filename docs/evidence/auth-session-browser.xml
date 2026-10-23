@@ -1,0 +1,10 @@
+<testsuites id="" name="" tests="3" failures="0" skipped="0" errors="0" time="5.204721">
+<testsuite name="session.spec.ts" timestamp="2026-10-23T15:14:32.997Z" hostname="" tests="3" failures="0" skipped="0" time="1.765" errors="0">
+<testcase name="session bridge forwards only session identity and never the local bearer" classname="session.spec.ts" time="0.021">
+</testcase>
+<testcase name="anonymous browser cannot render private workbench" classname="session.spec.ts" time="0.724">
+</testcase>
+<testcase name="synthetic session can connect an allowed repository and sign out" classname="session.spec.ts" time="1.02">
+</testcase>
+</testsuite>
+</testsuites>

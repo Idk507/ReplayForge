@@ -2881,3 +2881,48 @@ A/B local foundation tasks are accepted. C's me/logout/CSRF is implemented but
 existing private API integration is not. D repository authorization, E approval/
 installation brokerage and F browser/live acceptance remain open. M3/M4/M5 exits
 are unchanged. Work continues on C/D using the actual existing owner/grant APIs.
+
+
+## 2026-10-23 - Session/repository API and browser integration
+
+Implementation 638feb6 (source parent16fe2ca). Session identity now composes with
+existing owner-filtered run/SSE/evidence routes, current app/user repository checks,
+exact-commit consent and immutable UUID mapping. Owner/CSRF disconnect atomically
+clears execution consent; reconnect creates a fresh grant. No bearer fallback.
+Separate local startup validates restricted roles/config, but actual separated-role
+startup acceptance remains pending. Next.js GitHub mode adds login/success/session
+identity/logout and repository selection; session-only BFF, in-memory CSRF, no
+browser credential storage. Connected grant/source prefill existing workbench.
+
+Actual checks, exit0 unless stated:
+- Focused scripts.test_postgres with pytest -k 'session_access or auth_repositories
+  or auth_local':22 pass,1277 deselected,13.16s,auth-session-disconnect-green.xml.
+- Full disposable PostgreSQL regression:1299 pass,zero failures/errors/skips,
+  417.46s,auth-session-final-postgres.xml. Wrapper's aggregate subprocess deadline
+  was600s; no individual/product timeout weakened. Temporary DB/roles cleaned.
+- uv run ruff check .; uv run ruff format --check .:pass240files; uv run mypy:
+  pass119sources. uv lock --check, scoped credential-pattern and diff checks pass.
+  Dependencies unchanged; vulnerability audit not repeated.
+- npm run lint; npm run typecheck; npm run build:pass, Next16.4.2 production build.
+  npx playwright test -c playwright.auth.config.ts:3pass5.2s;
+  npx playwright test:6pass/1skip29.8s. Opt-in real local API case was not enabled.
+  auth-session-browser.xml and auth-local-mode-browser.xml retained. Desktop login
+  and390px mobile connection screenshots visually inspected, synthetic data only.
+- RED disconnect missing route404 preserved in auth-disconnect-red.xml.gz. Earlier
+  query/path strict integer422 fixed with separate protocol numeric validation.
+  Composition's replacement StoreError handler turned owner404 into503; preserving
+  core handler fixed it. Earlier failures compressed without deleting history,
+  including misleading historical 'green' names. Initial browser server startup
+  timed out; owned listener checked/stopped and ordinary rerun passed, unchanged
+  timeout limits. Upstream Starlette/AnyIO deprecation warning remains.
+
+Threat review: parameterized owner SQL, no legacy adoption, bounded lists, provider
+origin checks, read-only user-token calls, explicit consent and current access.
+Workers receive no new grant-write/auth permissions. Provider denial blocks new
+API work but automatic stored-grant revocation mirroring is not yet implemented.
+API-only disconnect clears consent; it cannot prove already-running compute stops.
+Credentials expire to reauthentication, no blind refresh retries. Public deployment,
+keyring/retention/refresh, real App login, actual restricted-role startup and plan E
+session-derived exact approval/scoped installation-token brokerage remain open.
+No actual GitHub credentials read, authenticated provider request, paid call,
+external write, PR, merge or deploy occurred. M3/M4/M5 remain open.
