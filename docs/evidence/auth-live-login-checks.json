@@ -1,0 +1,20 @@
+{
+  "status": "LIVE_LOGIN_LOGOUT_PASSED_INSTALLATION_PENDING",
+  "observed_date": "2026-10-23",
+  "user": "Idk507",
+  "login_observed": true,
+  "logout_observed": true,
+  "all_created_user_sessions_revoked": true,
+  "installation_discovery": "successful empty list",
+  "repository_access_acceptance": false,
+  "callback_fix": "optional iss validates exact https://github.com/login/oauth before code exchange",
+  "focused_auth_tests": "21 passed, 1281 deselected, 21.71s",
+  "paid_calls": 0,
+  "repository_writes": 0,
+  "repository_execution": false,
+  "limitations": [
+    "App installation required",
+    "exact approval and installation write brokerage still open",
+    "full backend suite not rerun for this narrow callback fix"
+  ]
+}

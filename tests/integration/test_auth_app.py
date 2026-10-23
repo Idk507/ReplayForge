@@ -250,3 +250,23 @@ def test_auth_https_cookie_has_host_prefix_secure_and_no_domain(store):
     assert cookie.startswith("__Host-rf_session=")
     assert "Secure" in cookie and "HttpOnly" in cookie and "Domain=" not in cookie
     assert c.get("/api/v1/auth/me").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "https://github.com/login/oauth",
+        "https://evil.example",
+        "https://github.com/login/oauth/",
+    ],
+)
+def test_callback_validates_provider_issuer_before_exchange(store, issuer):
+    c, calls = client(store)
+    state = start(c)
+    r = c.get(
+        "/api/v1/auth/github/callback",
+        params={"state": state, "code": "synthetic-code", "iss": issuer},
+        follow_redirects=False,
+    )
+    assert r.status_code == (303 if issuer == "https://github.com/login/oauth" else 401)
+    assert len(calls) == (2 if issuer == "https://github.com/login/oauth" else 0)

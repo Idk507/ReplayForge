@@ -180,3 +180,11 @@ checks JSON. These local contracts do not close M3/M4 or enable live publication
 - https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
 - https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens
 - https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app
+
+
+Live update2026-10-23: actual Idk507 login/logout and durable session revocation
+passed. Standard optional OAuth iss is accepted only for exact GitHub issuer
+https://github.com/login/oauth (RFC9207); duplicate/unknown/wrong issuer denied.
+Installation discovery succeeded with no visible installations; actual repository
+access acceptance remains pending App installation. Earlier no-live statements
+describe historical foundation evidence; see auth-live-login-checks.json.

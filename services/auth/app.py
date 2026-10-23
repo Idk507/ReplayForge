@@ -150,8 +150,14 @@ def create_auth_app(
         )
         pairs = request.query_params.multi_items()
         if len({k for k, _ in pairs}) != len(pairs) or any(
-            k not in {"state", "code", "error", "error_description", "error_uri"}
+            k not in {"state", "code", "iss", "error", "error_description", "error_uri"}
             for k, _ in pairs
+        ):
+            raise AuthDenied("AUTH_CALLBACK_INVALID")
+        # RFC 9207 issuer identification: compare the exact configured provider,
+        # never derive an exchange endpoint from callback input.
+        if "iss" in request.query_params and request.query_params["iss"] != (
+            "https://github.com/login/oauth"
         ):
             raise AuthDenied("AUTH_CALLBACK_INVALID")
         claim = journal.consume(

@@ -2936,3 +2936,23 @@ migration URL format and was cleaned; corrected URL passed. Existing databases
 untouched. See docs/evidence/auth-local-setup-checks.json and docs/github-app-setup.md.
 Remaining external step: user registers/installs the App and privately configures
 Client ID/secret, then completes browser consent. Actual login remains unverified.
+
+
+2026-10-23 live GitHub login smoke: user supplied App client settings privately.
+Validated configuration and restricted-role startup; enabled local GitHub mode.
+Live callback initially rejected standard OAuth iss parameter. RED regression
+proved valid exact issuer was rejected; allowlisted iss with exact provider check
+before journal consume/code exchange. Wrong issuer/suffix remain denied; legacy
+no-issuer callback remains supported. RFC9207 section2.4 consulted (rfc-editor.org).
+Focused auth_app/session_access regression21pass,1281deselected,21.71s,exit0;
+Ruff/format240files and strict mypy119sources pass. No full1299 rerun for narrow fix.
+Fresh browser login visibly showed Idk507; user had already authorized the App.
+Integrations read returned no visible installations. Signed out; browser login
+screen and database revocation of all created user sessions confirmed. No repository
+connected/executed, no PR/write, no inference/sandbox/research charge. Provider token
+exchange/user/installations reads occurred. Callback queries/secrets not retained
+in evidence. Sanitized screenshots/report in docs/evidence/auth-live-*. Live
+repository acceptance remains blocked on App installation/current visible access.
+User must install replayforge-ai on only maf_ds_agent, then retry login/discovery.
+Windows uv npm launch requires cmd /c; corrected setup guide. Development Next
+server generated transient rules/type paths; these are excluded from this change.

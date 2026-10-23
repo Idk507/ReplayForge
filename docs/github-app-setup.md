@@ -50,7 +50,7 @@ uv run --env-file .env uvicorn services.auth.local:create_from_env --factory --h
 In another PowerShell window, start Next.js with explicit root .env loading:
 
 ```powershell
-uv run --env-file C:/Users/dhanu/Downloads/ReplayForge/.env --directory apps/web npm run dev -- --hostname 127.0.0.1
+uv run --env-file C:/Users/dhanu/Downloads/ReplayForge/.env --directory apps/web cmd /c npm run dev -- --hostname 127.0.0.1
 ```
 
 The absolute env path avoids working-directory ambiguity. Keep the file private.
@@ -66,3 +66,6 @@ replace the local database values with the postgres administrator account.
 References checked 2026-10-23:
 https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app
 https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url
+
+Live login/logout passed on2026-10-23. Installation discovery returned an empty
+list; install replayforge-ai on selected maf_ds_agent before repository acceptance.
