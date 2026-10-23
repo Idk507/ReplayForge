@@ -1,0 +1,15 @@
+{
+  "status": "LOCAL_SEPARATED_ROLE_STARTUP_PASSED",
+  "observed_date": "2026-10-23",
+  "isolated_local_database_created": true,
+  "migration": "0026",
+  "api_role_check": "PASS",
+  "auth_role_check": "PASS",
+  "unauthenticated_me": 401,
+  "unauthenticated_runs": 401,
+  "provider_configuration": "temporary synthetic inputs, not persisted",
+  "live_github_calls": 0,
+  "existing_database_changed": false,
+  "remaining": "Actual GitHub App client ID/secret and human browser consent",
+  "prior_attempt": "SQLAlchemy migration URL mismatch; failed disposable setup cleaned before retry"
+}

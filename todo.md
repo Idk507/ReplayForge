@@ -430,3 +430,13 @@ Latest local continuation (2026-10-23): 638feb6 adds session/repository API and
 Next.js integration. Full backend1299 pass, zero skips,417.46s. Earlier current-
 focus statements about pending session integration/teammate ownership are
 superseded. M3/M4/M5 exits remain open; see auth-session-checks.json.
+
+
+2026-10-23 local auth setup: independent keys and a new dedicated PostgreSQL
+database/three restricted roles prepared in ignored .env. Migration0026 and actual
+separated-role startup plus anonymous /auth/me and /runs401 passed with temporary
+synthetic App configuration; no OAuth call. First disposable attempt used a wrong
+migration URL format and was cleaned; corrected URL passed. Existing databases
+untouched. See docs/evidence/auth-local-setup-checks.json and docs/github-app-setup.md.
+Remaining external step: user registers/installs the App and privately configures
+Client ID/secret, then completes browser consent. Actual login remains unverified.

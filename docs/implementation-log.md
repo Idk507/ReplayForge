@@ -2926,3 +2926,13 @@ keyring/retention/refresh, real App login, actual restricted-role startup and pl
 session-derived exact approval/scoped installation-token brokerage remain open.
 No actual GitHub credentials read, authenticated provider request, paid call,
 external write, PR, merge or deploy occurred. M3/M4/M5 remain open.
+
+
+2026-10-23 local auth setup: independent keys and a new dedicated PostgreSQL
+database/three restricted roles prepared in ignored .env. Migration0026 and actual
+separated-role startup plus anonymous /auth/me and /runs401 passed with temporary
+synthetic App configuration; no OAuth call. First disposable attempt used a wrong
+migration URL format and was cleaned; corrected URL passed. Existing databases
+untouched. See docs/evidence/auth-local-setup-checks.json and docs/github-app-setup.md.
+Remaining external step: user registers/installs the App and privately configures
+Client ID/secret, then completes browser consent. Actual login remains unverified.
