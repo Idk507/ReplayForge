@@ -2956,3 +2956,10 @@ repository acceptance remains blocked on App installation/current visible access
 User must install replayforge-ai on only maf_ds_agent, then retry login/discovery.
 Windows uv npm launch requires cmd /c; corrected setup guide. Development Next
 server generated transient rules/type paths; these are excluded from this change.
+
+2026-10-23 repository selector diagnosis: authorized read-only provider calls
+returned one installation and zero repositories. GitHub installation settings
+independently show No permissions / No repositories. This is configuration,
+not a populated provider list being lost by the UI. No permission changed.
+User must set App Contents read-only, approve updated installation and select
+maf_ds_agent. See auth-installation-scope-checks.json and screenshot.
