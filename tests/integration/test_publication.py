@@ -208,7 +208,8 @@ def test_publication_result_is_immutable_under_runtime_role(store):
         "UPDATE publication_results SET digest=repeat('0',64)",
         "DELETE FROM publication_results",
     ]:
-        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with pytest.raises(StoreError, match="DB_FAILURE_42501"):
+            # Store translates the exact SQL permission denial into its safe code.
             with store._connection() as conn:
                 conn.execute(operation + " WHERE run_id=%s", (data[0].run_id,))
 
