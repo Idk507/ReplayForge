@@ -74,3 +74,11 @@ or public approval routes. The authentication owner supplies independent current
 human identity/membership; never accept ReviewPermission JSON as proof. Real
 GitHub publication, deterministic seven-gate production and deployment remain
 tracked in todo.md. Production role grants/migrations require deployment review.
+
+## Publication integration — 2026-10-23
+
+Use docs/github-publication.md for the internal approval-to-publisher contract.
+Keep identity loading and installation credentials with the authentication owner.
+Never invoke the adapter from model tools or accept ReviewPermission from JSON.
+Live writes are opt-in and require the concrete exact reviewed fixture approval;
+local synthetic contract success is not M4 acceptance.

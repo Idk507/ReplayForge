@@ -75,3 +75,10 @@ Start reading `project_scope.md` (what to build), `Architecture.md` and `system_
 MVP success: a consented synthetic Python repository incident is reproduced on the original commit, repaired through NVIDIA Nemotron via Nebius Token Factory, verified in a clean isolated execution environment with preserved evidence, then transformed into a GitHub PR only after explicit authorized human approval.
 
 Official rules: https://nebiusglobalaihackathon.devpost.com/rules . Deadline: Oct 30, 2026 at 10 AM PDT (22:30 IST). Use the official site as the final authority. Documentation created October 12, 2026. Recommended license for future code: Apache-2.0 or MIT; a license is not automatically granted by this specification.
+
+The bounded [GitHub publication adapter](docs/github-publication.md) now connects
+retained verified evidence and the durable approval journal to exact Git object,
+new-branch and draft-PR operations. It is disabled for live writes by default.
+Local contract tests cover approval checks and restart discovery; no live PR
+acceptance or completed M4 milestone is asserted. Authentication remains a
+separate teammate-owned integration.

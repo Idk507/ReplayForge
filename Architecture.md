@@ -160,3 +160,11 @@ The architecture is accepted only when one API request produces a durable run, s
 
 ## 15. Source references
 Official rules: https://nebiusglobalaihackathon.devpost.com/rules ; resources: https://nebiusglobalaihackathon.devpost.com/resources ; Nemotron API example: https://nebius.com/services/token-factory/nemotron ; model catalog: https://github.com/nebius/token-factory-cookbook/tree/main/models/nemotron ; Tavily SDK: https://github.com/tavily-ai/tavily-python . Validate account-specific access and provider changes before provisioning.
+
+## Publication implementation — 2026-10-23
+
+The approval journal now has an internal typed publisher controller and immutable
+remote-result custody. See docs/github-publication.md for exact source/tree/blob
+checks, draft PR creation and restart discovery. New migration 0024 adds observed
+result persistence; no public write route or automatic approval is installed.
+Live acceptance and hidden evaluation remain required by the unchanged M4 exit.

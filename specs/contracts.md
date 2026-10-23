@@ -115,3 +115,18 @@ creating another consumption. The intent cannot authorize publication on its
 own; no public approval route or GitHub writer is installed. Migrations 0022 and
 0023 require append-only runtime grants. See durable-producer.md and
 approval-journal.md for recovery limits, privacy and test provenance.
+
+## GitHub publication adapter — 2026-10-23
+
+publish_approved accepts only trusted identity and publisher dependencies. It
+loads the exact retained reviewed patch through PublicationJournal and rechecks
+approval/consent/current grant before every HTTP POST. GitHubPublisher computes
+exact Git trees/commits from pinned bounded regular text files without execution;
+only a deterministic new branch and draft PR are written. Unknown outcomes use
+explicit admitted rediscovery, never force-push or an alternative branch.
+Migration 0024 appends actual remote result/event/checkpoint atomically and keeps
+late cancellation intact. TEST transport cannot become PR_OPENED evidence.
+No public route, auth implementation, model tool or default harness dispatch was
+added. See docs/github-publication.md for bounds, recovery and live acceptance.
+This supersedes the earlier statement that no writer implementation is installed;
+no live writer acceptance or M4 completion is claimed.

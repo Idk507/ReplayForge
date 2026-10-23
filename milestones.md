@@ -53,3 +53,9 @@ including 1191 full backend cases. M3 remains open for the complete authentic
 seven-gate workflow; M4 remains open for actual GitHub publication/evaluation;
 M5 remains open. Existing exit criteria are unchanged. Human authentication
 implementation remains assigned to the user's teammate.
+
+Publication follow-up 2026-10-23: a bounded GitHub REST adapter and durable result
+journal are implemented with local synthetic contracts. This supersedes the
+snapshot's absence-of-publisher implementation, not its live acceptance gap.
+M4 remains open until actual approved exactly-once PR publication and hidden
+variation evaluation pass; M3's authentic seven-gate exit is still required.

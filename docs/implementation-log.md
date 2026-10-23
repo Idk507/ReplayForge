@@ -2735,3 +2735,72 @@ idempotent GitHub branch/PR/result recovery and hidden evaluation; then deployme
 and submission packaging. Production signer/OCI/configuration assessment and
 separate human identity integration remain deployment prerequisites. No cloud
 inference/sandbox/Tavily call, external repository write, deployment or merge ran.
+
+## 2026-10-23 — Bounded M4 publisher and durable result recovery
+
+Implementation: 0042c9d; test correction: 7c88d10. No remote write, paid model,
+sandbox or Tavily call, deployment or merge was performed. Authentication
+interfaces stay with the teammate. The staged authentication specification was
+preserved separately and is not part of these commits.
+
+Added pure exact unified-diff application over bounded Git blobs, Git tree/commit
+encoding validated independently by git hash-object --stdin (no object write or
+source execution), actual fixed-origin GitHub tree/commit/ref/draft-PR REST
+operations, per-POST current approval/permission/scope rechecks, deterministic
+branch/commit/external-ID discovery and sanitized unknown-outcome handling.
+No force-push, target-ref update, source execution, workflow edit or automatic
+merge is available. Inputs come from checksum-verified retained approved evidence,
+not caller-supplied diff JSON. Migration 0024 adds immutable publication results;
+result/event/PR_OPENED update is atomic and late cancellation remains intact.
+See github-publication.md for bounds, unsupported cases and partial-write risks.
+
+Actual validation (exit 0 unless explicitly marked failed):
+
+- Absent-module REDs retained losslessly: m4-publication-patch-red.xml.gz,
+  m4-publication-objects-red.xml.gz and m4-github-publisher-red.xml.gz.
+- Unicode line-separator regression exposed splitlines behavior; fixed using LF
+  boundaries. m4-publication-unicode-red.xml.gz retains the failed observation.
+- Focused publisher/text/object tests: uv run pytest tests/contract/test_github_publisher.py
+  tests/unit/test_publication_objects.py tests/unit/test_publication_patch.py -q
+  --junitxml=docs/evidence/m4-publisher-expanded.xml: 32 passed, exit 0, 2.14s.
+- Disposable PostgreSQL focused test_publication selection: 31 passed,
+  1192 deselected, 22.37s; m4-publication-custody-green.xml. Earlier two fixture
+  mistakes (missing cancel CAS argument and unscoped count) are retained in
+  m4-publication-custody.xml.gz, not claimed as passes.
+- First full run: 1233 passed, one failed assertion, 449.16s, exit 1;
+  m4-publisher-postgres.xml.gz. The actual UPDATE privilege denial was correct;
+  the test expected the raw psycopg exception instead of StoreError's sanitized
+  DB_FAILURE_42501. Focused reproduction is m4-publication-role-red.xml.gz.
+  Corrected exact denial assertion passes (one test, 5.48s,
+  m4-publication-role-green.xml). No permission, product code or gate was weakened.
+- Final full run on 7c88d10 via scripts.test_postgres, disposable local DB/runtime
+  roles, secure password injection without DSN output, aggregate subprocess
+  ceiling 600 seconds: **1234 passed**, zero failures/errors/skips, **446.58s**,
+  exit 0. JUnit m4-publisher-final-postgres.xml and its actual SHA256/JUnit time
+  are recorded in m4-publication-checks.json. The wrapper cleaned test DB/roles.
+  The ceiling changes no individual test deadline or product budget.
+- uv run ruff check .; uv run ruff format --check .: pass, 224 files formatted.
+- uv run mypy: pass, 111 typed core sources.
+- Scoped credential-value patterns and scoped git diff --check: pass. The user's
+  separately staged auth specification is untouched and excluded from scope.
+- uv run python -m scripts.check_checkout: M2_FIXTURE_ACCEPTED, exit 0;
+  verification/execution authority remains false.
+
+One existing upstream Starlette/AnyIO deprecation warning remains. No dependency
+or UI changes were made, so vulnerability audits/browser acceptance were not
+repeated; these results do not claim deployment/hackathon readiness.
+
+Threat review: credentials only in trusted HTTP headers, source/JUnit absent from
+public events, actual Git bytes rehashed, symlinks/submodules/executable targets
+rejected, exact patch scope preserved, fresh authorization before every POST,
+no redirect/proxy inheritance/automatic write retry, immutable runtime custody,
+and test-origin refusal. Provider HTTP and gate/human permissions are synthetic
+in tests. Actual GitHub normalization, installation permissions and distributed
+write/discovery behavior still require live acceptance. Partial objects can
+remain after later denial; no destructive cleanup is automatic.
+
+M2 fixed fixture remains accepted. M3/M4/M5 remain open. Next: deterministic
+seven-gate production/admitted tiny-fixture worker flow, authentic assessed
+signer/configuration, then independently authenticated exact review plus explicit
+live write approval and one-PR discovery acceptance, hidden evaluation, and M5
+packaging. No milestone exit was replaced with a weaker test.

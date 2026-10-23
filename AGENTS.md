@@ -116,3 +116,9 @@ An issue is done when implementation is merged to correct module, unit tests pas
 
 ## Roles for optional coding subagents
 One implementer edits a bounded module. One independent reviewer inspects contracts, security and correctness without editing. One test author builds adversarial cases. A single integration owner resolves conflicts and validates end-to-end. For parallel work, separate git worktrees and branches by module; no two agents mutate the same module concurrently. No subagent may approve its own production write action.
+
+The internal GitHub publisher consumes only current approved evidence and reloads
+trusted membership/approval before every write. Exact Git object and durable
+result contracts live in `docs/github-publication.md`. Live writes remain opt-in;
+TEST transport cannot become real PR evidence. Serialized intent alone is not
+permission, and uncertain writes require admitted discovery, not blind retry.

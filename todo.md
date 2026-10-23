@@ -2,41 +2,40 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus â€” reconciled 2026-10-22
+## Current focus — reconciled 2026-10-23
 
-Implementation checkpoints: `c949e1e` durable replay observation;
-`69651b4` workspace measurement; `40e2c40` measured receipts;
-`9df1ac9` durable producer recovery, evidence handoff and human review journal.
-Latest full local backend evidence: `docs/evidence/m3-m4-durable-workflow-postgres.xml`,
-**1191 passed**, zero failures/errors/skips, 449.25s, exit 0. Provider HTTP,
-capability/signing facts and human permissions in these tests are synthetic;
-this is regression evidence, not live M3/M4 acceptance.
+Implementation `0042c9d` adds the bounded GitHub publisher, exact Git text/tree/
+commit construction, approval-bound controller and immutable result recovery.
+`7c88d10` corrects the test's expected sanitized PostgreSQL permission denial.
+Latest full local evidence: `docs/evidence/m4-publisher-final-postgres.xml`,
+**1234 passed**, zero failures/errors/skips, 446.58s, exit 0. Ruff and formatting
+(224 files), strict mypy (111 sources), scoped credential-pattern and diff checks
+pass. `docs/evidence/m4-publication-checks.json` records the exact JUnit checksum.
 
-M2 remains accepted within the fixed-checkout contingency. M3 remains open.
-M4 now has durable human decision/one-use publication intent in addition to its
-policy kernel; actual GitHub publication and evaluation remain open. M5
-packaging/deployment/submission remain open. Authentication stays with the user's
-teammate. No public approval route or external write was enabled.
+M2 remains accepted within the fixed-checkout contingency. M3 remains open for
+authentic seven-gate production, admitted baseline/materialization and the full
+worker/UI journey. M4 now has a locally tested actual REST publisher and durable
+PR result journal, beyond its approval/intent policy. Live approved publication
+and hidden evaluation remain open; M4 is not complete. M5 packaging/deployment/
+submission remain open. Authentication stays with the user's teammate.
 
-Accepted local integration: DurableMeasuredBackend commits actual preparation
-before POST, restores only durably owned operations under current fences, and
-retains signed receipts without renewing expiry or resubmitting. Completed
-candidate/clean journals now hand off through the existing evidence reducer;
-TEST_TRANSPORT still cannot supply production evidence. ApprovalJournal binds
-current trusted human permission to exact source/patch/verdict/target/TTL and
-consumes one nonce into a stable publication identity. Approval/rejection/claim
-no longer break historical repair memory; matching immutable provenance is
-required. Ruff, format, strict mypy, scoped secret-pattern and diff checks pass.
-See `docs/durable-producer.md`, `docs/approval-journal.md` and implementation log.
+The publisher loads the exact reviewed diff from retained evidence, reloads
+trusted human permission/approval/current consent before every POST, checks actual
+Git object hashes, creates only a new deterministic branch and draft PR, and
+recovers matching remote objects after uncertain responses. It never executes
+repository code on the host, force-pushes, merges or changes the target branch.
+Results/event/checkpoint commit atomically; cancellation is never reopened.
+Test transport cannot become real PR evidence. Test ports and all human/gate
+identities in this regression are synthetic. No external write or paid call ran.
+See `docs/github-publication.md` and `docs/implementation-log.md`.
 
-Next critical M3 task: deterministic seven-gate production and admitted
-baseline/general materialization, then the complete worker-to-UI journey on a
-small fixture. Real OCI/provider/configuration assessment and production signer
-provisioning remain prerequisites for live VERIFIED acceptance. M4 next needs
-actual idempotent GitHub branch/PR publication and result recovery, followed by
-hidden evaluation. M5 still needs hosted packaging, truthful demo and submission
-assets. Preserve acceptance gates; do not add optional frameworks or routine
-paid probes. Authentication integration is coordinated with its assigned owner.
+Next critical task: authentic deterministic seven-gate production and admitted
+small-fixture worker integration. Production signer/OCI/configuration assessment
+and teammate-owned human identity integration remain prerequisites for live
+VERIFIED acceptance. Then obtain exact current approval and explicit write
+authorization for one tiny draft PR, verify retry discovery, and run meaningful
+hidden evaluation. Preserve the original milestone exits; local contracts alone
+cannot close them. No public approval route or automatic writer was enabled.
 
 ## Status conventions
 `[ ]` not evidenced; `[x]` verified by committed change and test artifact; `[!]` blocked; `[~]` working but not acceptance-ready (replace symbols manually when appropriate). A task is complete only when its acceptance test has been actually run and evidence logged in `docs/implementation-log.md`. Track owner, commit, observed execution date and blocker there. Critical path is M0 -> M1 -> M2 -> M3 -> M4 -> M5.
@@ -367,7 +366,10 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
   still required before the approval task below can close. See
   `docs/approval-policy.md`. No GitHub action was performed.
 - [ ] Approval bound to immutable patch digest and reviewer authorization. Acceptance: changed patch invalidates approval.
-- [ ] One-use GitHub PR publisher. Acceptance: retry creates exactly one PR.
+- [~] One-use GitHub PR publisher: actual REST adapter/controller and durable
+  result recovery pass local contracts at 0042c9d/7c88d10 (1234 full backend cases).
+  Live acceptance remains pending: retry creates exactly one real approved PR.
+  See docs/github-publication.md; no external write was performed.
 - [ ] Incident B aggregation fixture. Acceptance: hidden oracle identifies truth.
 - [ ] Incident C concurrency fixture. Acceptance: repeated deterministic race reproduction.
 - [ ] Run holdout mutation trials; publish actual denominator, successes, failures and inconclusive cases. Acceptance: machine-readable results checked into benchmarks output.

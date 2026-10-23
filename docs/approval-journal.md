@@ -73,3 +73,10 @@ Final combined regression at 9df1ac9: 1191 passed, zero failures/errors/skips,
 regression failed all three approve/reject/claim cases before the fix; no test was
 weakened. Unproven later-stage checkpoints remain denied. See durable-producer.md
 and implementation-log.md for report hash, reproducible command and boundaries.
+
+## Publisher follow-up — 2026-10-23
+
+The bounded GitHubPublisher and PublicationJournal now implement the consumer of
+this intent. See github-publication.md. PR_CREATING remains intent only until an
+actual validated result is retained. No public authentication route or automatic
+publisher dispatch was enabled; live acceptance is still pending.
