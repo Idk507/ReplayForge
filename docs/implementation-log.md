@@ -2735,3 +2735,231 @@ idempotent GitHub branch/PR/result recovery and hidden evaluation; then deployme
 and submission packaging. Production signer/OCI/configuration assessment and
 separate human identity integration remain deployment prerequisites. No cloud
 inference/sandbox/Tavily call, external repository write, deployment or merge ran.
+
+## 2026-10-23 — Bounded M4 publisher and durable result recovery
+
+Implementation: 0042c9d; test correction: 7c88d10. No remote write, paid model,
+sandbox or Tavily call, deployment or merge was performed. Authentication
+interfaces stay with the teammate. The staged authentication specification was
+preserved separately and is not part of these commits.
+
+Added pure exact unified-diff application over bounded Git blobs, Git tree/commit
+encoding validated independently by git hash-object --stdin (no object write or
+source execution), actual fixed-origin GitHub tree/commit/ref/draft-PR REST
+operations, per-POST current approval/permission/scope rechecks, deterministic
+branch/commit/external-ID discovery and sanitized unknown-outcome handling.
+No force-push, target-ref update, source execution, workflow edit or automatic
+merge is available. Inputs come from checksum-verified retained approved evidence,
+not caller-supplied diff JSON. Migration 0024 adds immutable publication results;
+result/event/PR_OPENED update is atomic and late cancellation remains intact.
+See github-publication.md for bounds, unsupported cases and partial-write risks.
+
+Actual validation (exit 0 unless explicitly marked failed):
+
+- Absent-module REDs retained losslessly: m4-publication-patch-red.xml.gz,
+  m4-publication-objects-red.xml.gz and m4-github-publisher-red.xml.gz.
+- Unicode line-separator regression exposed splitlines behavior; fixed using LF
+  boundaries. m4-publication-unicode-red.xml.gz retains the failed observation.
+- Focused publisher/text/object tests: uv run pytest tests/contract/test_github_publisher.py
+  tests/unit/test_publication_objects.py tests/unit/test_publication_patch.py -q
+  --junitxml=docs/evidence/m4-publisher-expanded.xml: 32 passed, exit 0, 2.14s.
+- Disposable PostgreSQL focused test_publication selection: 31 passed,
+  1192 deselected, 22.37s; m4-publication-custody-green.xml. Earlier two fixture
+  mistakes (missing cancel CAS argument and unscoped count) are retained in
+  m4-publication-custody.xml.gz, not claimed as passes.
+- First full run: 1233 passed, one failed assertion, 449.16s, exit 1;
+  m4-publisher-postgres.xml.gz. The actual UPDATE privilege denial was correct;
+  the test expected the raw psycopg exception instead of StoreError's sanitized
+  DB_FAILURE_42501. Focused reproduction is m4-publication-role-red.xml.gz.
+  Corrected exact denial assertion passes (one test, 5.48s,
+  m4-publication-role-green.xml). No permission, product code or gate was weakened.
+- Final full run on 7c88d10 via scripts.test_postgres, disposable local DB/runtime
+  roles, secure password injection without DSN output, aggregate subprocess
+  ceiling 600 seconds: **1234 passed**, zero failures/errors/skips, **446.58s**,
+  exit 0. JUnit m4-publisher-final-postgres.xml and its actual SHA256/JUnit time
+  are recorded in m4-publication-checks.json. The wrapper cleaned test DB/roles.
+  The ceiling changes no individual test deadline or product budget.
+- uv run ruff check .; uv run ruff format --check .: pass, 224 files formatted.
+- uv run mypy: pass, 111 typed core sources.
+- Scoped credential-value patterns and scoped git diff --check: pass. The user's
+  separately staged auth specification is untouched and excluded from scope.
+- uv run python -m scripts.check_checkout: M2_FIXTURE_ACCEPTED, exit 0;
+  verification/execution authority remains false.
+
+One existing upstream Starlette/AnyIO deprecation warning remains. No dependency
+or UI changes were made, so vulnerability audits/browser acceptance were not
+repeated; these results do not claim deployment/hackathon readiness.
+
+Threat review: credentials only in trusted HTTP headers, source/JUnit absent from
+public events, actual Git bytes rehashed, symlinks/submodules/executable targets
+rejected, exact patch scope preserved, fresh authorization before every POST,
+no redirect/proxy inheritance/automatic write retry, immutable runtime custody,
+and test-origin refusal. Provider HTTP and gate/human permissions are synthetic
+in tests. Actual GitHub normalization, installation permissions and distributed
+write/discovery behavior still require live acceptance. Partial objects can
+remain after later denial; no destructive cleanup is automatic.
+
+M2 fixed fixture remains accepted. M3/M4/M5 remain open. Next: deterministic
+seven-gate production/admitted tiny-fixture worker flow, authentic assessed
+signer/configuration, then independently authenticated exact review plus explicit
+live write approval and one-PR discovery acceptance, hidden evaluation, and M5
+packaging. No milestone exit was replaced with a weaker test.
+
+## 2026-10-23 — GitHub authentication assessment and proposed implementation plan
+
+Read the user-supplied GitHub authentication specification and inspected existing
+LocalAuth/API routes, local startup, Next.js shared-bearer bridge, migrations,
+approval and publication interfaces. Rechecked official GitHub user token/PKCE,
+refresh and installation token documentation. Created tasks/plan.md and proposed
+ADR 014; root todo.md records planned unchecked slices and changed ownership.
+
+Key integration findings: the current BFF token maps every local browser to one
+operator; it cannot serve as GitHub-session identity. Internal owner/repository
+UUIDs must be explicitly mapped to GitHub numeric IDs without taking over legacy
+runs or replacing immutable execution grants. Existing approval/result journals
+are reusable through trusted current identity and repository permission loaders.
+
+Plan/ADR existence checks and scoped git diff --check pass, exit 0. No application
+code, dependencies or database schema changed; tests were not rerun for this
+planning-only increment. No provider credentials, authenticated API calls, remote
+writes or paid services were used. Offline slice A can begin without keys; real
+browser acceptance later requires registered App/client settings and human login.
+No authentication acceptance checkbox or milestone was marked complete.
+
+## 2026-10-23 — GitHub OAuth/session foundation accepted locally
+
+Implementation 51e4343. Typed explicit settings and bounded GitHub App user client,
+S256 PKCE URLs, code exchange and stable numeric identity; migration 0025 and
+AuthJournal for browser-bound single-use attempts, encrypted credentials, hashed
+opaque sessions, rotation/logout and append-only security audit. Separate
+create_auth_app remains loopback-only, exposes start/callback/me/logout, has
+trusted Host/CORS/cookie/CSRF boundaries and defaults to refusing synthetic session
+authority. Existing LocalAuth API and bridge were preserved. No live GitHub call,
+credential discovery, external write, paid provider call or deployment occurred.
+See github-authentication.md for interfaces, key/role/retention limits and gaps.
+
+Actual evidence, commands and exits:
+- Absent-module REDs: auth-client-red.xml.gz, auth-journal-red.xml.gz and
+  auth-routes-red.xml.gz (exit 1); preserved losslessly, never called passes.
+- Client first green: 21 passed in 0.22s, auth-client-green.xml. Initial DB/client
+  selection: 28 passed, 7.07s, auth-journal-focused.xml. HTTP selection: 35 passed,
+  7.08s, auth-http-focused.xml. All exit 0 with synthetic provider identities.
+- Durable rate limiting exposed cross-test peer-state leakage. First focused run
+  failed one test (39 passed), auth-foundation-focused.xml.gz. Journal fixtures
+  now use distinct simulated peers. An expanded run later hit the real ten/minute
+  rate limit at the HTTPS-cookie test because browser tests shared an IP/bucket.
+  Targeted reproduction: auth-rate-isolation-red.xml.gz, one failed, ten passed,
+  7.95s. App tests now isolate only their loopback peer/action rate buckets using
+  disposable migration authority. Product limit/permission/assertions unchanged.
+- The first aggregate attempt was stopped after that fixture failure: only the
+  verified task-owned pytest launcher/interpreter were terminated; the wrapper
+  cleaned its random database/roles. It has no final JUnit and is not a pass.
+- Final focused selection via scripts.test_postgres -k auth_app/auth_journal/
+  github_auth: 43 passed, 1234 deselected, 19.76s, exit 0,
+  auth-foundation-final-focused.xml. Covers cookie flags, replay/browser binding,
+  uncertain exchange, concurrent finalization, purpose/key tampering, identity
+  isolation, durable rate caps, session expiry/rotation and CSRF/audit behavior.
+- Final full disposable PostgreSQL regression at 51e4343, outer aggregate ceiling
+  600 seconds: **1277 passed**, zero failures/errors/skips, **429.84s** console,
+  exit 0. auth-foundation-final-postgres.xml; exact JUnit time/checksum recorded
+  in auth-foundation-checks.json. All random test DB/roles cleaned by wrapper.
+- uv run ruff check .; uv run ruff format --check .: pass (233 files).
+  uv run mypy: pass (116 typed source files). Scoped credential-value pattern
+  scan and scoped git diff --check pass. Existing upstream Starlette/AnyIO warning
+  remains. No new dependency or UI changes; those audits were not repeated.
+
+Threat review: code/verifier/client secret only in bounded POST bodies, user token
+only in provider headers, no provider error bodies retained; hashes/encryption
+separate domains/keys; attempts claim before exchange, no blind retries; only
+numeric identities link accounts; no legacy owner adoption; DB session/revocation
+checks and host-only secure production cookie shape; test provenance denied by
+default. Dedicated deployment auth-role/key provisioning, retention/keyring
+rotation, refresh brokerage and public proxy/rate setup remain open. The test
+role combines permissions solely for disposable contracts, not deployment.
+
+A/B local foundation tasks are accepted. C's me/logout/CSRF is implemented but
+existing private API integration is not. D repository authorization, E approval/
+installation brokerage and F browser/live acceptance remain open. M3/M4/M5 exits
+are unchanged. Work continues on C/D using the actual existing owner/grant APIs.
+
+
+## 2026-10-23 - Session/repository API and browser integration
+
+Implementation 638feb6 (source parent16fe2ca). Session identity now composes with
+existing owner-filtered run/SSE/evidence routes, current app/user repository checks,
+exact-commit consent and immutable UUID mapping. Owner/CSRF disconnect atomically
+clears execution consent; reconnect creates a fresh grant. No bearer fallback.
+Separate local startup validates restricted roles/config, but actual separated-role
+startup acceptance remains pending. Next.js GitHub mode adds login/success/session
+identity/logout and repository selection; session-only BFF, in-memory CSRF, no
+browser credential storage. Connected grant/source prefill existing workbench.
+
+Actual checks, exit0 unless stated:
+- Focused scripts.test_postgres with pytest -k 'session_access or auth_repositories
+  or auth_local':22 pass,1277 deselected,13.16s,auth-session-disconnect-green.xml.
+- Full disposable PostgreSQL regression:1299 pass,zero failures/errors/skips,
+  417.46s,auth-session-final-postgres.xml. Wrapper's aggregate subprocess deadline
+  was600s; no individual/product timeout weakened. Temporary DB/roles cleaned.
+- uv run ruff check .; uv run ruff format --check .:pass240files; uv run mypy:
+  pass119sources. uv lock --check, scoped credential-pattern and diff checks pass.
+  Dependencies unchanged; vulnerability audit not repeated.
+- npm run lint; npm run typecheck; npm run build:pass, Next16.4.2 production build.
+  npx playwright test -c playwright.auth.config.ts:3pass5.2s;
+  npx playwright test:6pass/1skip29.8s. Opt-in real local API case was not enabled.
+  auth-session-browser.xml and auth-local-mode-browser.xml retained. Desktop login
+  and390px mobile connection screenshots visually inspected, synthetic data only.
+- RED disconnect missing route404 preserved in auth-disconnect-red.xml.gz. Earlier
+  query/path strict integer422 fixed with separate protocol numeric validation.
+  Composition's replacement StoreError handler turned owner404 into503; preserving
+  core handler fixed it. Earlier failures compressed without deleting history,
+  including misleading historical 'green' names. Initial browser server startup
+  timed out; owned listener checked/stopped and ordinary rerun passed, unchanged
+  timeout limits. Upstream Starlette/AnyIO deprecation warning remains.
+
+Threat review: parameterized owner SQL, no legacy adoption, bounded lists, provider
+origin checks, read-only user-token calls, explicit consent and current access.
+Workers receive no new grant-write/auth permissions. Provider denial blocks new
+API work but automatic stored-grant revocation mirroring is not yet implemented.
+API-only disconnect clears consent; it cannot prove already-running compute stops.
+Credentials expire to reauthentication, no blind refresh retries. Public deployment,
+keyring/retention/refresh, real App login, actual restricted-role startup and plan E
+session-derived exact approval/scoped installation-token brokerage remain open.
+No actual GitHub credentials read, authenticated provider request, paid call,
+external write, PR, merge or deploy occurred. M3/M4/M5 remain open.
+
+
+2026-10-23 local auth setup: independent keys and a new dedicated PostgreSQL
+database/three restricted roles prepared in ignored .env. Migration0026 and actual
+separated-role startup plus anonymous /auth/me and /runs401 passed with temporary
+synthetic App configuration; no OAuth call. First disposable attempt used a wrong
+migration URL format and was cleaned; corrected URL passed. Existing databases
+untouched. See docs/evidence/auth-local-setup-checks.json and docs/github-app-setup.md.
+Remaining external step: user registers/installs the App and privately configures
+Client ID/secret, then completes browser consent. Actual login remains unverified.
+
+
+2026-10-23 live GitHub login smoke: user supplied App client settings privately.
+Validated configuration and restricted-role startup; enabled local GitHub mode.
+Live callback initially rejected standard OAuth iss parameter. RED regression
+proved valid exact issuer was rejected; allowlisted iss with exact provider check
+before journal consume/code exchange. Wrong issuer/suffix remain denied; legacy
+no-issuer callback remains supported. RFC9207 section2.4 consulted (rfc-editor.org).
+Focused auth_app/session_access regression21pass,1281deselected,21.71s,exit0;
+Ruff/format240files and strict mypy119sources pass. No full1299 rerun for narrow fix.
+Fresh browser login visibly showed Idk507; user had already authorized the App.
+Integrations read returned no visible installations. Signed out; browser login
+screen and database revocation of all created user sessions confirmed. No repository
+connected/executed, no PR/write, no inference/sandbox/research charge. Provider token
+exchange/user/installations reads occurred. Callback queries/secrets not retained
+in evidence. Sanitized screenshots/report in docs/evidence/auth-live-*. Live
+repository acceptance remains blocked on App installation/current visible access.
+User must install replayforge-ai on only maf_ds_agent, then retry login/discovery.
+Windows uv npm launch requires cmd /c; corrected setup guide. Development Next
+server generated transient rules/type paths; these are excluded from this change.
+
+2026-10-23 repository selector diagnosis: authorized read-only provider calls
+returned one installation and zero repositories. GitHub installation settings
+independently show No permissions / No repositories. This is configuration,
+not a populated provider list being lost by the UI. No permission changed.
+User must set App Contents read-only, approve updated installation and select
+maf_ds_agent. See auth-installation-scope-checks.json and screenshot.

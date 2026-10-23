@@ -75,3 +75,24 @@ Start reading `project_scope.md` (what to build), `Architecture.md` and `system_
 MVP success: a consented synthetic Python repository incident is reproduced on the original commit, repaired through NVIDIA Nemotron via Nebius Token Factory, verified in a clean isolated execution environment with preserved evidence, then transformed into a GitHub PR only after explicit authorized human approval.
 
 Official rules: https://nebiusglobalaihackathon.devpost.com/rules . Deadline: Oct 30, 2026 at 10 AM PDT (22:30 IST). Use the official site as the final authority. Documentation created October 12, 2026. Recommended license for future code: Apache-2.0 or MIT; a license is not automatically granted by this specification.
+
+The bounded [GitHub publication adapter](docs/github-publication.md) now connects
+retained verified evidence and the durable approval journal to exact Git object,
+new-branch and draft-PR operations. It is disabled for live writes by default.
+Local contract tests cover approval checks and restart discovery; no live PR
+acceptance or completed M4 milestone is asserted. Authentication is now implemented in this workstream; approval identity/token
+brokerage remains a separate integration boundary.
+
+The [GitHub OAuth/session foundation](docs/github-authentication.md) provides a
+separate loopback-only auth app factory, browser-bound one-use PKCE attempts,
+encrypted user credentials and opaque PostgreSQL sessions. Existing local API
+and web startup remain available. Session-based run/repository authorization and
+frontend integration now have local synthetic acceptance. Live browser acceptance
+remains pending; this is not an enabled public login deployment.
+
+
+GitHub-session development now includes owner-scoped run/evidence access,
+installation/repository selection, exact-commit consent and login/logout UI.
+See [authentication setup and remaining acceptance](docs/github-authentication.md).
+Enable it explicitly with `REPLAYFORGE_WEB_AUTH_MODE=github`; local bearer mode remains
+available. Real GitHub login and approval-token brokerage are still pending.

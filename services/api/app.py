@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Annotated
 from uuid import UUID, uuid4, uuid5
 
@@ -116,8 +116,16 @@ class LocalBoundary:
         await self.app(scope, replay, send)
 
 
-def create_app(store: Store, auth: LocalAuth) -> FastAPI:
+def create_app(
+    store: Store,
+    auth: LocalAuth,
+    *,
+    identity_provider: Callable[[Request], UUID] | None = None,
+    repository_authorizer: Callable[[UUID, UUID], None] | None = None,
+) -> FastAPI:
     """Construct a local-only app; no token or repository grants by default."""
+    if (identity_provider is None) != (repository_authorizer is None):
+        raise ValueError("AUTH_DEPENDENCIES_REQUIRED")
     auth = LocalAuth.model_validate(auth.model_dump())
     app = FastAPI(
         title="ReplayForge local development",
@@ -128,6 +136,16 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
     app.add_middleware(LocalBoundary)
 
     def identity(request: Request) -> UUID:
+        if identity_provider is not None and repository_authorizer is not None:
+            owner = identity_provider(request)
+            if "run_id" in request.path_params:
+                try:
+                    run_id = UUID(str(request.path_params["run_id"]))
+                except ValueError:
+                    raise HTTPException(404, "NOT_FOUND") from None
+                run = store.get(run_id, owner)
+                repository_authorizer(owner, run.repository_id)
+            return owner
         if auth.token is None or auth.owner_id is None:
             raise HTTPException(503, "AUTH_NOT_CONFIGURED")
         value = request.headers.get("authorization")
@@ -174,7 +192,9 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
     def create(
         payload: CreateRun, owner: Annotated[UUID, Depends(identity)]
     ) -> RunState:
-        if payload.repository_id not in auth.approved_repositories:
+        if repository_authorizer is not None:
+            repository_authorizer(owner, payload.repository_id)
+        elif payload.repository_id not in auth.approved_repositories:
             raise HTTPException(403, "REPOSITORY_DENIED")
         try:
             grant = store.repository(payload.repository_id, owner)
@@ -209,7 +229,11 @@ def create_app(store: Store, auth: LocalAuth) -> FastAPI:
 
     @app.get("/api/v1/runs")
     def recent(owner: Annotated[UUID, Depends(identity)]) -> tuple[RunState, ...]:
-        return store.recent(owner)
+        runs = store.recent(owner)
+        if repository_authorizer is not None:
+            for repository in {run.repository_id for run in runs}:
+                repository_authorizer(owner, repository)
+        return runs
 
     @app.get("/api/v1/runs/{run_id}/research")
     def research(

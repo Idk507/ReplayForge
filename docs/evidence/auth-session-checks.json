@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "implementation_commit": "638feb6",
+  "observed_date": "2026-10-23",
+  "status": "LOCAL_SESSION_REPOSITORY_PASSED",
+  "authentication_complete": false,
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "1299",
+    "time": "417.416",
+    "timestamp": "2026-10-23T20:44:24.470220+05:30",
+    "hostname": "dhanu"
+  },
+  "junit_sha256": "9ced71b17599052dd56071ad143d8393cca994e251fe591bbc0defd7bd79f47f",
+  "exit_code": 0,
+  "ruff": "PASS",
+  "format": "PASS (240 files)",
+  "mypy": "PASS (119 sources)",
+  "ui_lint_typecheck_build": "PASS",
+  "browser_auth": "3 passed",
+  "browser_local": "6 passed, 1 opt-in real API skipped",
+  "live_github_calls": 0,
+  "paid_calls": 0,
+  "external_writes": 0,
+  "remaining": [
+    "real GitHub App login acceptance",
+    "actual restricted-role startup acceptance",
+    "session-derived exact approval and installation token brokerage",
+    "keyring/refresh/retention/public deployment"
+  ],
+  "artifacts": {
+    "auth-session-browser.xml": "c33c50a5134ce192576be7211dad2bffe2ae0b99fa91017982dfa2c591fc8567",
+    "auth-local-mode-browser.xml": "4c8a813bd642e66fb1f01426f7bd50e1f304bc168f1576d6424f35d643f5369c",
+    "auth-session-disconnect-green.xml": "69999ea31be9b8e84bb3a1a724009ca2534262b5f1fb2a5958e94a4a627fe7ae",
+    "auth-session-login.png": "cc44aec97129cb5418f0a26229690c50c0ebebbf8577c88736d580e613695d43",
+    "auth-session-mobile.png": "112eae47cbd16d27e7ed723402b3b30172618d2e1537283f168b1b9ac1e5e042"
+  }
+}

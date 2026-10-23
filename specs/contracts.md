@@ -115,3 +115,39 @@ creating another consumption. The intent cannot authorize publication on its
 own; no public approval route or GitHub writer is installed. Migrations 0022 and
 0023 require append-only runtime grants. See durable-producer.md and
 approval-journal.md for recovery limits, privacy and test provenance.
+
+## GitHub publication adapter — 2026-10-23
+
+publish_approved accepts only trusted identity and publisher dependencies. It
+loads the exact retained reviewed patch through PublicationJournal and rechecks
+approval/consent/current grant before every HTTP POST. GitHubPublisher computes
+exact Git trees/commits from pinned bounded regular text files without execution;
+only a deterministic new branch and draft PR are written. Unknown outcomes use
+explicit admitted rediscovery, never force-push or an alternative branch.
+Migration 0024 appends actual remote result/event/checkpoint atomically and keeps
+late cancellation intact. TEST transport cannot become PR_OPENED evidence.
+No public route, auth implementation, model tool or default harness dispatch was
+added. See docs/github-publication.md for bounds, recovery and live acceptance.
+This supersedes the earlier statement that no writer implementation is installed;
+no live writer acceptance or M4 completion is claimed.
+
+## GitHub identity foundation — 2026-10-23
+
+Implementation 51e4343 adds a separate typed auth app, bounded GitHub App user
+OAuth client, browser-bound one-use journal and opaque session custody. Migration
+0025 adds auth-specific tables without reassigning existing owner/repository UUIDs.
+No execution grants or reviewer roles result from login. Existing local bearer
+API and bridge are preserved; session-principal/repository authorization and UI
+integration remain open. See docs/github-authentication.md for exact boundaries,
+key/retention limits, trusted dependencies and acceptance provenance.
+
+
+## GitHub session/repository continuation - 2026-10-23
+
+The explicit session API preserves owner-filtered run/SSE/evidence checks and
+adds current user/installation repository authorization. Next.js GitHub mode
+forwards session cookies plus Origin/CSRF, never an operator bearer. Numeric
+repository connection requires exact source and explicit execution/private
+consent. Owner disconnect atomically revokes stored execution consent. These
+local contracts do not grant reviewer permission or authorize publication.
+See docs/github-authentication.md for API routes, startup, limits and evidence.

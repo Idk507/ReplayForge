@@ -74,3 +74,38 @@ or public approval routes. The authentication owner supplies independent current
 human identity/membership; never accept ReviewPermission JSON as proof. Real
 GitHub publication, deterministic seven-gate production and deployment remain
 tracked in todo.md. Production role grants/migrations require deployment review.
+
+## Publication integration — 2026-10-23
+
+Use docs/github-publication.md for the internal approval-to-publisher contract.
+Keep identity loading and installation credentials with the authentication owner.
+Never invoke the adapter from model tools or accept ReviewPermission from JSON.
+Live writes are opt-in and require the concrete exact reviewed fixture approval;
+local synthetic contract success is not M4 acceptance.
+
+## GitHub identity follow-up — 2026-10-23
+
+The user reassigned authentication implementation into this workstream. Follow
+`tasks/plan.md` and `docs/github-authentication.md`; the initial separate loopback
+OAuth/session foundation does not replace the existing local startup. Trusted
+host dependencies supply auth-only keys/settings and an AuthJournal; callback
+query access logging must be disabled/redacted. Keep test-origin sessions denied
+outside explicit synthetic tests. No live or public setup has been enabled.
+
+
+## GitHub session/repository continuation — 2026-10-23
+
+The explicit composed session API now retains existing owner-filtered private
+run/SSE/evidence access and adds current GitHub user/installation access checks.
+Local bearer startup remains separate. In GitHub web mode the BFF forwards only
+the opaque session cookie, Origin and CSRF; never inject the operator bearer.
+Repository connection requires exact commit and explicit execution/private consent.
+Disconnect atomically revokes the connection and execution consent; reconnect
+creates a new grant. API-only disconnect does not itself terminate remote compute.
+
+The auth service uses separate DB authority; workers receive no auth credentials
+or grant-write permissions. Expired provider credentials require reauthentication.
+No browser roles grant ReviewPermission. Approval HTTP and reduced installation
+write-token brokerage remain unimplemented; login/connection cannot publish.
+Local provider/browser tests are synthetic; real App login and public deployment
+acceptance remain pending. See docs/github-authentication.md and tasks/plan.md.

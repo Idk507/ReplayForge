@@ -21,9 +21,23 @@ from tests.unit.test_authenticated_gates import prepared as gate_fixture
 store = test_postgres.store
 
 
-def prepared(store, outcome="VERIFIED"):
+def prepared(store, outcome="VERIFIED", patch=None):
     lease, owner, run, _ = evidence_fixture(store)
     key, signed, context, _, artifacts, verifier = gate_fixture()
+    if patch is not None:
+        from hashlib import sha256
+
+        from services.verifier.manifest import ArtifactInput
+
+        artifacts = tuple(
+            ArtifactInput(
+                name=a.name, content=patch if a.name == "patch.diff" else a.content
+            )
+            for a in artifacts
+        )
+        context = context.model_copy(
+            update={"patch_ref": "sha256:" + sha256(patch).hexdigest()}
+        )
     run = run.model_copy(
         update={
             "patch_attempt_refs": (context.patch_ref,),
@@ -49,7 +63,9 @@ def prepared(store, outcome="VERIFIED"):
         }
     )
     gates = tuple(
-        g.model_copy(update={"source_commit": run.source_commit})
+        g.model_copy(
+            update={"source_commit": run.source_commit, "patch_ref": context.patch_ref}
+        )
         for g in signed.payload.gates
     )
     if outcome == "NOT_VERIFIED":

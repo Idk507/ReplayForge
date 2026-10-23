@@ -1,7 +1,12 @@
 import type { z } from "zod";
+let csrfToken: string | undefined;
+export function setCsrfToken(value: string | undefined) {csrfToken=value;}
 export class ApiError extends Error {constructor(public status: number) {super(`Request failed (${status})`);}}
 export async function request<T>(path: string, schema: z.ZodType<T>, options?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/backend/${path}`, {...options, cache: "no-store"});
+  const headers=new Headers(options?.headers);
+  if(csrfToken && options?.method && !["GET","HEAD"].includes(options.method.toUpperCase())) headers.set("X-CSRF-Token",csrfToken);
+  const response = await fetch(`/api/backend/${path}`, {...options,headers,cache:"no-store"});
+  if(response.status===401 && csrfToken && typeof window!=="undefined") window.dispatchEvent(new Event("replayforge:reauth"));
   if (!response.ok) throw new ApiError(response.status);
   return schema.parse(await response.json());
 }

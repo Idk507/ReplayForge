@@ -116,3 +116,36 @@ An issue is done when implementation is merged to correct module, unit tests pas
 
 ## Roles for optional coding subagents
 One implementer edits a bounded module. One independent reviewer inspects contracts, security and correctness without editing. One test author builds adversarial cases. A single integration owner resolves conflicts and validates end-to-end. For parallel work, separate git worktrees and branches by module; no two agents mutate the same module concurrently. No subagent may approve its own production write action.
+
+The internal GitHub publisher consumes only current approved evidence and reloads
+trusted membership/approval before every write. Exact Git object and durable
+result contracts live in `docs/github-publication.md`. Live writes remain opt-in;
+TEST transport cannot become real PR evidence. Serialized intent alone is not
+permission, and uncertain writes require admitted discovery, not blind retry.
+
+## GitHub identity foundation — 2026-10-23
+
+Authentication implementation was reassigned by the user to this workstream.
+The separate loopback OAuth/session foundation is documented in
+`docs/github-authentication.md`. Preserve the current local bearer API while
+session-principal and repository authorization are integrated. Never expose the
+shared local bridge as GitHub user identity or infer repository/reviewer authority
+from successful login. No public startup or live acceptance has been enabled.
+
+
+## GitHub session/repository continuation — 2026-10-23
+
+The explicit composed session API now retains existing owner-filtered private
+run/SSE/evidence access and adds current GitHub user/installation access checks.
+Local bearer startup remains separate. In GitHub web mode the BFF forwards only
+the opaque session cookie, Origin and CSRF; never inject the operator bearer.
+Repository connection requires exact commit and explicit execution/private consent.
+Disconnect atomically revokes the connection and execution consent; reconnect
+creates a new grant. API-only disconnect does not itself terminate remote compute.
+
+The auth service uses separate DB authority; workers receive no auth credentials
+or grant-write permissions. Expired provider credentials require reauthentication.
+No browser roles grant ReviewPermission. Approval HTTP and reduced installation
+write-token brokerage remain unimplemented; login/connection cannot publish.
+Local provider/browser tests are synthetic; real App login and public deployment
+acceptance remain pending. See docs/github-authentication.md and tasks/plan.md.

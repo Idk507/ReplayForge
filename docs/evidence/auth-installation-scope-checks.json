@@ -1,0 +1,18 @@
+{
+  "status": "INSTALLATION_HAS_NO_REPOSITORY_PERMISSIONS",
+  "observed_date": "2026-10-23",
+  "user": "Idk507",
+  "app": "replayforge-ai",
+  "visible_installations": 1,
+  "provider_repository_count": 0,
+  "github_ui_permissions": "No permissions",
+  "github_ui_repository_access": "No repositories",
+  "required_user_action": [
+    "Set App Repository Contents permission to Read-only",
+    "Approve updated installation permissions",
+    "Grant installation access only to maf_ds_agent",
+    "Reload ReplayForge and select installation"
+  ],
+  "external_writes": 0,
+  "repository_execution": false
+}

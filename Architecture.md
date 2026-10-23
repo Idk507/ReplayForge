@@ -160,3 +160,38 @@ The architecture is accepted only when one API request produces a durable run, s
 
 ## 15. Source references
 Official rules: https://nebiusglobalaihackathon.devpost.com/rules ; resources: https://nebiusglobalaihackathon.devpost.com/resources ; Nemotron API example: https://nebius.com/services/token-factory/nemotron ; model catalog: https://github.com/nebius/token-factory-cookbook/tree/main/models/nemotron ; Tavily SDK: https://github.com/tavily-ai/tavily-python . Validate account-specific access and provider changes before provisioning.
+
+## Publication implementation — 2026-10-23
+
+The approval journal now has an internal typed publisher controller and immutable
+remote-result custody. See docs/github-publication.md for exact source/tree/blob
+checks, draft PR creation and restart discovery. New migration 0024 adds observed
+result persistence; no public write route or automatic approval is installed.
+Live acceptance and hidden evaluation remain required by the unchanged M4 exit.
+
+## GitHub identity follow-up — 2026-10-23
+
+The separate loopback-only OAuth/session foundation uses explicit typed settings,
+fixed-origin provider calls, single-use browser-bound PKCE attempts, encrypted user
+credentials and opaque PostgreSQL sessions (migration 0025). It does not mount
+execution endpoints, issue execution grants or derive reviewer authority.
+Existing local API/bridge behavior is preserved. See docs/github-authentication.md;
+session-principal/repository/UI integration and real login acceptance remain open.
+
+
+## GitHub session/repository continuation — 2026-10-23
+
+The explicit composed session API now retains existing owner-filtered private
+run/SSE/evidence access and adds current GitHub user/installation access checks.
+Local bearer startup remains separate. In GitHub web mode the BFF forwards only
+the opaque session cookie, Origin and CSRF; never inject the operator bearer.
+Repository connection requires exact commit and explicit execution/private consent.
+Disconnect atomically revokes the connection and execution consent; reconnect
+creates a new grant. API-only disconnect does not itself terminate remote compute.
+
+The auth service uses separate DB authority; workers receive no auth credentials
+or grant-write permissions. Expired provider credentials require reauthentication.
+No browser roles grant ReviewPermission. Approval HTTP and reduced installation
+write-token brokerage remain unimplemented; login/connection cannot publish.
+Local provider/browser tests are synthetic; real App login and public deployment
+acceptance remain pending. See docs/github-authentication.md and tasks/plan.md.

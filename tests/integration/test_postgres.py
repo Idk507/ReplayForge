@@ -31,6 +31,17 @@ def prepare_store() -> Store:
     with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
         role = sql.Identifier(os.environ["REPLAYFORGE_TEST_ROLE"])
         conn.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
+        # Disposable test role exercises auth custody; deployment uses a separate role.
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT,UPDATE ON auth_users,auth_identities,"
+                "auth_oauth_attempts,auth_credentials,auth_sessions,auth_rate_limits "
+                "TO {}"
+            ).format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON auth_security_events TO {}").format(role)
+        )
         conn.execute(sql.SQL("GRANT SELECT ON repository_grants TO {}").format(role))
         conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON replay_reservations TO {}").format(role)
@@ -50,7 +61,7 @@ def prepare_store() -> Store:
         conn.execute(
             sql.SQL(
                 "GRANT SELECT,INSERT ON evidence_bundles,approval_decisions,"
-                "publication_intents TO {}"
+                "publication_intents,publication_results TO {}"
             ).format(role)
         )
         conn.execute(
