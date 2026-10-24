@@ -1,0 +1,15 @@
+{
+  "repository": "Idk507/maf_ds_agent",
+  "source_commit": "08d828835fcb0cada16aca45c721ad0075e0c70e",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 15629
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 2117
+    }
+  ],
+  "observed_date": "2026-10-24"
+}

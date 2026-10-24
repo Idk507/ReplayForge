@@ -2,26 +2,32 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - reconciled 2026-10-24
+## Current focus - reconciled 2026-10-24 collection handoff
 
-Implementation b169a81 fixes the observed367-repository discovery failure and
-false session-expiry loop. Explicit one-page reads, fresh page membership checks,
-automatic source pinning and direct prefilled incident intake now pass local
-acceptance:1308 backend tests,zero failures/errors/skips,485.05s,exit0. Auth browser
-4 pass; local browser6 pass/1 opt-in real-API skip. Lint/format/type/build and lock/
-scoped credential checks pass. See docs/evidence/auth-onboarding-checks.json.
+Implementation 3f5704f adds the authenticated collection broker, isolated worker
+launcher and selected-file acquisition under the original registered grant.
+Full backend regression:1335passed,zero failures/errors/skips,499.37s,exit0.
+This full run predates the dependency-only pytest/certifi updates; post-update
+unit/contract922passed6.54s and focused PostgreSQL evidence are recorded in
+collection-worker-checks.json. Ruff/format/mypy/lock and dependency audit results
+are recorded there. See docs/authenticated-collection.md for safe startup.
 
-Actual GitHub login/logout and restricted-role startup were previously observed;
-current live selector confirmation remains pending because browser URL policy
-blocked automated observation. User has been asked to reload the updated UI.
-No bypass, GitHub write, paid call or repository execution was performed here.
+- [x] Authenticated intake-to-collection-to-TRIAGING handoff, including current
+membership/consent and lease/version fences. Live small-file read retained one
+context file/source manifest at exact pinned SHA; no inference/sandbox/write.
+README metadata-only and missing-file INCONCLUSIVE results are preserved.
 
-M2 fixed-checkout contingency remains accepted. M3 authentic seven-gate flow,
-M4 approved live publication/hidden evaluation and M5 launch/submission remain
-open; their written exits are unchanged. Next: user selector confirmation, then
-session-derived exact approval and reduced installation-token brokerage alongside
-M3's outstanding authentic evidence/worker handoff. Do not treat repository
-connection or login as authority to publish.
+M2 fixed-checkout contingency remains accepted. M3 authentic seven-gate replay
+and integrated repair worker, M4 session-bound approval/live PR/hidden evaluation,
+and M5 deployment/submission remain open. No milestone checkbox is closed by
+collection acceptance. Repository selection currently pins the default-branch
+SHA; explicit branch/commit selection remains follow-up work.
+
+Next: incident-driven bounded relevant-file selection and triage/repair worker
+handoff on a small real incident, then authentic runner/verifier acceptance.
+The live acceptance incident explicitly requested collection only; no repair
+or VERIFIED claim may be inferred from reaching TRIAGING. Approval/publication
+requires exact independently authenticated human authority and explicit writes.
 
 ## Historical focus snapshot � reconciled 2026-10-23
 

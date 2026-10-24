@@ -1,0 +1,26 @@
+{
+  "run_id": "74c14cc0-4ed7-4d1a-ad20-609ab3431ece",
+  "repository": "Idk507/maf_ds_agent",
+  "source_commit": "08d828835fcb0cada16aca45c721ad0075e0c70e",
+  "selected_paths": [
+    "pyproject.toml"
+  ],
+  "purpose": "READ_ONLY_COLLECTION_ACCEPTANCE",
+  "verified": false,
+  "status": "LIVE_SMALL_FILE_COLLECTION_PASSED",
+  "stage": "TRIAGING",
+  "context_file_count": 1,
+  "context_refs": [
+    "sha256:da3ba6f38ac41da1c446453f83d8eaca6c25b666e51c008a998a4fb7f8187337"
+  ],
+  "source_manifest_ref": "sha256:bc7f1e55ec79079c8ca0e5c72ebbc1f824af2e3e57b6a7bfc3e7a5b871e54a11",
+  "source_origin": "REMOTE_SERVICE",
+  "source_file_count": 1,
+  "inference_calls": 0,
+  "sandbox_calls": 0,
+  "external_writes": 0,
+  "observed_date": "2026-10-24",
+  "limitations": [
+    "Collection only; no diagnosis, execution, seven-gate verification or PR acceptance"
+  ]
+}

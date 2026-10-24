@@ -1,0 +1,32 @@
+{
+  "run_id": "a867849e-92cf-47e8-a80d-935be9a17244",
+  "repository": "Idk507/maf_ds_agent",
+  "source_commit": "08d828835fcb0cada16aca45c721ad0075e0c70e",
+  "selected_paths": [
+    "README.md"
+  ],
+  "purpose": "READ_ONLY_COLLECTION_ACCEPTANCE",
+  "observed_date": "2026-10-24",
+  "authorization": "User previously explicitly approved this repository for testing; public repository and current App/user access independently checked",
+  "verified": false,
+  "status": "LIVE_COLLECTION_METADATA_ONLY",
+  "stage": "TRIAGING",
+  "context_ref_count": 1,
+  "context_file_count": 0,
+  "source_file_count": 1,
+  "source_origin": "REMOTE_SERVICE",
+  "source_manifest_ref": "sha256:21ab0741fdb5d5a0d48b66e09c70691b4e577a337b483031d2edd942fd5c3465",
+  "context_refs": [
+    "sha256:76a329fb696d4bdf5d792ab499778fb654f087e95125bfebc87b3d4c47d8664f"
+  ],
+  "omissions": [
+    "CONTEXT_BUDGET"
+  ],
+  "worker_has_provider_credentials": false,
+  "inference_calls": 0,
+  "sandbox_calls": 0,
+  "external_writes": 0,
+  "limitations": [
+    "README exceeds existing context budget; source identity retained but content omitted"
+  ]
+}

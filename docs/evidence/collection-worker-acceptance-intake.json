@@ -1,0 +1,12 @@
+{
+  "run_id": "a867849e-92cf-47e8-a80d-935be9a17244",
+  "repository": "Idk507/maf_ds_agent",
+  "source_commit": "08d828835fcb0cada16aca45c721ad0075e0c70e",
+  "selected_paths": [
+    "README.md"
+  ],
+  "purpose": "READ_ONLY_COLLECTION_ACCEPTANCE",
+  "observed_date": "2026-10-24",
+  "authorization": "User previously explicitly approved this repository for testing; public repository and current App/user access independently checked",
+  "verified": false
+}

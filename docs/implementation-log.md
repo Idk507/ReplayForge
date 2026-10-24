@@ -3063,3 +3063,54 @@ in auth-picker-checks.json. Historical pending-permission screenshot left intact
 Next critical work is authenticated source-broker/worker integration for the
 queued job, then authentic runner/verifier handoff. Login/selector/intake alone
 are not end-to-end repair readiness. M3/M4/M5 remain open; no milestone weakened.
+
+
+## 2026-10-24 - Credential-isolated collection dispatch
+
+Implementation 3f5704f (parent6c652f4). Added opt-in authenticated loopback source
+broker, bounded worker/client and isolated launcher. Exact lease/version/consent
+and registered path checks remain mandatory. Selected paths no longer rewrite
+RepositoryGrant; blob reads fetch only requested approved files. No host execution.
+
+RED missing-module and selected-path regression failures are retained compressed.
+Initial source fixture lacked SourceManifest and failed SOURCE_MANIFEST_REQUIRED;
+fixed the fixture, not the gate. Focused real-Postgres suite29passed19.35s; final
+worker/auth unit25passed2.59s; selected-source regression45passed1.23s. Preliminary
+full regression1332passed477.31s predates the final launcher/selection tests.
+Ruff check, format247files, strict mypy123sources, uv lock --check and diff check
+passed before dependency remediation. No new frontend code; prior UI evidence
+remains historical. No bypass of browser URL restriction.
+
+Local role setup parser warning exposed the newly generated local worker password
+in tool output. Rotated that password immediately and stored URL-form DSN privately.
+The launcher now excludes inherited operator/provider secrets; isolation tested.
+Worker has no auth-table access/grant INSERT/admin privileges. API operation role
+has context/source INSERT only as required by existing reducer. Ignored env files
+remain untracked. Scoped secret patterns flagged only two synthetic private-key
+markers in test parameter names; no actual credentials found.
+
+Live read-only user-approved public fixture: README15629bytes was omitted by
+context budget (metadata-only); fresh pyproject.toml2117bytes retained one file
+and source manifest, reached TRIAGING, exit0. Exact SHA/run/artifacts recorded in
+collection-worker-small-acceptance.json. Earlier sample INCONCLUSIVE was preserved.
+No inference, sandbox, remote write, approval or publication occurred.
+
+Dependency audit initial invocation incorrectly combined --local/--path (exit1);
+corrected invocation found certifi PYSEC-2026-4320 and pytest PYSEC-2026-1845
+(two installed pytest metadata entries, three rows total). Official references:
+https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2
+https://github.com/pypa/advisory-database/blob/main/vulns/pytest/PYSEC-2026-1845.yaml
+Updates and final regression evidence follow below. No milestone exit weakened.
+
+Final: implementation3f5704f full1335passed499.37s exit0 (one upstream Starlette
+deprecation warning). Dependency remediation88b46ef pins pytest9.0.3 and locks
+certifi2026.10.23. After update922 unit/contract passed6.54s; isolated PostgreSQL
+focused98passed1237deselected23.80s, exit0. Full suite not repeated after this
+dependency-only change. Corrected pip-audit --path .venv/Lib/site-packages reports
+no known vulnerabilities, exit0; local editable project is not a PyPI package.
+Ruff/format247/mypy123/lock/diff pass. Evidence checksums in collection-worker-checks.json.
+Threat review: workload key is independent of browser identity; repeated current
+consent/fences; narrow source reads; no token leaves auth custody. Remaining
+launcher supervision/incident path selection and complete repair integration are
+explicit limitations. Next critical task remains authentic small-incident repair
+and seven-gate worker acceptance, then exact human approval/publication.

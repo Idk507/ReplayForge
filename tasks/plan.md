@@ -186,3 +186,11 @@ pass,zero skips; auth browser4 pass and local browser6 pass/1 opt-in skip. See
 ../docs/evidence/auth-onboarding-checks.json. Actual current user-tab confirmation
 is pending because browser URL policy denied observation. E exact human review/
 scoped installation brokerage and M3/M4 original exits remain open.
+
+
+## Authenticated collection handoff - 2026-10-24
+
+See docs/authenticated-collection.md for the opt-in loopback broker and isolated
+worker startup. Selected reads preserve registered grants. Live small-file
+collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
+No inference, repository execution or publication is enabled by this slice.

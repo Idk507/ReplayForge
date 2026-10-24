@@ -160,3 +160,11 @@ and owner checks remain mandatory. Provider errors do not impersonate expired
 browser sessions. One-time App/DB configuration belongs to operators; end users
 choose a repository and explicitly consent. See docs/github-authentication.md for
 bounds, stale-page recovery and final acceptance evidence. M3/M4 exits unchanged.
+
+
+## Authenticated collection handoff - 2026-10-24
+
+See docs/authenticated-collection.md for the opt-in loopback broker and isolated
+worker startup. Selected reads preserve registered grants. Live small-file
+collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
+No inference, repository execution or publication is enabled by this slice.
