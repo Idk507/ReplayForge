@@ -143,7 +143,9 @@ def test_authenticated_queue_handoff_never_leaks_token_or_retries(store, revoked
                 )
                 action = BaselineAction(
                     execution_id=uuid4(),
-                    plan=plan_pytest(request, run, grant, session.user_id),
+                    plan=plan_pytest(
+                        request, run, grant, session.user_id, save_junit_image=True
+                    ),
                     source_tree_ref="sha256:" + "e" * 64,
                     expected=FailureExpectation(
                         test_name="test_duplicate",

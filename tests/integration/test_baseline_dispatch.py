@@ -11,11 +11,75 @@ from services.orchestrator.baseline_dispatch import dispatch_baseline
 from services.persistence.store import Store, StoreError
 from services.runner.admission import AdmissionDenied
 from tests.integration import test_postgres
-from tests.integration.test_postgres import baseline_journal_fixture
+from tests.integration.test_postgres import (
+    baseline_journal_fixture as _baseline_fixture,
+)
 from tests.integration.test_replay_dispatch import FakeBackend
 from tests.unit.test_runner_admission import fixture
 
 store = test_postgres.store
+
+
+def baseline_journal_fixture(store):
+    values = list(_baseline_fixture(store))
+    action = values[4]
+    values[4] = action.model_copy(
+        update={
+            "plan": action.plan.model_copy(
+                update={"command_id": "PYTEST_FILES_SAVED_JUNIT_V1"}
+            )
+        }
+    )
+    return tuple(values)
+
+
+def test_real_rest_serializer_preserves_report_and_denies_guest_network(store):
+    import json
+
+    import httpx
+
+    from services.runner.prepared import PreparedImageBinding, PreparedNebiusBackend
+    from services.runner.receipts import plan_ref
+    from tests.contract.test_sandbox_smoke import config
+
+    journal, lease, owner, run, action, *_ = baseline_journal_fixture(store)
+    journal.record_action(lease, owner, action, expected_version=0)
+    _, profile, _, sign, verifier = fixture("REMOTE_SERVICE")
+    binding = PreparedImageBinding(
+        plan_ref=plan_ref(action.plan),
+        execution_id=action.execution_id,
+        tree_ref=action.source_tree_ref,
+        image_uuid=config().image_uuid,
+        image_digest=action.plan.request.image_digest,
+        runner_id=profile.runner_id,
+        configuration_ref=profile.configuration_ref,
+    )
+    calls = []
+    operation = uuid4()
+
+    def handle(req):
+        body = json.loads(req.content)
+        assert body["networking"] == {"enabled": False}
+        assert body["disposable"] is False and body["shell"] is False
+        assert body["preserve_env"] is False
+        calls.append(req)
+        return httpx.Response(201, json={"uuid": str(operation)})
+
+    with PreparedNebiusBackend(
+        config(), binding, sign(), verifier, transport=httpx.MockTransport(handle)
+    ) as backend:
+        result = dispatch_baseline(
+            store,
+            lease,
+            owner,
+            action.execution_id,
+            sign(),
+            verifier,
+            backend,
+            expected_version=0,
+        )
+    assert result.status == "SUBMITTED" and result.operation_id == operation
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("timeout", [False, True])

@@ -57,6 +57,11 @@ def dispatch_baseline(
         raise StoreError("STALE_VERSION")
     journal = BaselineJournal(store)
     action = journal.action(execution_id, owner)
+    if action.plan.command_id not in {
+        "PYTEST_FILES_SAVED_JUNIT_V1",
+        "PYTEST_FILES_MEASURED_V1",
+    }:
+        raise StoreError("BASELINE_REPORT_PERSISTENCE_REQUIRED")
     reference = plan_ref(action.plan)
 
     def result(
