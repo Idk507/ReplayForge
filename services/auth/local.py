@@ -24,6 +24,7 @@ class AuthLocalConfig(BaseModel):
     encryption_key: SecretBytes
     hash_key: SecretBytes
     allow_live: bool
+    collection_key: SecretStr | None = None
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AuthLocalConfig":
@@ -71,7 +72,19 @@ class AuthLocalConfig(BaseModel):
             )
             hashing = bytes.fromhex(values.get("REPLAYFORGE_AUTH_HMAC_KEY_HEX", ""))
             AuthVault(SecretBytes(encryption), SecretBytes(hashing))
+            collection = values.get("REPLAYFORGE_ENABLE_COLLECTION_BROKER", "false")
+            if collection not in {"true", "false"}:
+                raise ValueError
+            collection_key = None
+            if collection == "true":
+                import re
+
+                key = values.get("REPLAYFORGE_COLLECTION_WORKER_KEY", "")
+                if enabled != "true" or not re.fullmatch(r"[A-Za-z0-9_-]{43}", key):
+                    raise ValueError
+                collection_key = SecretStr(key)
             return cls(
+                collection_key=collection_key,
                 api_dsn=api,
                 auth_dsn=auth,
                 settings=GitHubAuthSettings(
@@ -132,10 +145,24 @@ def create_from_env() -> FastAPI:
         return RepositoryClient(config.settings, allow_live=config.allow_live)
 
     access = AuthAccess(journal, config.settings, client)
-    return create_session_app(
+    app = create_session_app(
         Store(config.api_dsn.get_secret_value()),
         journal,
         config.settings,
         client,
         access,
     )
+
+    if config.collection_key is not None:
+        from services.auth.collection import CollectionBroker, install_routes
+
+        install_routes(
+            app,
+            CollectionBroker(
+                Store(config.api_dsn.get_secret_value()),
+                access,
+                config.collection_key,
+                allow_live=config.allow_live,
+            ),
+        )
+    return app

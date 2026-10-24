@@ -1,0 +1,26 @@
+<testsuites id="" name="" tests="8" failures="0" skipped="1" errors="0" time="19.949716">
+<testsuite name="workbench.spec.ts" timestamp="2026-10-24T06:14:24.860Z" hostname="" tests="8" failures="0" skipped="1" time="15.67" errors="0">
+<testcase name="bridge rejects foreign origin, host, path and malformed query before network" classname="workbench.spec.ts" time="0.016">
+</testcase>
+<testcase name="SSE cursor ignores replayed IDs and rejects ID/body mismatch" classname="workbench.spec.ts" time="0.024">
+</testcase>
+<testcase name="synthetic contract: reconnect preserves cursor, missing gates stay missing, mobile has no overflow" classname="workbench.spec.ts" time="12.996">
+</testcase>
+<testcase name="synthetic contract: provider failure has a readable retry state" classname="workbench.spec.ts" time="0.476">
+</testcase>
+<testcase name="real local API: create, inspect persisted events, cancel and reload" classname="workbench.spec.ts">
+<properties>
+<property name="skip" value="Run through scripts.test_web_acceptance for disposable real PostgreSQL/API acceptance">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="synthetic contract: rejected gate, inert diff and hash-checked artifact preview" classname="workbench.spec.ts" time="0.671">
+</testcase>
+<testcase name="retained live research archive: timeline shows source, title and timestamp without a provider request" classname="workbench.spec.ts" time="0.673">
+</testcase>
+<testcase name="queued incident explains worker handoff without claiming execution" classname="workbench.spec.ts" time="0.594">
+</testcase>
+</testsuite>
+</testsuites>

@@ -2963,3 +2963,103 @@ independently show No permissions / No repositories. This is configuration,
 not a populated provider list being lost by the UI. No permission changed.
 User must set App Contents read-only, approve updated installation and select
 maf_ds_agent. See auth-installation-scope-checks.json and screenshot.
+
+
+## 2026-10-24 - Large GitHub account discovery and simpler onboarding
+
+Implementation b169a81 (parent7359f72). Prior necessary authorized metadata reads
+found367 repositories after App access was granted; old total_count<=50 validation
+rejected that legitimate account. Provider errors mapped to401 then caused the UI
+session gate to show login. No raw provider response or secret retained.
+
+Added explicit repository page1..20000,50 entries/512KiB maximum per provider page,
+existing HTTP deadline, duplicate/partial-page rejection and safe502 discovery
+errors. Legacy no-page enumeration remains bounded. Migration0027 stores the page
+lookup hint; every source connect/private access still checks actual current user/
+installation membership. Fresh same-source reconnect may update the page locator
+without changing immutable grant/source/owner/provenance/private consent. Wrong
+page, installation and repo fail. No broader credential fallback or worker grants.
+Added membership-checked default-branch commit metadata resolution, not code fetch.
+Next.js auto-selects a sole installation, pages/filters current results, refreshes
+with explicit empty/error states, pins source automatically, keeps Advanced manual
+SHA, and opens the prefilled incident form after connection. GITHUB_APP_SLUG is
+server-configured/validated for the fixed GitHub Manage access link. No execution
+is dispatched automatically. Corrected a refresh race that cleared repo errors
+when installation enumeration completed after repository failure.
+
+Actual checks:
+- RED auth-pagination-red.xml.gz proves missing paged interface; synthetic367
+  account test proves first50/last17 and exact-page membership, plus duplicate/
+  truncation/out-of-range negatives. Focused integration initially exposed old
+  OAuth timeout status assertion401 (now502; replay remains401), then same-source
+  locator upgrade conflict. Both fixed with retained reports and unchanged gates.
+- uv run python wrapper for scripts.test_postgres, pytest -k auth_app/session_access/
+  auth_repositories/github_auth:53 pass,1252 deselected,26.88s,exit0;
+  auth-onboarding-focused.xml. Three additional page negatives included in full run.
+- Full scripts.test_postgres wrapper (600s aggregate process deadline):1308 pass,
+  zero failures/errors/skips,485.05s,exit0,auth-onboarding-final-postgres.xml.
+  Temporary databases/roles cleaned by wrapper. No individual/product timeout or
+  expected security denial was weakened. Upstream Starlette/AnyIO warning remains.
+- uv run ruff check .; uv run ruff format --check .:pass241files; uv run mypy:
+  pass119sources. uv lock --check, git diff --check and scoped credential-value
+  scan pass. No dependency changed; dependency vulnerability audit not repeated.
+- npm run lint; npm run typecheck; npm run build:pass. Final npx playwright test -c
+  playwright.auth.config.ts:4 pass7.6s (BFF query validation, auto-selection/pinning,
+  connect-to-prefilled-intake, paged refresh failure without logout). Existing
+  npx playwright test:6 pass/1 opt-in real-API skip19.8s. Final CSS button/layout
+  refinement revalidated by build/auth browser; mobile screenshot visually reviewed.
+  Failed browser tests retained compressed: real error-clearing race and then a
+  test locator collision with Next's empty route-announcer. Scoped locator fixed;
+  assertions were not removed. Evidence hashes are in auth-onboarding-checks.json.
+
+Applied0027 only to the task-created rf_auth_local database through its retained
+separate migrator. No other database/role changed. API8000 and production UI3000
+restored for user check. Browser URL security policy denied inspecting the user's
+existing tab; no alternate browser/HTTP/CDP workaround was attempted. Isolated
+synthetic browser tests use separate fixtures and do not claim live acceptance.
+A text question requests user reload/confirmation. Current live selector outcome
+is NOT_RUN until observed/admitted or confirmed by user. No new live repository
+connect, inference, sandbox, GitHub write, PR, merge or deploy in this acceptance.
+
+Remaining: stale provider ordering requires refresh/reconnect; filtering is page-
+local; installation enumeration cap remains50. M3 seven-gate production/worker
+journey, session-derived exact approval and installation-token brokerage, M4 live
+approved PR/hidden evaluation and M5 packaging/deploy remain open. Existing
+milestone exits and human approval boundaries are preserved.
+
+
+## 2026-10-24 - Native repository picker and idle workbench report
+
+Implementation a6250b2; parent9535b05. User reports native repository dropdown
+cannot be selected and sample workbench has no visible activity. Necessary
+read-only official GitHub metadata diagnostic returned50 page2 entries, all valid
+against GitHubRepository; no source code fetched. Current provider page2 failure
+was not reproduced, so no new server-pagination fix is claimed. Sanitized local
+DB checks found one CREATED run and one queued job with zero worker attempts;
+this proves intake persistence, not a running repair pipeline.
+
+Replaced native repository popup with searchable, keyboard-selectable radio rows,
+scroll containment and selected styling. Added no-match guidance and Retry pageN.
+Explicit consent/private checkboxes reset whenever repository or pinned SHA
+changes. Existing automatic pin/owner/CSRF/membership gates remain unchanged.
+Page2 regression now selects repo51, pins source and connects with exact page2 in
+the request (previous test checked only entry appearance). Workbench CREATED run
+now explicitly shows queued/waiting for collection worker, without implying tests
+or patches ran. No worker was started with broader CLI/OAuth credentials.
+
+RED auth-picker-red.xml.gz shows the radio interaction missing in the old native
+picker (test timeout,not a provider proof). GREEN npx playwright test -c
+playwright.auth.config.ts:4 pass5.2s; npx playwright test:7 pass,1 opt-in actual API
+skip19.9s, including queue explanation. npm run lint; npm run typecheck; npm run
+build pass. Ruff check/format241files and strict mypy119sources pass. Dependencies
+and backend implementation unchanged; full backend/vulnerability audits not
+repeated (prior1308 pass at b169a81 remains historical). Mobile screenshot visually
+reviewed. Browser acceptance uses synthetic identities/metadata. Actual user-tab
+confirmation remains pending under the earlier browser automation restriction.
+Production UI3000 restored; API8000 remains running. No paid/model/sandbox call,
+repository execution, GitHub write, PR, merge or deploy. SHA256 evidence recorded
+in auth-picker-checks.json. Historical pending-permission screenshot left intact.
+
+Next critical work is authenticated source-broker/worker integration for the
+queued job, then authentic runner/verifier handoff. Login/selector/intake alone
+are not end-to-end repair readiness. M3/M4/M5 remain open; no milestone weakened.

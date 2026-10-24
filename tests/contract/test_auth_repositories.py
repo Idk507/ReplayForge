@@ -51,6 +51,9 @@ def provider(fault=None):
                     ],
                 },
             )
+        if r.url.path == "/repos/example/demo/commits":
+            assert r.url.params["per_page"] == "1"
+            return httpx.Response(200, json=[{"sha": "a" * 40}])
         if r.url.path == "/repos/example/demo/git/commits/" + "a" * 40:
             return httpx.Response(200, json={"sha": "a" * 40})
         pytest.fail("unexpected provider path")
@@ -107,3 +110,65 @@ def test_repository_list_cannot_return_truncated_or_repeated_pages():
         with pytest.raises(AuthDenied):
             c.installations(SecretStr("synthetic"))
     assert len(calls) <= 10
+
+
+def test_large_account_repository_pages_are_bounded_and_authorized():
+    def handle(r):
+        if r.url.path == "/user/installations":
+            return httpx.Response(
+                200,
+                json={
+                    "total_count": 1,
+                    "installations": [
+                        {
+                            "id": 7,
+                            "account": {"id": 9, "login": "example"},
+                            "permissions": {"contents": "read"},
+                        }
+                    ],
+                },
+            )
+        page = int(r.url.params["page"])
+        rows = [
+            {
+                "id": i + 1,
+                "full_name": f"example/repo{i + 1}",
+                "private": False,
+                "permissions": {"pull": True, "push": False},
+            }
+            for i in range((page - 1) * 50, min(page * 50, 367))
+        ]
+        return httpx.Response(200, json={"total_count": 367, "repositories": rows})
+
+    with RepositoryClient(settings(), transport=httpx.MockTransport(handle)) as c:
+        assert len(c.repository_page(SecretStr("synthetic"), 7, 1)) == 50
+        assert len(c.repository_page(SecretStr("synthetic"), 7, 8)) == 17
+        assert c.authorize(SecretStr("synthetic"), 7, 367, page=8).id == 367
+        with pytest.raises(AuthDenied):
+            c.authorize(SecretStr("synthetic"), 7, 367, page=1)
+        with pytest.raises(AuthDenied):
+            c.repository_page(SecretStr("synthetic"), 7, 0)
+
+
+@pytest.mark.parametrize("fault", ["duplicate", "truncated", "wrong_page"])
+def test_repository_pages_reject_ambiguous_membership(fault):
+    def handle(r):
+        repo = {
+            "id": 1,
+            "full_name": "example/demo",
+            "private": False,
+            "permissions": {"pull": True},
+        }
+        return httpx.Response(
+            200,
+            json={
+                "total_count": 2,
+                "repositories": [repo, repo] if fault == "duplicate" else [repo],
+            },
+        )
+
+    with RepositoryClient(settings(), transport=httpx.MockTransport(handle)) as c:
+        with pytest.raises(AuthDenied):
+            c.repository_page(
+                SecretStr("synthetic"), 7, 2 if fault == "wrong_page" else 1
+            )

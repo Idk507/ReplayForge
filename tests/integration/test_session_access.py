@@ -156,3 +156,69 @@ def test_disconnect_revokes_worker_consent_and_is_owner_scoped(store):
     fresh = connect(access, session)
     assert fresh.repository_id != repo.repository_id
     assert fresh.consent
+
+
+def test_repository_page_http_and_discovery_errors_do_not_expire_session(store):
+    c, _, _, _, access, _ = setup(store)
+    page = c.get(
+        "/api/v1/github/repositories", params={"installation_id": 7, "page": 1}
+    )
+    assert page.status_code == 200 and len(page.json()) == 1
+    assert (
+        c.get(
+            "/api/v1/github/repositories", params={"installation_id": 7, "page": 0}
+        ).status_code
+        == 422
+    )
+
+    def broken(owner, installation_id, page=None):
+        raise AuthDenied("AUTH_LIST_LIMIT")
+
+    access.repositories = broken
+    assert (
+        c.get(
+            "/api/v1/github/repositories", params={"installation_id": 7, "page": 1}
+        ).status_code
+        == 502
+    )
+    assert c.get("/api/v1/auth/me").status_code == 200
+
+
+def test_paged_connection_pins_head_and_retains_membership_page(store):
+    c, j, session, headers, access, _ = setup(store)
+    assert c.get(
+        "/api/v1/github/head",
+        params={"installation_id": 7, "repository_id": 42, "page": 1},
+    ).json() == {"sha": "a" * 40}
+    assert (
+        c.get(
+            "/api/v1/github/head",
+            params={"installation_id": 8, "repository_id": 42, "page": 1},
+        ).status_code
+        == 403
+    )
+    r = c.post(
+        "/api/v1/repositories/42/connect",
+        headers=headers,
+        json={
+            "installation_id": 7,
+            "repository_id": 42,
+            "repository_page": 1,
+            "source_commit": "a" * 40,
+            "consent": True,
+        },
+    )
+    assert r.status_code == 200
+    from uuid import UUID
+
+    repo = UUID(r.json()["repository_id"])
+    access.authorize(session.user_id, repo)
+    with j.store._connection() as conn:
+        assert (
+            conn.execute(
+                "SELECT repository_page FROM auth_repository_connections "
+                "WHERE repository_id=%s",
+                (repo,),
+            ).fetchone()["repository_page"]
+            == 1
+        )

@@ -176,3 +176,13 @@ screenshots retained and visually inspected. Full regression: auth-session-final
 417.46 seconds, exit 0. Implementation 638feb6. E remains open; F real GitHub App acceptance needs
 operator configuration and human consent. No private credentials or authenticated
 live GitHub requests were used during this continuation.
+
+
+## 2026-10-24 onboarding follow-up
+
+b169a81 fixes the live-diagnosed367-repository limit/session loop with one-page
+membership validation and automatic immutable source pinning. Full backend1308
+pass,zero skips; auth browser4 pass and local browser6 pass/1 opt-in skip. See
+../docs/evidence/auth-onboarding-checks.json. Actual current user-tab confirmation
+is pending because browser URL policy denied observation. E exact human review/
+scoped installation brokerage and M3/M4 original exits remain open.

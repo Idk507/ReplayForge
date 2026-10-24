@@ -20,6 +20,12 @@ test("session bridge forwards only session identity and never the local bearer",
     expect(r.status).toBe(200);
     expect(captured[0].get("cookie")).toBe(`rf_dev_session=${"s".repeat(43)}`);
     expect(captured[0].has("authorization")).toBeFalsy();
+    const headers={host:"127.0.0.1:3000",cookie:`rf_dev_session=${"s".repeat(43)}`};
+    expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&page=2",{headers}),["github","repositories"])).status).toBe(200);
+    expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&repository_id=42&page=1",{headers}),["github","head"])).status).toBe(200);
+    expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&page=0",{headers}),["github","repositories"])).status).toBe(400);
+    expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&page=1&page=2",{headers}),["github","repositories"])).status).toBe(400);
+
     expect((await sessionBridge(new Request("http://127.0.0.1:3000/api",{method:"POST",body:"{}"}),["runs"])).status).toBe(403);
     expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?token=x"),["auth","me"])).status).toBe(400);
   } finally {globalThis.fetch=before;if(old===undefined)delete process.env.REPLAYFORGE_API_URL;else process.env.REPLAYFORGE_API_URL=old;}
@@ -45,6 +51,7 @@ test("synthetic session can connect an allowed repository and sign out", async (
       return r.fulfill({status:204,body:""});
     }
     if(path.endsWith("github/installations"))return r.fulfill({json:[{id:7,account:{id:9,login:"example"},permissions:{contents:"read",pull_requests:"none"},suspended_at:null}]});
+    if(path.endsWith("github/head"))return r.fulfill({json:{sha:"a".repeat(40)}});
     if(path.endsWith("github/repositories"))return r.fulfill({json:[{id:42,full_name:"example/demo",private:false,permissions:{pull:true,push:false},archived:false,disabled:false}]});
     if(path.endsWith("repositories/42/connect")){
       expect(r.request().headers()["x-csrf-token"]).toBe(csrf);connected=true;
@@ -53,9 +60,9 @@ test("synthetic session can connect an allowed repository and sign out", async (
     return r.fulfill({json:[]});
   });
   await page.goto("/settings/integrations");
-  await page.getByLabel("GitHub installation").selectOption("7");
-  await page.getByLabel("Repository").selectOption("42");
-  await page.getByLabel("Source commit").fill("a".repeat(40));
+  await expect(page.getByLabel("GitHub installation")).toHaveValue("7");
+  await page.getByRole("radio",{name:"example/demo",exact:true}).check();
+  await expect(page.getByText("Source pinned to aaaaaaaaaaaa.")).toBeVisible();
   await page.getByLabel(/I authorize/).check();
   await page.getByRole("button",{name:"Connect repository"}).click();
   await expect(page.getByText("Repository connected",{exact:true})).toBeVisible();
@@ -64,7 +71,51 @@ test("synthetic session can connect an allowed repository and sign out", async (
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
   await page.screenshot({path:"test-results/auth-connected-mobile.png",fullPage:true});
+  await page.getByRole("link",{name:"Start an investigation",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Start an investigation",exact:true})).toBeVisible();
+  await expect(page.getByLabel("Approved repository ID")).toHaveValue(id);
+  await expect(page.getByLabel("Source commit")).toHaveValue("a".repeat(40));
   await page.getByRole("button",{name:"Sign out"}).click();
   await expect(page.getByRole("link",{name:"Continue with GitHub"})).toBeVisible();
   expect(logout).toBeTruthy();
+});
+
+
+test("large-account pages and discovery failures preserve identity and allow refresh", async ({page})=>{
+  let fail=false;
+  const repo=(n:number)=>({id:n,full_name:`example/repo${n}`,private:false,permissions:{pull:true,push:false}});
+  await page.route("**/api/backend/**",r=>{
+    const url=new URL(r.request().url()),path=url.pathname;
+    if(path.endsWith("auth/me"))return r.fulfill({json:me});
+    if(path.endsWith("github/installations"))return r.fulfill({json:[{id:7,account:{login:"example"}}]});
+    if(path.endsWith("github/head"))return r.fulfill({json:{sha:"a".repeat(40)}});
+    if(path.endsWith("repositories/51/connect")){
+      expect(r.request().postDataJSON().repository_page).toBe(2);
+      return r.fulfill({json:{repository_id:id,commits:["a".repeat(40)]}});
+    }
+    if(path.endsWith("github/repositories")){
+      if(fail)return r.fulfill({status:502,json:{error_class:"BACKEND_DENIED"}});
+      return r.fulfill({json:url.searchParams.get("page")==="2"?[repo(51)]:Array.from({length:50},(_,i)=>repo(i+1))});
+    }
+    return r.fulfill({json:[]});
+  });
+  await page.goto("/settings/integrations");
+  await expect(page.getByLabel("GitHub installation")).toHaveValue("7");
+  await expect(page.getByRole("button",{name:"Next",exact:true})).toBeEnabled();
+  await page.getByRole("button",{name:"Next",exact:true}).click();
+  await expect(page.getByRole("radio",{name:"example/repo51",exact:true})).toHaveCount(1);
+  await expect(page.getByRole("button",{name:"Next",exact:true})).toBeDisabled();
+  await page.getByRole("radio",{name:"example/repo51",exact:true}).check();
+  await expect(page.getByText("Source pinned to aaaaaaaaaaaa.")).toBeVisible();
+  await page.getByLabel(/I authorize/).check();
+  await page.getByRole("button",{name:"Connect repository",exact:true}).click();
+  await expect(page.getByText("Repository connected",{exact:true})).toBeVisible();
+  fail=true;
+  await page.getByRole("button",{name:"Refresh repositories"}).click();
+  await expect(page.getByRole("alert").filter({hasText:"session is still signed in"})).toBeVisible();
+  await expect(page.getByText("demo-reviewer",{exact:true})).toBeVisible();
+  await expect(page.getByRole("link",{name:"Continue with GitHub"})).toHaveCount(0);
+  fail=false;
+  await page.getByRole("button",{name:"Refresh repositories"}).click();
+  await expect(page.getByRole("radio",{name:"example/repo51",exact:true})).toHaveCount(1);
 });

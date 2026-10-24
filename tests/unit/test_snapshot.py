@@ -192,3 +192,22 @@ def test_traversal_budget_is_enforced(deep: bool) -> None:
     with pytest.raises(SnapshotError, match="TREE_DEPTH|SNAPSHOT_BUDGET"):
         load_snapshot(objects, grant, grant.owner_id, commit)
     assert objects.calls <= 128
+
+
+def test_selected_paths_narrow_reads_without_changing_registered_grant():
+    from services.repository.snapshot import load_attested_tree
+
+    objects, grant, commit = fixture()
+    root = objects.values[commit][1].splitlines()[0].split()[1].decode()
+    snap = load_attested_tree(
+        objects, grant, grant.owner_id, commit, root, selected_paths=("src/a.py",)
+    )
+    assert [f.path for f in snap.files] == ["src/a.py"] and grant.approved_paths == (
+        "src/",
+    )
+    objects.calls = 0
+    with pytest.raises(SnapshotError):
+        load_attested_tree(
+            objects, grant, grant.owner_id, commit, root, selected_paths=("README.md",)
+        )
+    assert objects.calls == 0

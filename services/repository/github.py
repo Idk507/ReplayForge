@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import CommitSHA
-from packages.policies.repository import admit
+from packages.policies.repository import admit, allowed_entry
 from services.repository.snapshot import Snapshot, load_attested_tree
 
 
@@ -94,7 +94,10 @@ class GitHubReader:
         self._client.close()
 
     def resolve(
-        self, grant: RepositoryGrant, caller: UUID, commit: str
+        self,
+        grant: RepositoryGrant,
+        caller: UUID,
+        commit: str,
     ) -> CommitResolution:
         """Admit exact consent before one bounded, correlated HTTP read."""
         grant = RepositoryGrant.model_validate(grant.model_dump())
@@ -118,14 +121,30 @@ class GitHubReader:
         )
 
     def acquire(
-        self, grant: RepositoryGrant, caller: UUID, commit: str
+        self,
+        grant: RepositoryGrant,
+        caller: UUID,
+        commit: str,
+        *,
+        selected_paths: tuple[str, ...] | None = None,
     ) -> "GitHubSnapshot":
         """Resolve consented commit then verify only permitted reachable objects."""
+        if selected_paths is not None and (
+            not 1 <= len(selected_paths) <= 16
+            or len(set(selected_paths)) != len(selected_paths)
+            or any(not allowed_entry(grant, p, "100644") for p in selected_paths)
+        ):
+            raise RepositoryReadError("SELECTED_PATH_DENIED")
         deadline = time.monotonic() + 20
         resolution = self.resolve(grant, caller, commit)
         objects = _GitHubObjects(self, grant, resolution.tree_sha, deadline)
         snapshot = load_attested_tree(
-            objects, grant, caller, commit, resolution.tree_sha
+            objects,
+            grant,
+            caller,
+            commit,
+            resolution.tree_sha,
+            selected_paths=selected_paths,
         )
         return GitHubSnapshot(
             replace(snapshot, evidence_origin=resolution.evidence_origin), resolution

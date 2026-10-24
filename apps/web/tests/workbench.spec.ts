@@ -136,3 +136,19 @@ test("retained live research archive: timeline shows source, title and timestamp
   await expect(page.locator(`time[datetime="${first.retrieved_at}"]`).first()).toBeVisible();
   await expect(page.getByText(/External content is untrusted/)).toBeVisible();
 });
+
+
+test("queued incident explains worker handoff without claiming execution", async ({page})=>{
+  const queued={...synthetic,current_stage:"CREATED",version:0,failure_reason:null};
+  await page.route("**/api/backend/**",route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path.endsWith("/events"))return route.fulfill({contentType:"text/event-stream",body:""});
+    if(path.endsWith("/research"))return route.fulfill({json:[]});
+    if(path.endsWith("/verification")||path.endsWith("/patch"))return route.fulfill({status:404,json:{}});
+    return route.fulfill({json:path.endsWith("/runs")?[queued]:queued});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:/Run 12345678/}).click();
+  await expect(page.getByText("Queued: waiting for a worker",{exact:true})).toBeVisible();
+  await expect(page.getByText(/background worker must start collection/)).toBeVisible();
+});

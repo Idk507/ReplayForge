@@ -5,3 +5,8 @@ export function loginUrl(): string | null {
   const base=process.env.REPLAYFORGE_API_URL ?? "http://127.0.0.1:8000";
   return /^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/.test(base)?`${base}/api/v1/auth/github/start`:null;
 }
+
+export function installationUrl(): string | null {
+  const slug=process.env.GITHUB_APP_SLUG;
+  return slug && /^[a-z0-9][a-z0-9-]{0,99}$/.test(slug)?`https://github.com/apps/${slug}/installations/new`:null;
+}

@@ -17,7 +17,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
   const [research, setResearch] = useState<Research>([]);
   const [summary, setSummary] = useState<Summary | null>(null), [manifest, setManifest] = useState<Manifest | null>(null), [patch, setPatch] = useState<Patch | null>(null);
   const [error, setError] = useState(""), [detailError, setDetailError] = useState("");
-  const [loading, setLoading] = useState(true), [intake, setIntake] = useState(false), [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true), [intake, setIntake] = useState(Boolean(initialRepository && initialCommit)), [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{name: string; content: string} | null>(null);
   const [openId, setOpenId] = useState("");
   const nonce = useRef<string | null>(null);
@@ -133,6 +133,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
         : <section className="investigation"><div className="breadcrumb">WORKSPACE <span>/</span> INVESTIGATION <span>/</span> {short(selected)}</div><div className="run-title"><div><p className="eyebrow">INCIDENT REPAIR</p><h1>Investigation <span className="mono">{short(selected)}</span></h1></div><span className={`badge ${tone(run?.current_stage ?? "LOADING")}`}>{label(run?.current_stage ?? "LOADING")}</span></div>
           <div className="identity-strip"><span>SOURCE <code>{run?.source_commit ?? "Loading…"}</code></span><span>VERSION <b>{run?.version ?? "—"}</b></span><span className="connection" role="status">● {connection}</span></div>
           {detailError && <div className="error" role="alert">{detailError} Events resume automatically from the last validated sequence.</div>}
+          {run?.current_stage==="CREATED"&&<div className="blank-panel" role="status"><strong>Queued: waiting for a worker</strong><p>Your incident is saved. A background worker must start collection before tests, patches or verification can appear. This page does not run repository code itself.</p></div>}
           {run?.failure_reason && <p className="error" role="status">Run ended: {label(run.failure_reason)}</p>}
           <div className="tabs" role="tablist" aria-label="Investigation views">{["timeline", "evidence", "patch"].map(tab => <button role="tab" aria-selected={view === tab} aria-controls={`panel-${tab}`} id={`tab-${tab}`} key={tab} onClick={() => setView(tab)}>{tab === "patch" ? "Patch & risk" : label(tab)}{tab === "timeline" && <small>{events.length}</small>}</button>)}</div>
           <div role="tabpanel" id={`panel-${view}`} aria-labelledby={`tab-${view}`}>

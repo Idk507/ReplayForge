@@ -36,6 +36,7 @@ class ConnectRepository(BaseModel):
     source_commit: CommitSHA
     consent: bool = Field(strict=True)
     private_access_approved: bool = Field(default=False, strict=True)
+    repository_page: int | None = Field(default=None, strict=True, ge=1, le=20000)
 
 
 class AuthAccess:
@@ -88,7 +89,7 @@ class AuthAccess:
             )
 
     def repositories(
-        self, owner: UUID, installation_id: int
+        self, owner: UUID, installation_id: int, page: int | None = None
     ) -> tuple[GitHubRepository, ...]:
         token = self.journal.credential(owner)
         with self.client_factory() as client:
@@ -100,9 +101,22 @@ class AuthAccess:
                 raise AuthDenied("AUTH_REPOSITORY_DENIED")
             return tuple(
                 v
-                for v in client.repositories(token, installation_id)
-                if v.permissions.pull and not v.disabled
+                for v in (
+                    client.repositories(token, installation_id)
+                    if page is None
+                    else client.repository_page(token, installation_id, page)
+                )
+                if page is not None or (v.permissions.pull and not v.disabled)
             )
+
+    def head(
+        self, owner: UUID, installation_id: int, repository_id: int, page: int
+    ) -> str:
+        token = self.journal.credential(owner)
+        with self.client_factory() as client:
+            self._provider(client)
+            repo = client.authorize(token, installation_id, repository_id, page=page)
+            return client.resolve_head(token, repo)
 
     def connect(self, user: SessionUser, payload: ConnectRepository) -> RepositoryGrant:
         if not payload.consent:
@@ -111,7 +125,10 @@ class AuthAccess:
         with self.client_factory() as client:
             self._provider(client)
             repo = client.authorize(
-                token, payload.installation_id, payload.repository_id
+                token,
+                payload.installation_id,
+                payload.repository_id,
+                page=payload.repository_page,
             )
             if repo.private and not payload.private_access_approved:
                 raise AuthDenied("AUTH_PRIVATE_CONSENT_REQUIRED")
@@ -147,7 +164,8 @@ class AuthAccess:
         with self.journal.store._connection() as c:
             c.execute("SELECT pg_advisory_xact_lock(%s)", (lock,))
             existing = c.execute(
-                """SELECT x.repository_id,g.grant_json,x.installation_id,x.origin
+                """SELECT x.repository_id,g.grant_json,x.installation_id,x.origin,
+                x.repository_page
                 FROM auth_repository_connections x JOIN repository_grants g
                 ON g.id=x.repository_id
                 WHERE x.user_id=%s AND x.github_repository_id=%s AND x.source_commit=%s
@@ -165,6 +183,13 @@ class AuthAccess:
                     or existing["origin"] != origin
                 ):
                     raise AuthDenied("AUTH_CONNECTION_CONFLICT")
+                # A fresh membership check may relocate this repository to a new
+                # provider page; the immutable source/grant remains identical.
+                c.execute(
+                    "UPDATE auth_repository_connections SET repository_page=%s "
+                    "WHERE repository_id=%s AND user_id=%s",
+                    (payload.repository_page, cached.repository_id, user.id),
+                )
                 return cached
             c.execute(
                 "INSERT INTO repository_grants(id,owner_id,grant_json) "
@@ -173,8 +198,8 @@ class AuthAccess:
             )
             c.execute(
                 """INSERT INTO auth_repository_connections(repository_id,user_id,
-                github_repository_id,installation_id,full_name,source_commit,origin)
-                VALUES(%s,%s,%s,%s,%s,%s,%s)""",
+                github_repository_id,installation_id,full_name,source_commit,origin,repository_page)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     grant.repository_id,
                     user.id,
@@ -183,6 +208,7 @@ class AuthAccess:
                     repo.full_name,
                     payload.source_commit,
                     origin,
+                    payload.repository_page,
                 ),
             )
         return grant
@@ -220,7 +246,7 @@ class AuthAccess:
         with self.journal.store._connection() as c:
             row = c.execute(
                 """SELECT installation_id,github_repository_id,full_name,
-                source_commit,origin FROM auth_repository_connections
+                source_commit,origin,repository_page FROM auth_repository_connections
                 WHERE repository_id=%s
                 AND user_id=%s AND revoked_at IS NULL""",
                 (repository_id, owner),
@@ -242,6 +268,9 @@ class AuthAccess:
                 int(str(row["installation_id"])),
                 int(str(row["github_repository_id"])),
                 write=write,
+                page=None
+                if row["repository_page"] is None
+                else int(str(row["repository_page"])),
             )
             if repo.full_name != row["full_name"] or repo.private != grant.private:
                 raise AuthDenied("AUTH_REPOSITORY_DENIED")
@@ -279,9 +308,24 @@ def create_session_app(
 
     @app.get("/api/v1/github/repositories")
     def repositories(
-        request: Request, installation_id: ProtocolNumber
+        request: Request,
+        installation_id: ProtocolNumber,
+        page: Annotated[int | None, Field(ge=1, le=20000)] = None,
     ) -> tuple[GitHubRepository, ...]:
-        return access.repositories(access.identify(request), installation_id)
+        return access.repositories(access.identify(request), installation_id, page)
+
+    @app.get("/api/v1/github/head")
+    def head(
+        request: Request,
+        installation_id: ProtocolNumber,
+        repository_id: ProtocolNumber,
+        page: Annotated[int, Field(ge=1, le=20000)] = 1,
+    ) -> dict[str, str]:
+        return {
+            "sha": access.head(
+                access.identify(request), installation_id, repository_id, page
+            )
+        }
 
     @app.post("/api/v1/repositories/{repo_id}/connect")
     def connect(
