@@ -29,6 +29,23 @@ The live acceptance incident explicitly requested collection only; no repair
 or VERIFIED claim may be inferred from reaching TRIAGING. Approval/publication
 requires exact independently authenticated human authority and explicit writes.
 
+### Latest demo increment - implementation a79a994
+
+- [x] Incident/traceback references select at most16 approved relative files
+before network acquisition, preserving the registered grant and bounded fallback.
+Full final PostgreSQL1346passed447.25s,zero failures/errors/skips,exit0, after
+pytest/certifi remediation. Unit/contract932passed; auth browser4passed;
+workbench7passed/1 opt-in API skip. Ruff/format249/mypy124/UI lint/typecheck/lock
+pass. Audit has no known vulnerabilities; configured-secret-value scan passes.
+See docs/evidence/demo-context-checks.json and docs/demo-runbook.md.
+
+Next critical task supersedes the earlier path-selection item: integrate the
+admitted triage/baseline/patch/replay worker on the tiny checkout incident.
+Production trust bindings, exact human approval/live PR, hidden evaluation and
+public deployment remain open. Demo is not complete. Local API8000 started;
+web restart with temporary config was rejected by automatic approval policy.
+No bypass, paid call or external write occurred in this increment.
+
 ## Historical focus snapshot � reconciled 2026-10-23
 
 Implementation `0042c9d` adds the bounded GitHub publisher, exact Git text/tree/

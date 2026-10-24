@@ -1,0 +1,54 @@
+{
+  "implementation_commit": "a79a994",
+  "observed_date": "2026-10-24",
+  "full_backend": {
+    "passed": 1346,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit": 0,
+    "seconds": 447.25,
+    "evidence": "docs/evidence/demo-context-final-postgres.xml",
+    "sha256": "ec012e146789c55f4e294a11e00ac97071883889679a58751c59513dcc52cd6c"
+  },
+  "unit_contract": {
+    "passed": 932,
+    "seconds": 5.06,
+    "exit": 0
+  },
+  "auth_browser": {
+    "passed": 4,
+    "seconds": 19.5,
+    "source": "successful console output"
+  },
+  "workbench_browser": {
+    "passed": 7,
+    "skipped": 1,
+    "seconds": 20.4,
+    "scope": "Synthetic provider boundaries; opt-in actual API case skipped"
+  },
+  "ruff": "PASS",
+  "format_files": 249,
+  "mypy_sources": 124,
+  "ui_lint": "PASS",
+  "ui_typecheck": "PASS",
+  "lock": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "secret_value_scan": "PASS",
+  "retained_checkout": "M2_FIXTURE_ACCEPTED",
+  "cloud_calls": 0,
+  "external_writes": 0,
+  "readiness": "DEMO_INCOMPLETE",
+  "remaining": [
+    "Integrated repair/replay worker",
+    "Authentic seven-gate production verification",
+    "Exact session-bound human approval and write-token broker",
+    "Authorized live PR/hidden evaluation",
+    "Public deployment and final submission"
+  ],
+  "local_startup": {
+    "api": "RUNNING_127_0_0_1_8000",
+    "web": "Startup command rejected by automatic approval policy; no bypass"
+  },
+  "warning": "Upstream Starlette anyio BlockingPortal deprecation"
+}

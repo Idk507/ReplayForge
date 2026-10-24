@@ -54,6 +54,14 @@ Oversized files remain omitted with CONTEXT_BUDGET, never truncated to manufactu
 context. README by default does not guarantee useful diagnosis. Select a small,
 relevant approved file for an actual incident.
 
+The broker now prefers up to 16 unique relative file references in the retained
+incident/traceback, in appearance order, over configured fallback paths. Only
+registered approved paths and recognized Python/text/manifest extensions qualify.
+It never strips absolute prefixes, guesses basenames, follows URLs or executes
+incident instructions. Missing referenced files remain explicit acquisition
+errors. A reference chooses context; it cannot authorize execution or prove a
+diagnosis. No reference means the validated configured fallback is used.
+
 ## Observed acceptance: 2026-10-24
 
 Real-Postgres synthetic tests cover intake/dispatch/checkpoint, invalid workload

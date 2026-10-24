@@ -3114,3 +3114,33 @@ consent/fences; narrow source reads; no token leaves auth custody. Remaining
 launcher supervision/incident path selection and complete repair integration are
 explicit limitations. Next critical task remains authentic small-incident repair
 and seven-gate worker acceptance, then exact human approval/publication.
+
+
+## 2026-10-24 - Demo-critical relevant context selection
+
+Implementation a79a994 prefers bounded approved incident file references before
+source acquisition; no whole-repository fetch, absolute-prefix stripping, URL
+following, basename guessing or scope expansion. Fallback remains validated.
+RED absent module retained; GREEN10 unit negatives passed0.18s. Added PostgreSQL
+incident-to-source regression selecting src/checkout.py instead of README.
+Unit+contract932passed5.06s; mypy124sources, ruff249files pass. Full PostgreSQL
+regression result follows. Browser npm lint/typecheck pass; auth4passed19.5s;
+workbench7passed20.4s/1 opt-in actual API skip. Reports retained compressed.
+Offline scripts.check_checkout returns M2_FIXTURE_ACCEPTED exit0; no fresh cloud
+call or invented VERIFIED claim. Demo runbook records actual scope and blockers.
+Local auth API restarted successfully on127.0.0.1:8000. Automatic approval review
+rejected the web startup command with temporary environment flags, stating only
+blocked by policy. No bypass or alternate-identity startup attempted.
+
+Demo credential-value scan PASS: changed files/new evidence were compared against
+configured local secret values without emitting those values. Workbench browser
+JUnit retained compressed; authentication counts are from the successful console
+run (Playwright cleaned its earlier report directory before the next suite).
+No frontend source changed. Dependency audit remains clean after pinned updates.
+
+Final a79a994 acceptance: demo-context-final-postgres.xml1346passed,zero failures/
+errors/skips447.25s exit0, after dependency remediation. JUnit SHA256 and explicit
+readiness gaps in demo-context-checks.json. One upstream deprecation warning.
+Full test used disposable DB/roles,600s aggregate test ceiling; cleanup completed.
+No model, sandbox or publication ran. Current demo remains incomplete; no M3/M4/M5
+exit was weakened. Next is admitted checkout repair/replay worker integration.
