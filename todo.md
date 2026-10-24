@@ -2,7 +2,28 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus — reconciled 2026-10-23
+## Current focus - reconciled 2026-10-24
+
+Implementation b169a81 fixes the observed367-repository discovery failure and
+false session-expiry loop. Explicit one-page reads, fresh page membership checks,
+automatic source pinning and direct prefilled incident intake now pass local
+acceptance:1308 backend tests,zero failures/errors/skips,485.05s,exit0. Auth browser
+4 pass; local browser6 pass/1 opt-in real-API skip. Lint/format/type/build and lock/
+scoped credential checks pass. See docs/evidence/auth-onboarding-checks.json.
+
+Actual GitHub login/logout and restricted-role startup were previously observed;
+current live selector confirmation remains pending because browser URL policy
+blocked automated observation. User has been asked to reload the updated UI.
+No bypass, GitHub write, paid call or repository execution was performed here.
+
+M2 fixed-checkout contingency remains accepted. M3 authentic seven-gate flow,
+M4 approved live publication/hidden evaluation and M5 launch/submission remain
+open; their written exits are unchanged. Next: user selector confirmation, then
+session-derived exact approval and reduced installation-token brokerage alongside
+M3's outstanding authentic evidence/worker handoff. Do not treat repository
+connection or login as authority to publish.
+
+## Historical focus snapshot ï¿½ reconciled 2026-10-23
 
 Implementation `0042c9d` adds the bounded GitHub publisher, exact Git text/tree/
 commit construction, approval-bound controller and immutable result recovery.
@@ -460,3 +481,8 @@ repository acceptance remains blocked on App installation/current visible access
 User must install replayforge-ai on only maf_ds_agent, then retry login/discovery.
 Windows uv npm launch requires cmd /c; corrected setup guide. Development Next
 server generated transient rules/type paths; these are excluded from this change.
+
+2026-10-24 onboarding acceptance: [x] bounded large-account page contract and
+explicit refresh/error recovery; [x] automatic default source pin and prefilled
+intake handoff, observed in synthetic browser tests. [ ] updated actual user-tab
+selector acceptance (blocked browser automation); [ ] full M3/M4 exits.

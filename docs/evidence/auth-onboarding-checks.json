@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "observed_date": "2026-10-24",
+  "implementation_commit": "b169a81824adf74f4c3e8be52855c0aab3b55f1b",
+  "status": "LOCAL_LARGE_ACCOUNT_ONBOARDING_PASSED",
+  "backend_tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "1308",
+    "time": "485.000",
+    "timestamp": "2026-10-24T11:24:43.026109+05:30",
+    "hostname": "dhanu"
+  },
+  "backend_console_seconds": 485.05,
+  "backend_exit_code": 0,
+  "ruff": "PASS",
+  "format": "PASS (241 files)",
+  "mypy": "PASS (119 sources)",
+  "ui_lint_typecheck_build": "PASS",
+  "auth_browser": "4 passed,7.6s",
+  "local_browser": "6 passed,1 opt-in real API skipped,19.8s",
+  "dependency_lock_check": "PASS; dependencies unchanged; vulnerability audit not repeated",
+  "credential_pattern_scan": "PASS, scoped",
+  "provider_diagnosis": "Previously authorized metadata diagnostic returned367 repositories; no code fetched",
+  "live_user_tab_acceptance": "NOT_RUN: browser URL security policy denied tab observation; no workaround attempted",
+  "local_setup": "Dedicated rf_auth_local database migration0027 applied, roles unchanged; API8000 and UI3000 running",
+  "paid_calls": 0,
+  "external_writes": 0,
+  "repository_execution": false,
+  "remaining": [
+    "User confirmation of refreshed live selector",
+    "Page ordering changes require refresh/reconnect to rebind page membership",
+    "Installation listing still bounded at50; repo filter applies to current page",
+    "M3 authentic seven-gate acceptance",
+    "Session-derived exact review and reduced installation-token brokerage",
+    "M4 live approved PR and hidden evaluation"
+  ],
+  "artifacts": {
+    "auth-onboarding-final-postgres.xml": "86d1c9924ef4078c5c5a7971128522ccc3beb68896041f96a78864450c055f2f",
+    "auth-onboarding-focused.xml": "61f20c888fb1fc18c6afa09dcb068c6b836e80b2fda926a39dfb5d683706ebaf",
+    "auth-onboarding-browser.xml": "1da2539ef3d5e5a6ec6f99b68653721b0dcbe4b5059ef93c71cd6efb58a469d7",
+    "auth-onboarding-local-browser.xml": "8f3cafd6cd44337c157e0e7fb71b38f49148b13d42c831015f48524d09eb78eb",
+    "auth-onboarding-mobile.png": "615da11579c602525c31166a55dbe961b3b621c45fe0c630216dcb1f98f80b44",
+    "auth-pagination-red.xml.gz": "f0ec6d6645d0f823fc13440a1edd3859619a8db793e16ef4e73daa0fc8c7a644",
+    "auth-pagination-focused.xml.gz": "6d1a99087e2bde20d6cd9ab2e62a6054b7de8326e4a04aadb2ba49819e881804",
+    "auth-pagination-final-focused.xml.gz": "eb79d905e9beceb5fff94c0268ed6e9bc81f86da8aa37dcb40507553d4c69217",
+    "auth-onboarding-browser-red.xml.gz": "3390882ea8c096a3eae139cb5003972ffc54be0eb208f2c814cc0ea9acf82e15",
+    "auth-onboarding-browser-selector-red.xml.gz": "343a26ffdb416301796240a1c52eaa044c23b63f80c6fdcf261b1f297db36417",
+    "auth-pagination-green.xml": "d23923b36598dcd2fcad926d70d4c562aa73e9db1bac757832a914bdb59cdbea"
+  }
+}
