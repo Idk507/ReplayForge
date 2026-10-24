@@ -25,12 +25,17 @@ from services.persistence.store import Lease, Store, StoreError
 LoaderFactory = Callable[[SecretStr, tuple[str, ...]], InputLoader]
 
 
-class CollectionRequest(BaseModel):
+class StageRequest(BaseModel):
     """Independent workload authentication is mandatory in addition to this fence."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     lease: Lease = Field(repr=False)
     expected_version: int = Field(strict=True, ge=0)
+
+
+class CollectionRequest(StageRequest):
+    """Collection adds selected source paths to the shared current-job fence."""
+
     paths: tuple[str, ...] = Field(min_length=1, max_length=16)
 
     @field_validator("paths")
@@ -119,6 +124,20 @@ class CollectionBroker:
             status="PROCESSED", run_id=result.run_id, stage=result.current_stage
         )
 
+    def authorize_triage(self, payload: StageRequest) -> dict[str, object]:
+        """Fresh identity check only; no inference, token or reusable grant returned."""
+        if not self._live and not self._test:
+            raise HTTPException(403, "COLLECTION_LIVE_NOT_AUTHORIZED")
+        owner, state = self.store.claimed_run(payload.lease)
+        if (
+            state.version != payload.expected_version
+            or state.current_stage != Stage.TRIAGING
+            or state.cancellation_requested
+        ):
+            raise StoreError("TRIAGE_STAGE_DENIED")
+        self.access.authorize(owner, state.repository_id)
+        return {"run_id": state.run_id, "version": state.version, "status": "ADMITTED"}
+
 
 def install_routes(app: FastAPI, broker: CollectionBroker) -> None:
     """Explicit internal route, excluded from the browser/model bridge vocabulary."""
@@ -136,3 +155,12 @@ def install_routes(app: FastAPI, broker: CollectionBroker) -> None:
         except AuthDenied:
             broker.access.journal.denial("AUTH_COLLECTION_DENIED")
             raise HTTPException(403, "COLLECTION_REPOSITORY_DENIED") from None
+
+    @app.post("/internal/v1/collection/authorize-triage")
+    def authorize_triage(payload: StageRequest, request: Request) -> dict[str, object]:
+        broker.authenticate(request)
+        try:
+            return broker.authorize_triage(payload)
+        except AuthDenied:
+            broker.access.journal.denial("AUTH_TRIAGE_DENIED")
+            raise HTTPException(403, "TRIAGE_REPOSITORY_DENIED") from None

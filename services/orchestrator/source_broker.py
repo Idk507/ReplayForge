@@ -3,13 +3,16 @@
 import re
 import time
 from types import TracebackType
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 import httpx
 from pydantic import BaseModel, ConfigDict, SecretStr
 
+from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
+from packages.providers.nebius import NebiusConfig
+from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
 from services.persistence.store import Lease, Store
 
@@ -21,6 +24,13 @@ class BrokerError(Exception):
 class Readiness(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     enabled: bool
+
+
+class TriageAdmission(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    run_id: UUID
+    version: int
+    status: Literal["ADMITTED"]
 
 
 class BrokerClient:
@@ -122,6 +132,23 @@ class BrokerClient:
             raise BrokerError("COLLECTION_UNCONFIRMED")
         return result
 
+    def authorize_triage(self, lease: Lease, version: int) -> None:
+        try:
+            admitted = TriageAdmission.model_validate_json(
+                self._request(
+                    "POST",
+                    "/internal/v1/collection/authorize-triage",
+                    {
+                        "lease": lease.model_dump(mode="json"),
+                        "expected_version": version,
+                    },
+                )
+            )
+        except ValueError:
+            raise BrokerError("TRIAGE_ADMISSION_UNCONFIRMED") from None
+        if admitted.run_id != lease.run_id or admitted.version != version:
+            raise BrokerError("TRIAGE_ADMISSION_UNCONFIRMED")
+
 
 def dispatch_once(
     store: Store, worker_id: UUID, client: BrokerClient, paths: tuple[str, ...]
@@ -141,3 +168,38 @@ def dispatch_once(
     ):
         raise BrokerError("COLLECTION_UNCONFIRMED")
     return result
+
+
+def dispatch_triage_once(
+    store: Store,
+    worker_id: UUID,
+    client: BrokerClient,
+    config: NebiusConfig,
+    cost_policy: ModelCostPolicy,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> WorkerResult:
+    """Claim triage only; authenticate access before the existing fenced journal.
+
+    Internal caller must authorize inference. The gateway reserves actual request
+    identity/budget before POST; unknown results remain sticky, never retried here.
+    No GitHub credentials or shell tools reach this worker.
+    """
+    client.ready()
+    lease = store.claim(worker_id, triage_only=True)
+    if lease is None:
+        return WorkerResult(status="IDLE")
+    owner, state = store.claimed_run(lease)
+    client.authorize_triage(lease, state.version)
+    result = run_triage(
+        store,
+        lease,
+        owner,
+        config,
+        cost_policy=cost_policy,
+        transport=transport,
+        finish_job=True,
+    )
+    return WorkerResult(
+        status="PROCESSED", run_id=result.run_id, stage=result.current_stage
+    )

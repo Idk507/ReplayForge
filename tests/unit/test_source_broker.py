@@ -174,3 +174,42 @@ def test_launcher_default_never_reads_private_config(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["launch", "--env-file", "missing-private-file"])
     assert launch.main() == 2
     assert "NOT_RUN" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "module", ["run_authenticated_worker", "launch_authenticated_worker"]
+)
+@pytest.mark.parametrize(
+    "flags",
+    [
+        ["--triage"],
+        ["--allow-live-inference"],
+        ["--triage", "--allow-live-inference"],
+        ["--estimated-call-microusd", "1"],
+    ],
+)
+def test_triage_requires_all_authorization_flags_before_io(module, flags, monkeypatch):
+    import importlib
+
+    script = importlib.import_module("scripts." + module)
+    monkeypatch.setattr("sys.argv", [module, "--run", *flags])
+    with pytest.raises(SystemExit) as stopped:
+        script.main()
+    assert stopped.value.code == 2
+
+
+def test_triage_admission_is_bound_to_exact_run_and_version():
+    claimed = lease()
+    for response in [
+        {"status": "ADMITTED", "run_id": str(uuid4()), "version": 3},
+        {"status": "ADMITTED", "run_id": str(claimed.run_id), "version": 4},
+    ]:
+        with BrokerClient(
+            "http://127.0.0.1:8000",
+            SecretStr("s" * 43),
+            transport=httpx.MockTransport(
+                lambda r, response=response: httpx.Response(200, json=response)
+            ),
+        ) as c:
+            with pytest.raises(BrokerError, match="UNCONFIRMED"):
+                c.authorize_triage(claimed, 3)
