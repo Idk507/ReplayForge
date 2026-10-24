@@ -3184,3 +3184,66 @@ auth-triage-checks.json. Disposable DB/roles cleaned;600s aggregate test ceiling
 only, product limits unchanged. Defaults NOT_RUN/exit2 remain unit-tested; saved
 checkout checker M2_FIXTURE_ACCEPTED/exit0. All milestone limitations preserved.
 Implementation source committed; evidence/docs commit follows.
+
+
+## 2026-10-25 - Durable admitted baseline worker
+
+Implementation e78ea60 adds stage-specific baseline queue handoff, typed prepared
+workspace provider, one-use baseline dispatcher and migration0028. Follow-up
+a061648 requires saved/measured JUnit mode and tests actual REST serialization.
+Authenticated triage queues REPRODUCING atomically; collection claims exclude it.
+Legacy triage default remains finish-job. New dispatcher retains assessment/runner/
+configuration/plan binding and audit before POST, reuses budget/operation journals,
+and never repeats unknown submission. Saved report is required before reservation.
+
+RED missing module retained compressed. First concurrent test found stale-version
+reconciliation after another caller had reserved budget; corrected reconciliation
+against exact persisted from/to versions. Later tests covered crash after budget
+reservation, legacy operation refusal and racing operation record. A temporary
+undefined test assertion name was fixed (not production behavior). Failed JUnit
+artifacts preserved compressed. Focused baseline-worker15passed20.58s; final REST
+focused16passed1355deselected22.59s exit0. Unit/contract941passed4.43s before the
+report-mode follow-up; unchanged unit implementation exercised again in full run.
+Ruff/format254files, mypy126sources and lock checks pass. Dependency audit clean.
+Earlier aggregate test process was lost across session interruption with no final
+JUnit; no full-suite pass claimed for that interrupted run. Final aggregate rerun
+result follows below. No UI code/dependency changed; prior browser evidence remains
+historical. All new source uses tiny fixtures and fake HTTP, not host execution.
+
+Research used official Nebius overview, execution-lifecycle, image/checkpoint and
+security/data-handling docs; references and findings in docs/baseline-worker.md.
+The installed SDK0.3.6 ImageLike.run has no networking argument; admitted execution
+uses the existing REST serializer. Explicit save mode preserves JUnit for collection;
+operation SUCCESS is separate from process success; client interruption is not
+permission to resubmit. No invented SDK flag, OCI identity or cleanup guarantee.
+
+Migration0028 applied only in disposable test databases; restricted test role gets
+SELECT/INSERT, UPDATE/DELETE remains denied. Downgrade refuses nonempty claims to
+avoid removing duplicate-submission protection. The configured app DB was not
+migrated or regranted. Deployment still needs actual independent prepared image,
+source/configuration and trusted collector/assessor bindings. No production facts
+were signed from expected values, no live provider call/charge, no GitHub write,
+PR, merge or deployment occurred. Reproduction/submission is not verified repair.
+
+Follow-up b742a76: full run exposed the old migration smoke test attempting to
+remove shared synthetic submission claims. Kept0028 nonempty-ledger downgrade
+refusal and moved downgrade/reapply smoke to a fresh UUID schema in the verified
+rf_test database. Schema identifiers are quoted; cleanup applies only to that
+created schema. No submission ledger rows or assertions were deleted to pass.
+Reproduced: baseline-migration-regression.xml14passed/1failed14.78s; corrected
+baseline-migration-fixed.xml15passed19.22s. Earlier aggregate1370passed/1failed
+526.96s preserved as baseline-worker-reset-failure.xml.gz. Final clean rerun below.
+
+UI now explains TRIAGING and REPRODUCING checkpoints without claiming tests ran.
+RED2 missing notices observed against prior build; GREEN auth4passed9.6s and
+workbench9passed23.4s/1 opt-in real-API skip. npm lint/typecheck/build pass. New
+mobile state screenshot visually checked for legible wrapping/no horizontal
+scroll; synthetic state explicitly, not live repair proof. Workbench JUnit and
+screenshot retained. Backend full test independently covers the durable flow.
+No provider calls, charges, remote writes or deployment during this acceptance.
+
+Final clean acceptance b742a76:1371passed,zero failures/errors/skips471.58s exit0.
+JUnit and SHA256 in baseline-worker-checks.json. Disposable DB/roles cleaned by
+harness;600s aggregate ceiling only, no product limit weakened. UI13passed total
+plus1opt-in API skip; remaining scope explicitly recorded. No live repaired run,
+production VERIFIED, PR, remote write or deployment claimed.

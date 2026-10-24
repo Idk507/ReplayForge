@@ -1,0 +1,95 @@
+# Durable baseline worker
+
+Implementation e78ea60 connects authenticated reproduction retention to a baseline
+queue and admitted one-shot dispatch. Follow-up a061648 requires saved/measured
+JUnit output and exercises the actual REST serializer with mocked HTTP.
+
+## Workflow
+
+Authenticated triage commits the reproduction artifact, REPRODUCING checkpoint
+and queued baseline job atomically. The bounded retry count resets only at this
+new stage handoff; replaying retention cannot reset it again. Legacy triage mode
+keeps its previous finish-job behavior. Collection workers now explicitly claim
+only collection stages, so they cannot consume queued baseline jobs.
+
+`tick_prepared_baseline` claims only REPRODUCING. It reloads the integrity-checked
+reproduction and resolves an existing immutable preparation from an operator-owned
+`PreparedBaselineProvider`. Resolution must be read-only and stable across restart.
+It is not a clone/upload/materialization tool or permission to repeat preparation.
+The context manager releases client handles, not remote compute or saved images.
+
+The provider supplies BaselineAction, capability attestation/public-key verifier
+and a PreparedNebiusBackend-compatible port. These are trusted deployment inputs,
+never browser/model JSON. The action is recorded through BaselineJournal before
+`dispatch_baseline` checks current scope, budget, lease/version and assessment.
+
+The dispatcher requires SAVED_JUNIT or MEASURED command mode. Plain disposable
+pytest plans cannot lose their only report and still count as a valid baseline
+submission. It records an immutable assessment/runner/configuration/plan binding
+before network I/O. OperationJournal then commits SUBMISSION_UNKNOWN before POST;
+the returned provider ID is appended as OPERATION_KNOWN. No result is called a
+passing/failing test here. Signed report collection and baseline acceptance remain
+the separate existing `receive_baseline` / `accept_retained_baseline` boundary.
+
+## Recovery and denial
+
+- Concurrent dispatch claims permit one provider submission.
+- Restart discovers a known operation or returns SUBMISSION_UNKNOWN; it never
+  blindly resubmits, refunds budget or renews retained timestamps.
+- A crash after budget reservation can resume its exact unused reservation.
+- Legacy operation/receipt records prevent new submission. A competing operation
+  record between claim and POST also prevents submission.
+- Cancelled, stale, expired, wrong-scope, unassessed and mismatched runner/config
+  inputs fail closed. Real provider dispatch requires separate explicit live opt-in.
+- Existing GET-only operation recovery can inspect known provider IDs. It cannot
+  reconstruct missing IDs or turn unsigned observations into signed receipts.
+
+## Database and startup
+
+Migration 0028 adds immutable `baseline_submissions` and a SUBMISSION_CLAIMED
+baseline audit kind. Grant the baseline worker SELECT/INSERT on that table,
+alongside existing baseline action/reservation/operation and run/job/event grants.
+No UPDATE/DELETE, auth credential access or repository grant writes are required.
+Only disposable test databases were migrated during development; the user's
+configured application database was not automatically upgraded or regranted.
+
+Downgrade refuses to discard a nonempty submission ledger. Stop scheduling and
+perform an explicit archival/rollback review first; deleting claims could permit
+duplicate remote work. Historical baseline audit rows are preserved.
+
+The worker is an internal typed controller. No default production preparation
+registry, public execution route or automatic sandbox dispatcher is installed.
+Deploy it only with actual independently established prepared workspace, image,
+configuration, assessor/collector identity and restricted role bindings.
+
+## Source checks: 2026-10-25
+
+Reviewed official Nebius references:
+
+- [Execution lifecycle](https://docs.tokenfactory.nebius.com/sandboxes/concepts/execution-lifecycle):
+  operations use fresh compute; saved images carry files rather than live process
+  state; client waits can end separately; operation success and process exit differ.
+- [Overview](https://docs.tokenfactory.nebius.com/sandboxes/overview): reuse the
+  returned saved image identity and inspect both operation and process results.
+- [Security and data handling](https://docs.tokenfactory.nebius.com/sandboxes/operate/security-and-data-handling):
+  guest networking defaults enabled; each relevant REST spawn must explicitly
+  disable it, and API credentials must stay outside guest code.
+
+Inspection of installed contree-sdk 0.3.6 ImageLike.run confirms that it exposes
+no networking argument. The admitted path therefore uses the existing REST
+serializer, not an invented SDK parameter. The real-serializer contract test
+checks network disabled, saved report filesystem, no shell and no preserved env.
+The older SDK adapter is not promoted to production execution by these changes.
+
+The choose-an-interface page was unavailable through the documentation tool;
+no claim depends on that inaccessible page. No provider request or charge was
+needed for these contract tests. Small inert fixtures and synthetic signers
+validate application behavior; they do not prove production assessment facts.
+
+## Remaining live acceptance
+
+Materialization deployment and trusted measured collector bindings are still
+required before real baseline execution can be accepted. Then connect retained
+baseline to patch generation, admitted candidate/clean replay and all mandatory
+verification gates. Exact human approval, isolated GitHub write brokerage and
+live PR/hidden evaluation remain M4 requirements. These exits are unchanged.

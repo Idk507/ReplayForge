@@ -116,3 +116,5 @@ No inference, repository execution or publication is enabled by this slice.
 Demo rehearsal and current release blockers: docs/demo-runbook.md.
 
 Authenticated collection-to-triage startup: docs/authenticated-triage.md.
+
+Admitted baseline queue/dispatch and required preparation: docs/baseline-worker.md.

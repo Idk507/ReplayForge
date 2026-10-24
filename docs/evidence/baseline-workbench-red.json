@@ -1,0 +1,7 @@
+{
+  "status": "RED_EXPECTED",
+  "failed": 2,
+  "exit": 1,
+  "cause": "Prior production build did not show TRIAGING or REPRODUCING checkpoint notices",
+  "origin": "SYNTHETIC_BROWSER_CONTRACT"
+}

@@ -2,7 +2,38 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - authenticated triage, 2026-10-24
+## Current focus - baseline queue/dispatch, 2026-10-25
+
+- [x] Local reproduction-to-baseline handoff and durable admitted submission:
+e78ea60/a061648. Authenticated triage queues REPRODUCING atomically; collection
+workers cannot steal those jobs. Baseline worker resolves an operator-prepared
+workspace, reserves budget and records immutable submission binding before POST.
+Restart/timeout/concurrency do not repeat submission; saved JUnit is mandatory.
+- [x] b742a76 isolates migration smoke tests without deleting submission ledgers
+or weakening rollback protection. Workbench explains TRIAGING/REPRODUCING pending
+states and preserves missing verification gates; mobile screenshot reviewed.
+
+Final acceptance:1371 backend tests passed,zero failures/errors/skips,471.58s,
+exit0. Real REST-serializer focused16passed22.59s; migration15passed19.22s.
+Auth browser4passed; workbench9passed/1 opt-in real API skip. UI lint/typecheck/
+build, ruff/format254files, mypy126sources, lock and dependency audit pass.
+See docs/evidence/baseline-worker-checks.json and docs/baseline-worker.md.
+Previous full1370pass/1 migration-reset failure retained, never claimed green.
+One upstream deprecation warning remains. No cloud calls/charges/remote writes.
+
+Next: actual trusted materialization/prepared-image and measured collector wiring,
+then admitted baseline receipt -> patch -> candidate/clean replay -> mandatory
+seven-gate acceptance. Prepared workspace provider is an internal deployment
+port; no default production registry or public execution endpoint is installed.
+Actual source/image/configuration/assessor/collector bindings cannot be inferred
+from expected hashes or image UUIDs. Migration0028 was applied only to disposable
+test databases; application database/worker grants need deliberate local setup.
+
+M2 fixed-checkout contingency remains accepted. M3 live full repair/verification,
+M4 exact human approval/live PR/hidden evaluation and M5 deployment/submission
+remain open. This work is not a claim that the complete demo is ready.
+
+## Historical authenticated triage focus - 2026-10-24
 
 - [x] Local authenticated collection-to-triage worker handoff, implementation
 4917e5c. Current user/installation/consent check via auth broker precedes existing

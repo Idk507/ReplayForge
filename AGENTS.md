@@ -178,3 +178,13 @@ inference opt-in and a declared cost; default collection remains inference-off.
 Current membership, lease/version/consent and sticky request journals remain
 mandatory. See docs/authenticated-triage.md. Local fake-provider acceptance is
 not live inference, baseline execution, VERIFIED or M3/M4 completion.
+
+
+## Admitted baseline continuation - 2026-10-25
+
+Implementations e78ea60/a061648 connect reproduction retention to a stage-specific
+baseline queue and one-shot prepared-workspace dispatch. Collection workers do
+not claim baseline jobs. New migration0028 preserves immutable submission claims;
+nonempty-ledger rollback remains refused. See docs/baseline-worker.md for actual
+REST/SDK findings, prerequisites and limitations. Tests use synthetic assessors
+and fake HTTP; no live VERIFIED or M3/M4 completion follows from submission.

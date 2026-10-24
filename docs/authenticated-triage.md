@@ -17,9 +17,12 @@ not a reusable approval, model tool or permission to execute repository code.
 The worker correlates the response before calling the existing request budget
 and inference journal. The journal checks current lease/version/consent again,
 reserves the exact outbound request and retains the validated proposal before
-finishing the job. Unknown inference remains sticky across restart. No automatic
+queueing the baseline job atomically in authenticated mode. Legacy triage keeps
+its prior finish-job behavior. Unknown inference remains sticky across restart. No automatic
 retry is added. No patch, baseline, sandbox, verifier or publisher is dispatched.
-Auth/budget errors stop the bounded worker with a sanitized reason.
+Auth/budget errors stop the bounded worker with a sanitized reason. The separate
+admitted baseline worker is documented in `baseline-worker.md`; queueing is not
+permission to execute and default startup still dispatches no sandbox work.
 
 ## Explicit operator startup
 
