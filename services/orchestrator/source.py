@@ -46,7 +46,9 @@ def github_inputs(
             raise SourceInputError("SOURCE_REJECTED")
         try:
             with GitHubReader(token, transport=transport) as reader:
-                acquired = reader.acquire(grant, grant.owner_id, run.source_commit)
+                acquired = reader.acquire(
+                    grant, grant.owner_id, run.source_commit, selected_paths=paths
+                )
         except RepositoryReadError as error:
             unavailable = str(error) in {
                 "AUTH_DENIED",

@@ -48,3 +48,19 @@ def test_local_auth_invalid_config_does_not_fall_back(fault):
         v["REPLAYFORGE_DATABASE_URL"] += "?options=-c%20role%3Dpostgres"
     with pytest.raises(AuthDenied, match="AUTH_LOCAL_CONFIG_INVALID"):
         AuthLocalConfig.from_env(v)
+
+
+@pytest.mark.parametrize("fault", ["no_live", "key", "flag"])
+def test_collection_route_is_explicit_opt_in(fault):
+    v = values()
+    v["REPLAYFORGE_ENABLE_COLLECTION_BROKER"] = "true"
+    v["REPLAYFORGE_AUTH_ENABLE_GITHUB"] = "true"
+    v["REPLAYFORGE_COLLECTION_WORKER_KEY"] = "s" * 43
+    if fault == "no_live":
+        v["REPLAYFORGE_AUTH_ENABLE_GITHUB"] = "false"
+    if fault == "key":
+        v["REPLAYFORGE_COLLECTION_WORKER_KEY"] = "bad"
+    if fault == "flag":
+        v["REPLAYFORGE_ENABLE_COLLECTION_BROKER"] = "yes"
+    with pytest.raises(AuthDenied):
+        AuthLocalConfig.from_env(v)

@@ -75,7 +75,13 @@ def load_snapshot(
 
 
 def load_attested_tree(
-    source: ObjectSource, grant: RepositoryGrant, caller: UUID, commit: str, tree: str
+    source: ObjectSource,
+    grant: RepositoryGrant,
+    caller: UUID,
+    commit: str,
+    tree: str,
+    *,
+    selected_paths: tuple[str, ...] | None = None,
 ) -> Snapshot:
     """Trusted adapter only: commit/tree binding comes from authenticated provider.
 
@@ -84,7 +90,9 @@ def load_attested_tree(
     """
     if not re.fullmatch(r"[a-f0-9]{40}", tree):
         raise SnapshotError("TREE_IDENTITY")
-    return _load_snapshot(source, grant, caller, commit, root_tree=tree)
+    return _load_snapshot(
+        source, grant, caller, commit, root_tree=tree, selected_paths=selected_paths
+    )
 
 
 def _load_snapshot(
@@ -94,11 +102,19 @@ def _load_snapshot(
     commit: str,
     *,
     root_tree: str | None = None,
+    selected_paths: tuple[str, ...] | None = None,
 ) -> Snapshot:
     """Shared bounded tree traversal; raw and provider commit proofs stay distinct."""
     grant = RepositoryGrant.model_validate(grant.model_dump())
     if not admit(grant, caller, grant.repository_id, commit).allowed:
         raise SnapshotError("SCOPE_DENIED")
+    if selected_paths is not None and (
+        not 1 <= len(selected_paths) <= 16
+        or len(set(selected_paths)) != len(selected_paths)
+        or any(not allowed_entry(grant, path, "100644") for path in selected_paths)
+    ):
+        raise SnapshotError("SELECTED_PATH_DENIED")
+    traversal = grant.approved_paths if selected_paths is None else selected_paths
     calls = 0
     total = 0
     paths: set[str] = set()
@@ -165,7 +181,7 @@ def _load_snapshot(
             if mode == "40000":
                 relevant = any(
                     rule.startswith(path + "/") or path.startswith(rule)
-                    for rule in grant.approved_paths
+                    for rule in traversal
                 )
                 if relevant:
                     if not safe_tree_path(path):
@@ -173,7 +189,9 @@ def _load_snapshot(
                     walk(child, path + "/", depth + 1)
             elif mode not in {"100644", "100755"}:
                 raise SnapshotError("ENTRY_MODE_DENIED")
-            elif allowed_entry(grant, path, mode):
+            elif allowed_entry(grant, path, mode) and (
+                selected_paths is None or path in selected_paths
+            ):
                 body = fetch(child, "blob")
                 try:
                     body.decode("utf-8")
@@ -195,6 +213,8 @@ def _load_snapshot(
                     raise SnapshotError("PATH_DENIED")
 
     walk(root_tree, "", 0)
+    if selected_paths is not None and set(content) != set(selected_paths):
+        raise SnapshotError("SELECTED_PATH_MISSING")
     return Snapshot(
         commit,
         tuple(sorted(identities, key=lambda item: item.path)),
