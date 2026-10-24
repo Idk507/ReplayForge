@@ -61,7 +61,7 @@ test("synthetic session can connect an allowed repository and sign out", async (
   });
   await page.goto("/settings/integrations");
   await expect(page.getByLabel("GitHub installation")).toHaveValue("7");
-  await page.getByLabel("Repository").selectOption("42");
+  await page.getByRole("radio",{name:"example/demo",exact:true}).check();
   await expect(page.getByText("Source pinned to aaaaaaaaaaaa.")).toBeVisible();
   await page.getByLabel(/I authorize/).check();
   await page.getByRole("button",{name:"Connect repository"}).click();
@@ -89,6 +89,10 @@ test("large-account pages and discovery failures preserve identity and allow ref
     if(path.endsWith("auth/me"))return r.fulfill({json:me});
     if(path.endsWith("github/installations"))return r.fulfill({json:[{id:7,account:{login:"example"}}]});
     if(path.endsWith("github/head"))return r.fulfill({json:{sha:"a".repeat(40)}});
+    if(path.endsWith("repositories/51/connect")){
+      expect(r.request().postDataJSON().repository_page).toBe(2);
+      return r.fulfill({json:{repository_id:id,commits:["a".repeat(40)]}});
+    }
     if(path.endsWith("github/repositories")){
       if(fail)return r.fulfill({status:502,json:{error_class:"BACKEND_DENIED"}});
       return r.fulfill({json:url.searchParams.get("page")==="2"?[repo(51)]:Array.from({length:50},(_,i)=>repo(i+1))});
@@ -99,8 +103,13 @@ test("large-account pages and discovery failures preserve identity and allow ref
   await expect(page.getByLabel("GitHub installation")).toHaveValue("7");
   await expect(page.getByRole("button",{name:"Next",exact:true})).toBeEnabled();
   await page.getByRole("button",{name:"Next",exact:true}).click();
-  await expect(page.getByRole("option",{name:"example/repo51",exact:true})).toHaveCount(1);
+  await expect(page.getByRole("radio",{name:"example/repo51",exact:true})).toHaveCount(1);
   await expect(page.getByRole("button",{name:"Next",exact:true})).toBeDisabled();
+  await page.getByRole("radio",{name:"example/repo51",exact:true}).check();
+  await expect(page.getByText("Source pinned to aaaaaaaaaaaa.")).toBeVisible();
+  await page.getByLabel(/I authorize/).check();
+  await page.getByRole("button",{name:"Connect repository",exact:true}).click();
+  await expect(page.getByText("Repository connected",{exact:true})).toBeVisible();
   fail=true;
   await page.getByRole("button",{name:"Refresh repositories"}).click();
   await expect(page.getByRole("alert").filter({hasText:"session is still signed in"})).toBeVisible();
@@ -108,5 +117,5 @@ test("large-account pages and discovery failures preserve identity and allow ref
   await expect(page.getByRole("link",{name:"Continue with GitHub"})).toHaveCount(0);
   fail=false;
   await page.getByRole("button",{name:"Refresh repositories"}).click();
-  await expect(page.getByRole("option",{name:"example/repo51",exact:true})).toHaveCount(1);
+  await expect(page.getByRole("radio",{name:"example/repo51",exact:true})).toHaveCount(1);
 });

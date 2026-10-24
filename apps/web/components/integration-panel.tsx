@@ -79,17 +79,24 @@ export default function IntegrationPanel({installUrl}:{installUrl:string|null}) 
       {installation&&!loading&&!repoLoading&&!repos.length&&!error&&<p>No repositories are available on this page. In GitHub, approve Contents read access and select a repository, then refresh. Use Previous if you reached the end of the list.</p>}
       <label htmlFor="repository-filter">Filter repositories on this page</label>
       <input id="repository-filter" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Repository name" disabled={!installation||repoLoading}/>
-      <label htmlFor="github-repository">Repository</label>
-      <select id="github-repository" value={repository} disabled={!installation||repoLoading||busy} required onChange={e=>{setRepository(e.target.value);setCommit("");setConnected(null);setError("");setHeadLoading(Boolean(e.target.value));}}>
-        <option value="">Choose a repository</option>{repos.filter(v=>v.full_name.toLowerCase().includes(filter.toLowerCase())||String(v.id)===repository).map(v=><option key={v.id} value={v.id} disabled={!v.permissions.pull||v.disabled}>{v.full_name}{v.private?" (private)":""}</option>)}
-      </select>
+      <fieldset className="repository-picker" disabled={!installation||repoLoading||busy}>
+        <legend>Repository</legend>
+        <div className="repository-options" aria-busy={repoLoading}>
+          {repos.filter(v=>v.full_name.toLowerCase().includes(filter.toLowerCase())).map(v=><label key={v.id} className={`repository-choice ${repository===String(v.id)?"selected":""}`}>
+            <input type="radio" name="repository-choice" value={v.id} checked={repository===String(v.id)} disabled={!v.permissions.pull||v.disabled} onChange={()=>{setRepository(String(v.id));setCommit("");setConnected(null);setError("");setHeadLoading(true);}}/>
+            <span>{v.full_name}{v.private?" (private)":""}</span>
+          </label>)}
+        </div>
+        {repos.length>0&&!repos.some(v=>v.full_name.toLowerCase().includes(filter.toLowerCase()))&&<p>No matching repository on page {page}. Clear the filter or browse another page.</p>}
+      </fieldset>
+      {installation&&!repoLoading&&error&&<button type="button" onClick={refresh}>Retry page {page}</button>}
       {installation&&<div className="onboarding-actions"><button type="button" disabled={page===1||repoLoading||busy} onClick={()=>changePage(page-1)}>Previous</button><span aria-live="polite">Page {page}</span><button type="button" disabled={repos.length<50||page>=20000||repoLoading||busy} onClick={()=>changePage(page+1)}>Next</button></div>}
       {selected&&<p className="muted">Selected: {selected.full_name}. GitHub access: {selected.permissions.push?"read and push":"read only"}. ReplayForge still requires separate approval to publish.</p>}
       {headLoading&&<p role="status">Pinning the latest source commit...</p>}
       {commit&&<p className="muted">Source pinned to {commit.slice(0,12)}.</p>}
       <details><summary>Advanced: choose an exact source commit</summary><label htmlFor="source-commit">Source commit</label><input id="source-commit" value={commit} onChange={e=>{setCommit(e.target.value);setConnected(null);}} minLength={40} maxLength={40} pattern="[a-f0-9]{40}" disabled={headLoading||busy}/></details>
-      <label className="check-label"><input type="checkbox" name="consent" required disabled={busy}/>I authorize ReplayForge to inspect this pinned commit and run bounded tests in its isolated remote runner.</label>
-      {selected?.private&&<label className="check-label"><input type="checkbox" name="private" required disabled={busy}/>I explicitly approve access to this private repository.</label>}
+      <label className="check-label"><input key={`consent-${repository}-${commit}`} type="checkbox" name="consent" required disabled={busy}/>I authorize ReplayForge to inspect this pinned commit and run bounded tests in its isolated remote runner.</label>
+      {selected?.private&&<label className="check-label"><input key={`private-${repository}-${commit}`} type="checkbox" name="private" required disabled={busy}/>I explicitly approve access to this private repository.</label>}
       <p className="muted">Scope: src/, app/, tests/, README and Python dependency manifests. No workflow edits, merge or deployment.</p>
       <button className="primary" type="submit" disabled={busy||!selected||!selected.permissions.pull||selected.disabled||headLoading||!commit}>{busy?"Connecting repository...":"Connect repository"}</button>
     </form>
