@@ -640,10 +640,13 @@ class Store:
         *,
         triage_only: bool = False,
         stages: tuple[Stage, ...] | None = None,
+        run_id: UUID | None = None,
     ) -> Lease | None:
         """Claim queued/expired work; at most three acquisitions, server clock."""
         if type(triage_only) is not bool:
             raise StoreError("CLAIM_STAGE_INVALID")
+        if run_id is not None and not isinstance(run_id, UUID):
+            raise StoreError("CLAIM_RUN_INVALID")
         if stages is not None and (
             not stages
             or len(set(stages)) != len(stages)
@@ -660,8 +663,9 @@ class Store:
                 AND (r.checkpoint->>'current_stage'='TRIAGING')=%s
                 AND (%s::text[] IS NULL OR
                      r.checkpoint->>'current_stage'=ANY(%s::text[]))
+                AND (%s::uuid IS NULL OR r.id=%s)
                 ORDER BY r.id FOR UPDATE OF r,j SKIP LOCKED LIMIT 1""",
-                (triage_only, names, names),
+                (triage_only, names, names, run_id, run_id),
             ).fetchone()
             if row is None:
                 return None

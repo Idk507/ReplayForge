@@ -39,6 +39,9 @@ class PreparedBaselineProvider(Protocol):
     @property
     def origin(self) -> Literal["TEST_TRANSPORT", "REMOTE_SERVICE"]: ...
 
+    @property
+    def run_id(self) -> UUID: ...
+
     def resolve(
         self, run: RunState, reproduction: ReproductionArtifact
     ) -> AbstractContextManager[PreparedBaseline]: ...
@@ -56,7 +59,7 @@ def tick_prepared_baseline(
         raise StoreError("BASELINE_BACKEND_INVALID")
     if provider.origin == "REMOTE_SERVICE" and allow_live is not True:
         raise StoreError("BASELINE_LIVE_NOT_AUTHORIZED")
-    lease = store.claim(worker_id, stages=(Stage.REPRODUCING,))
+    lease = store.claim(worker_id, stages=(Stage.REPRODUCING,), run_id=provider.run_id)
     if lease is None:
         return None
     owner, run = store.claimed_run(lease)

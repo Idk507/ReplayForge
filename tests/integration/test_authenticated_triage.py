@@ -102,18 +102,17 @@ def test_authenticated_queue_handoff_never_leaks_token_or_retries(store, revoked
                 == "IDLE"
             )
         assert len(calls) == 1
-        from contextlib import contextmanager
-
         from packages.contracts.execution import TestCommandRequest
-        from services.orchestrator.baseline_worker import (
-            PreparedBaseline,
-            tick_prepared_baseline,
-        )
+        from services.orchestrator.baseline_worker import tick_prepared_baseline
         from services.orchestrator.worker import tick
         from services.persistence.baseline import BaselineAction
+        from services.persistence.reproduction import ReproductionJournal
         from services.runner.baseline import FailureExpectation
+        from services.runner.baseline_provider import NebiusBaselineProvider
         from services.runner.commands import plan_pytest
-        from tests.integration.test_replay_dispatch import FakeBackend
+        from services.runner.prepared import PreparedImageBinding
+        from services.runner.receipts import plan_ref
+        from tests.contract.test_sandbox_smoke import config as sandbox_config
         from tests.unit.test_runner_admission import fixture
 
         assert (
@@ -121,42 +120,55 @@ def test_authenticated_queue_handoff_never_leaks_token_or_retries(store, revoked
             == "IDLE"
         )
         _, profile, _, sign, verifier = fixture("REMOTE_SERVICE")
-        backend = FakeBackend(profile)
-        closed = []
+        run = store.get(result.run_id, session.user_id)
+        reproduction = ReproductionJournal(store).get(run.run_id, session.user_id)
+        grant = store.repository(run.repository_id, session.user_id)
+        request = TestCommandRequest(
+            run_id=run.run_id,
+            repository_id=run.repository_id,
+            source_commit=run.source_commit,
+            source_manifest_ref=run.source_manifest_ref,
+            reproduction_test_ref=run.reproduction_test_ref,
+            image_digest=profile.image_digest,
+            phase="BASELINE",
+            reproduction_path=reproduction.proposal.target_path,
+            test_paths=(reproduction.proposal.target_path,),
+        )
+        action = BaselineAction(
+            execution_id=uuid4(),
+            plan=plan_pytest(
+                request, run, grant, session.user_id, save_junit_image=True
+            ),
+            source_tree_ref="sha256:" + "e" * 64,
+            expected=FailureExpectation(
+                test_name="test_duplicate", assertion_marker="RF_DUPLICATE_TRANSACTION"
+            ),
+        )
+        binding = PreparedImageBinding(
+            plan_ref=plan_ref(action.plan),
+            execution_id=action.execution_id,
+            tree_ref=action.source_tree_ref,
+            image_uuid=sandbox_config().image_uuid,
+            image_digest=profile.image_digest,
+            runner_id=profile.runner_id,
+            configuration_ref=profile.configuration_ref,
+        )
+        posts = []
+        operation = uuid4()
 
-        class Provider:
-            origin = "TEST_TRANSPORT"
+        def spawn(req):
+            posts.append(req)
+            return httpx.Response(201, json={"uuid": str(operation)})
 
-            @contextmanager
-            def resolve(self, run, reproduction):
-                grant = store.repository(run.repository_id, session.user_id)
-                request = TestCommandRequest(
-                    run_id=run.run_id,
-                    repository_id=run.repository_id,
-                    source_commit=run.source_commit,
-                    source_manifest_ref=run.source_manifest_ref,
-                    reproduction_test_ref=run.reproduction_test_ref,
-                    image_digest=profile.image_digest,
-                    phase="BASELINE",
-                    reproduction_path=reproduction.proposal.target_path,
-                    test_paths=(reproduction.proposal.target_path,),
-                )
-                action = BaselineAction(
-                    execution_id=uuid4(),
-                    plan=plan_pytest(
-                        request, run, grant, session.user_id, save_junit_image=True
-                    ),
-                    source_tree_ref="sha256:" + "e" * 64,
-                    expected=FailureExpectation(
-                        test_name="test_duplicate",
-                        assertion_marker="RF_DUPLICATE_TRANSACTION",
-                    ),
-                )
-                try:
-                    yield PreparedBaseline(action, sign(), verifier, backend)
-                finally:
-                    closed.append(True)
-
-        dispatched = tick_prepared_baseline(store, uuid4(), Provider())
-        assert dispatched.status == "SUBMITTED" and len(backend.calls) == 1
-        assert closed == [True]
+        provider = NebiusBaselineProvider(
+            sandbox_config(),
+            action,
+            binding,
+            sign(),
+            verifier,
+            transport=httpx.MockTransport(spawn),
+        )
+        dispatched = tick_prepared_baseline(store, uuid4(), provider)
+        assert dispatched.status == "SUBMITTED" and dispatched.operation_id == operation
+        assert len(posts) == 1
+        assert tick_prepared_baseline(store, uuid4(), provider) is None
