@@ -109,3 +109,14 @@ No browser roles grant ReviewPermission. Approval HTTP and reduced installation
 write-token brokerage remain unimplemented; login/connection cannot publish.
 Local provider/browser tests are synthetic; real App login and public deployment
 acceptance remain pending. See docs/github-authentication.md and tasks/plan.md.
+
+
+## Repository onboarding follow-up - 2026-10-24
+
+Explicit session-mode repository pages and default-branch SHA resolution now
+support large accounts without implicit full enumeration. Migration0027 stores a
+provider page locator; fresh membership checks, immutable source/private consent
+and owner checks remain mandatory. Provider errors do not impersonate expired
+browser sessions. One-time App/DB configuration belongs to operators; end users
+choose a repository and explicitly consent. See docs/github-authentication.md for
+bounds, stale-page recovery and final acceptance evidence. M3/M4 exits unchanged.

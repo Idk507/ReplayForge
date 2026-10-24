@@ -17,7 +17,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
   const [research, setResearch] = useState<Research>([]);
   const [summary, setSummary] = useState<Summary | null>(null), [manifest, setManifest] = useState<Manifest | null>(null), [patch, setPatch] = useState<Patch | null>(null);
   const [error, setError] = useState(""), [detailError, setDetailError] = useState("");
-  const [loading, setLoading] = useState(true), [intake, setIntake] = useState(false), [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true), [intake, setIntake] = useState(Boolean(initialRepository && initialCommit)), [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{name: string; content: string} | null>(null);
   const [openId, setOpenId] = useState("");
   const nonce = useRef<string | null>(null);

@@ -96,3 +96,11 @@ installation/repository selection, exact-commit consent and login/logout UI.
 See [authentication setup and remaining acceptance](docs/github-authentication.md).
 Enable it explicitly with `REPLAYFORGE_WEB_AUTH_MODE=github`; local bearer mode remains
 available. Real GitHub login and approval-token brokerage are still pending.
+
+
+In GitHub mode, open `/settings/integrations`: a single installation is selected
+for you, repository lists are paged, and the latest source commit is pinned when
+you select a repository. Confirm access, connect, then use **Start an investigation**
+to open the prefilled incident form. **Manage GitHub access** and **Refresh
+repositories** handle installation changes. Filters apply to the current page.
+No tests start until an incident is submitted through the admitted workflow.

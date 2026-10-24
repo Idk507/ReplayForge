@@ -151,3 +151,14 @@ repository connection requires exact source and explicit execution/private
 consent. Owner disconnect atomically revokes stored execution consent. These
 local contracts do not grant reviewer permission or authorize publication.
 See docs/github-authentication.md for API routes, startup, limits and evidence.
+
+
+## Repository onboarding follow-up - 2026-10-24
+
+Explicit session-mode repository pages and default-branch SHA resolution now
+support large accounts without implicit full enumeration. Migration0027 stores a
+provider page locator; fresh membership checks, immutable source/private consent
+and owner checks remain mandatory. Provider errors do not impersonate expired
+browser sessions. One-time App/DB configuration belongs to operators; end users
+choose a repository and explicitly consent. See docs/github-authentication.md for
+bounds, stale-page recovery and final acceptance evidence. M3/M4 exits unchanged.

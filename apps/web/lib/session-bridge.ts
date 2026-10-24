@@ -9,7 +9,7 @@ export async function sessionBridge(request: Request, segments: string[]): Promi
   }
   const path=segments.join("/"), id="[a-fA-F0-9-]{36}", digest="sha256:[a-f0-9]{64}";
   const read=new RegExp(`^runs(?:/${id}(?:/(?:events|verification|patch|research)|/evidence/${digest}(?:/artifacts/${digest})?)?)?$`);
-  const readable=read.test(path) || ["auth/me","github/installations","github/repositories"].includes(path);
+  const readable=read.test(path) || ["auth/me","github/installations","github/repositories","github/head"].includes(path);
   const writable=path==="runs" || path==="auth/logout" ||
     new RegExp(`^runs/${id}/(?:cancel|approvals|pull-request)$`).test(path) ||
     /^repositories\/[1-9][0-9]{0,18}\/connect$/.test(path);
@@ -19,7 +19,10 @@ export async function sessionBridge(request: Request, segments: string[]): Promi
     return Response.json({error_class:"LOCAL_ORIGIN_REQUIRED"},{status:403});
   const query=[...url.searchParams.keys()];
   if(query.length && !((path.endsWith("/events") && query.length===1 && query[0]==="after" && /^[0-9]{1,15}$/.test(url.searchParams.get("after") ?? "")) ||
-    (path==="github/repositories" && query.length===1 && query[0]==="installation_id" && /^[1-9][0-9]{0,18}$/.test(url.searchParams.get("installation_id") ?? ""))))
+    (["github/repositories","github/head"].includes(path) &&
+      query.length===new Set(query).size && query.length<=(path==="github/head"?3:2) &&
+      query.includes("installation_id") && (path!=="github/head"||query.includes("repository_id")) &&
+      query.every(key=>["installation_id","page",...(path==="github/head"?["repository_id"]:[])].includes(key) && /^[1-9][0-9]{0,18}$/.test(url.searchParams.get(key)??"")))))
     return Response.json({error_class:"QUERY_DENIED"},{status:400});
   const base=process.env.REPLAYFORGE_API_URL ?? "http://127.0.0.1:8000";
   if(!/^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/.test(base))

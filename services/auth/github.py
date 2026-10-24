@@ -103,7 +103,10 @@ class GitHubAuthClient:
         *,
         data: dict[str, str] | None = None,
         token: SecretStr | None = None,
+        max_bytes: int = 65536,
     ) -> T:
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 524288:
+            raise AuthDenied("AUTH_INPUT_INVALID")
         if self._closed or (self.origin == "REMOTE_SERVICE" and not self._live):
             raise AuthDenied("AUTH_LIVE_NOT_AUTHORIZED")
         headers = (
@@ -126,7 +129,10 @@ class GitHubAuthClient:
                     raise AuthDenied("AUTH_RESPONSE_INVALID")
                 raw = bytearray()
                 for chunk in r.iter_bytes():
-                    if len(raw) + len(chunk) > 65536 or time.monotonic() >= deadline:
+                    if (
+                        len(raw) + len(chunk) > max_bytes
+                        or time.monotonic() >= deadline
+                    ):
                         raise AuthDenied("AUTH_RESPONSE_LIMIT")
                     raw.extend(chunk)
                 return model.model_validate(json.loads(raw))

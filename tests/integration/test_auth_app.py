@@ -218,7 +218,7 @@ def test_auth_unknown_exchange_requires_fresh_login_not_retry(store):
         c.get(
             "/api/v1/auth/github/callback", params=params, follow_redirects=False
         ).status_code
-        == 401
+        == 502
     )
     assert (
         c.get(

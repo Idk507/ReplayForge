@@ -188,3 +188,60 @@ https://github.com/login/oauth (RFC9207); duplicate/unknown/wrong issuer denied.
 Installation discovery succeeded with no visible installations; actual repository
 access acceptance remains pending App installation. Earlier no-live statements
 describe historical foundation evidence; see auth-live-login-checks.json.
+
+
+## Large-account onboarding contract - 2026-10-24
+
+Live diagnosis after the user installed/granted access found367 visible GitHub
+repositories. The old response total_count<=50 validator rejected that legitimate
+account; mapping provider/schema failures to401 caused the web session gate to
+show login again. This was a product defect, not a need for broader permissions.
+
+GET /api/v1/github/repositories now accepts optional page1..20000. Explicit page
+mode fetches exactly one provider page of at most50 repositories and524288 response
+bytes, with the existing10-second HTTP deadline. Total count is bounded at one
+million, and partial/duplicate records fail closed. Returned pages are deliberately
+partial, not a claim of complete enumeration. Disabled/unreadable entries cannot
+be selected/admitted. Omitted page retains the old bounded enumeration contract.
+Installation enumeration retains its existing50-record cap. No automatic full
+account crawl is introduced. The UI filters only the displayed page, with Next/
+Previous and explicit refresh; exactly full final pages may lead to an empty page.
+
+GET /api/v1/github/head requires installation_id,repository_id,page. It verifies
+current user/app membership for that page, then reads the latest default-branch
+commit metadata (commits?per_page=1), without code/files/test execution. The browser
+pins the returned immutable SHA; Advanced can override with another exact SHA.
+Connection independently verifies that exact commit before granting consent.
+
+POST connection accepts optional strict repository_page. Migration0027 retains
+that locator for fresh page-membership checks during every later private access.
+This is a lookup hint, never authority: wrong page/repository/install still deny.
+If provider ordering changes, access fails closed until the user refreshes and
+reconnects the same source. Successful fresh reconnect can update only the page
+locator; existing source/private/owner/installation/provenance constraints remain.
+NULL legacy locators retain their original bounded check; connecting afresh upgrades
+it after actual current membership verification. No owner/grant migration occurs.
+
+Provider/list/response failures return502, rate exhaustion429, current repository
+and CSRF denials403; actual missing/expired local sessions remain401. Unknown OAuth
+exchange failure is502 then replay401, preserving irreversible attempt consumption.
+The UI no longer signs out for a repository discovery error. Separate installation
+and repository fetch completion cannot erase an unrelated discovery error.
+
+The UI auto-selects a sole installation, displays loading/empty/error states,
+automatically pins HEAD, keeps explicit private/execution consent, and opens the
+prefilled incident form after the connected CTA. It never automatically starts
+execution or publishes. GITHUB_APP_SLUG (public validated slug) supplies the fixed
+GitHub Manage access link; set this on the server, not from request input. App
+registration/secrets/DB roles are one-time operator setup, not end-user tasks.
+
+A browser policy rejected automated inspection of the user's existing integrations
+tab during final acceptance. No alternate browser, raw CDP, or indirect UI fetch
+was used to bypass that denial. Synthetic browser tests and disposable PostgreSQL
+checks continue independently. Live user-tab acceptance must be performed by the
+user or through normally admitted browser access later. No live repository connect,
+execution, GitHub write or cloud charge is asserted for this continuation.
+
+Primary references checked before implementation:
+https://docs.github.com/en/rest/apps/installations
+https://docs.github.com/en/rest/repos/commits#list-commits

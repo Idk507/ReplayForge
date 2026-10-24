@@ -87,6 +87,10 @@ def create_auth_app(
             else 409
             if code == "AUTH_CONNECTION_CONFLICT"
             else 401
+            if code in {"AUTH_REQUIRED", "AUTH_REAUTH_REQUIRED", "AUTH_LOGIN_DENIED"}
+            else 502
+            if code.startswith(("AUTH_PROVIDER_", "AUTH_RESPONSE_", "AUTH_LIST_"))
+            else 401
         )
         response = JSONResponse({"error_class": code}, status_code=status)
         if request.url.path == "/api/v1/auth/github/callback":
