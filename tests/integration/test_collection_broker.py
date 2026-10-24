@@ -18,7 +18,7 @@ from tests.integration.test_session_access import connect, setup
 store = test_postgres.store
 
 
-def prepared(store):
+def prepared(store, incident="Small README demonstration"):
     c, j, session, headers, access, calls = setup(store)
     repo = connect(access, session)
     with j.store._connection() as db:
@@ -29,7 +29,7 @@ def prepared(store):
         json={
             "repository_id": str(repo.repository_id),
             "commit_sha": "a" * 40,
-            "incident_text": "Small README demonstration",
+            "incident_text": incident,
             "idempotency_key": str(uuid4()),
         },
     )
@@ -42,12 +42,12 @@ def prepared(store):
     def factory(token, paths):
         def load(run, grant):
             fetched.append(paths)
-            body = b"Small trusted synthetic demo text"
-            f = FileIdentity("README.md", "b" * 40, sha256(body).hexdigest(), len(body))
+            body = b"# Small trusted synthetic demo text\n"
+            f = FileIdentity(paths[0], "b" * 40, sha256(body).hexdigest(), len(body))
             snap = Snapshot(
                 "a" * 40,
                 (f,),
-                MappingProxyType({"README.md": body}),
+                MappingProxyType({paths[0]: body}),
                 evidence_origin="TEST_TRANSPORT",
                 commit_identity="GITHUB_HTTPS_METADATA",
             )
@@ -107,6 +107,19 @@ def test_collection_broker_retains_context_without_returning_credentials(store):
         == 409
     )
     assert len(fetched) == 1
+
+
+def test_incident_reference_selects_relevant_file_before_source_read(store):
+    c, j, session, broker, payload, fetched = prepared(
+        store, 'AssertionError in File "src/checkout.py", line 12'
+    )
+    r = c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+    assert r.status_code == 200 and r.json()["stage"] == "TRIAGING"
+    assert fetched == [("src/checkout.py",)]
 
 
 @pytest.mark.parametrize(

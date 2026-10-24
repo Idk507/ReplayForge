@@ -12,6 +12,7 @@ from packages.contracts.run import RunState, Stage
 from packages.policies.repository import allowed_entry, safe_tree_path
 from services.auth.access import AuthAccess
 from services.auth.github import AuthDenied
+from services.context.selection import select_paths
 from services.orchestrator.collection import (
     CollectionInputs,
     InputLoader,
@@ -94,6 +95,8 @@ class CollectionBroker:
         grant = self.store.repository(state.repository_id, owner)
         if any(not allowed_entry(grant, path, "100644") for path in payload.paths):
             raise HTTPException(403, "COLLECTION_PATH_DENIED")
+        report = self.store.incident(state.run_id, owner)
+        paths = select_paths(grant, report.text, payload.paths)
         token = self.access.journal.credential(owner)
 
         # The source adapter narrows file reads without rewriting the registered grant.
@@ -103,7 +106,7 @@ class CollectionBroker:
             _, current = self.store.claimed_run(payload.lease)
             if current.version != run.version or current.cancellation_requested:
                 raise StoreError("STALE_VERSION")
-            return self._factory(token, payload.paths)(run, admitted_grant)
+            return self._factory(token, paths)(run, admitted_grant)
 
         result = run_collection(
             self.store,
