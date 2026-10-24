@@ -486,3 +486,13 @@ server generated transient rules/type paths; these are excluded from this change
 explicit refresh/error recovery; [x] automatic default source pin and prefilled
 intake handoff, observed in synthetic browser tests. [ ] updated actual user-tab
 selector acceptance (blocked browser automation); [ ] full M3/M4 exits.
+
+
+2026-10-24 user feedback follow-up (a6250b2): repository selection now uses
+searchable radio rows, page-specific retry, and fresh consent per source. Local
+auth browser4 pass; workbench7 pass/1 opt-in skip; build/lint/types pass. See
+auth-picker-checks.json. Actual workbench sample is CREATED/queued,zero worker
+attempts. Next priority: authenticated source-broker-to-worker handoff, then full
+M3 runner/verifier progression; reviewer/write brokerage follows verified evidence.
+Page2 provider metadata returned50 valid entries; intermittent UI failure is not
+claimed reproduced. Actual user picker confirmation remains pending. M3/M4 open.

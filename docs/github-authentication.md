@@ -245,3 +245,10 @@ execution, GitHub write or cloud charge is asserted for this continuation.
 Primary references checked before implementation:
 https://docs.github.com/en/rest/apps/installations
 https://docs.github.com/en/rest/repos/commits#list-commits
+
+
+Picker update2026-10-24 (a6250b2): native repository popup replaced by searchable
+radio rows; Retry pageN and no-match guidance added. Selecting a different repo
+or source resets explicit consent. Page2 selection/connect covered by browser
+regression. Actual queued job had zero worker attempts; worker/source-broker
+integration is still required for any workbench repair progression.

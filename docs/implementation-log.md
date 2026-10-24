@@ -3026,3 +3026,40 @@ local; installation enumeration cap remains50. M3 seven-gate production/worker
 journey, session-derived exact approval and installation-token brokerage, M4 live
 approved PR/hidden evaluation and M5 packaging/deploy remain open. Existing
 milestone exits and human approval boundaries are preserved.
+
+
+## 2026-10-24 - Native repository picker and idle workbench report
+
+Implementation a6250b2; parent9535b05. User reports native repository dropdown
+cannot be selected and sample workbench has no visible activity. Necessary
+read-only official GitHub metadata diagnostic returned50 page2 entries, all valid
+against GitHubRepository; no source code fetched. Current provider page2 failure
+was not reproduced, so no new server-pagination fix is claimed. Sanitized local
+DB checks found one CREATED run and one queued job with zero worker attempts;
+this proves intake persistence, not a running repair pipeline.
+
+Replaced native repository popup with searchable, keyboard-selectable radio rows,
+scroll containment and selected styling. Added no-match guidance and Retry pageN.
+Explicit consent/private checkboxes reset whenever repository or pinned SHA
+changes. Existing automatic pin/owner/CSRF/membership gates remain unchanged.
+Page2 regression now selects repo51, pins source and connects with exact page2 in
+the request (previous test checked only entry appearance). Workbench CREATED run
+now explicitly shows queued/waiting for collection worker, without implying tests
+or patches ran. No worker was started with broader CLI/OAuth credentials.
+
+RED auth-picker-red.xml.gz shows the radio interaction missing in the old native
+picker (test timeout,not a provider proof). GREEN npx playwright test -c
+playwright.auth.config.ts:4 pass5.2s; npx playwright test:7 pass,1 opt-in actual API
+skip19.9s, including queue explanation. npm run lint; npm run typecheck; npm run
+build pass. Ruff check/format241files and strict mypy119sources pass. Dependencies
+and backend implementation unchanged; full backend/vulnerability audits not
+repeated (prior1308 pass at b169a81 remains historical). Mobile screenshot visually
+reviewed. Browser acceptance uses synthetic identities/metadata. Actual user-tab
+confirmation remains pending under the earlier browser automation restriction.
+Production UI3000 restored; API8000 remains running. No paid/model/sandbox call,
+repository execution, GitHub write, PR, merge or deploy. SHA256 evidence recorded
+in auth-picker-checks.json. Historical pending-permission screenshot left intact.
+
+Next critical work is authenticated source-broker/worker integration for the
+queued job, then authentic runner/verifier handoff. Login/selector/intake alone
+are not end-to-end repair readiness. M3/M4/M5 remain open; no milestone weakened.
