@@ -114,3 +114,5 @@ collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
 No inference, repository execution or publication is enabled by this slice.
 
 Demo rehearsal and current release blockers: docs/demo-runbook.md.
+
+Authenticated collection-to-triage startup: docs/authenticated-triage.md.

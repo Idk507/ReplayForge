@@ -2,7 +2,35 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - reconciled 2026-10-24 collection handoff
+## Current focus - authenticated triage, 2026-10-24
+
+- [x] Local authenticated collection-to-triage worker handoff, implementation
+4917e5c. Current user/installation/consent check via auth broker precedes existing
+budgeted inference journal. Worker receives no GitHub or vault credentials.
+Explicit triage/inference/cost flags required; default remains no I/O/inference.
+Fake-provider acceptance retains reproduction and stops at REPRODUCING; revoked
+consent prevents inference and completed-job polling makes no second model call.
+
+Acceptance:1357 backend tests passed,zero failures/errors/skips,454.73s,exit0;
+focused PostgreSQL12passed27.55s; unit/contract941passed5.19s. Ruff/format250files,
+mypy124sources, lock, dependency audit and configured-secret-value scan pass.
+See docs/evidence/auth-triage-checks.json and docs/authenticated-triage.md.
+One upstream deprecation warning remains. No UI source/dependency changes; prior
+browser acceptance is historical. Auth API8000 restarted without access logs.
+No live inference, sandbox execution, paid call, remote write or deploy occurred.
+
+Next critical dependency: admitted baseline materialization/collection with actual
+trusted source/image/configuration and assessor/collector key bindings. Existing
+PreparedImageBinding/CapabilityAttestation cannot be invented from expected hashes
+or image UUIDs. Live triage remains unverified; collection-only DB role is not a
+triage deployment role. Follow the dedicated restricted grants/startup guide.
+
+M2 fixed-checkout contingency remains accepted. M3 full repair/seven-gate live
+acceptance, M4 exact human approval/live PR/hidden evaluation, M5 deployment and
+submission remain open. Reproduction proposal is not a verified repair. No
+milestone exit criteria or publication approval requirements were weakened.
+
+## Historical collection focus - reconciled 2026-10-24
 
 Implementation 3f5704f adds the authenticated collection broker, isolated worker
 launcher and selected-file acquisition under the original registered grant.

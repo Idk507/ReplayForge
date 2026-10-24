@@ -3144,3 +3144,43 @@ readiness gaps in demo-context-checks.json. One upstream deprecation warning.
 Full test used disposable DB/roles,600s aggregate test ceiling; cleanup completed.
 No model, sandbox or publication ran. Current demo remains incomplete; no M3/M4/M5
 exit was weakened. Next is admitted checkout repair/replay worker integration.
+
+
+## 2026-10-24 - Authenticated durable triage continuation
+
+Implementation4917e5c. The source broker now performs an internal current-access
+check bound to exact lease/run/version before the separate worker calls existing
+run_triage. Browser/model tools cannot invoke this route. No GitHub token or vault
+key leaves auth custody. Worker mode requires --triage, --allow-live-inference
+and explicit estimated-call-microusd before I/O. Launcher only admits inference
+keys in that mode and strips other inherited credentials. Collection default
+remains unchanged. Existing sticky inference journal/budget/atomic retention used;
+no new shell, baseline, patch, verifier or publisher dispatch was enabled.
+
+RED missing dispatch_triage_once retained as auth-triage-red.xml.gz. First local
+fixture import was removed as unused; fixed to explicit test_postgres.store alias.
+The revocation case initially expected a return rather than denial; corrected the
+test to assert BrokerError and zero model calls, preserving fail-closed behavior.
+That failure retained as auth-triage-focused.xml.gz. Focused disposable-Postgres
+run:12passed1345deselected27.55s exit0. Unit/contract941passed5.19s exit0.
+Ruff/format250files, strict mypy124sources, lock check pass. Dependency audit has
+no known vulnerabilities; secret-value scan passes without emitting values.
+
+No UI source/dependencies changed; previous auth4/workbench7 browser acceptance
+remains historical with its explicit opt-in API skip. New internal path is not
+added to BFF/model vocabulary. Auth API restarted successfully at127.0.0.1:8000
+without access logs after code update. No paid/provider call, sandbox execution,
+external write, PR, merge or deployment performed. Live triage remains unverified.
+
+Remaining baseline acceptance requires configured admitted materializer/collector
+and independently established source/image/configuration facts plus trusted keys.
+PreparedImageBinding and CapabilityAttestation are trusted external/operator
+inputs; no production facts were inferred from expected digests or image UUIDs.
+M3/M4/M5 exits unchanged; reproduction proposal is not repair completion.
+
+Final4917e5c: full isolated PostgreSQL regression1357passed,zero failures/errors/
+skips454.73s,exit0. Artifact auth-triage-final-postgres.xml and exact SHA256 in
+auth-triage-checks.json. Disposable DB/roles cleaned;600s aggregate test ceiling
+only, product limits unchanged. Defaults NOT_RUN/exit2 remain unit-tested; saved
+checkout checker M2_FIXTURE_ACCEPTED/exit0. All milestone limitations preserved.
+Implementation source committed; evidence/docs commit follows.

@@ -1,0 +1,54 @@
+{
+  "implementation_commit": "4917e5c",
+  "observed_date": "2026-10-24",
+  "full_backend": {
+    "tests": 1357,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds_console": 454.73,
+    "exit": 0,
+    "junit": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "1357",
+      "time": "454.705",
+      "timestamp": "2026-10-24T20:31:50.568240+05:30",
+      "hostname": "dhanu"
+    },
+    "path": "docs/evidence/auth-triage-final-postgres.xml",
+    "sha256": "4a4bc39f20917c7e74cdabd1e9012b558d418bdd6d3e0ce71a34bfcce86a7341"
+  },
+  "focused_postgres": {
+    "passed": 12,
+    "deselected": 1345,
+    "seconds": 27.55,
+    "exit": 0
+  },
+  "unit_contract": {
+    "passed": 941,
+    "seconds": 5.19,
+    "exit": 0
+  },
+  "ruff": "PASS",
+  "format_files": 250,
+  "mypy_sources": 124,
+  "lock": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "secret_value_scan": "PASS",
+  "retained_checkout": "M2_FIXTURE_ACCEPTED",
+  "cloud_calls": 0,
+  "external_writes": 0,
+  "test_adapter_origin": "TEST_TRANSPORT",
+  "live_triage_verified": false,
+  "production_verified": false,
+  "remaining": [
+    "Admitted baseline materializer/collector and trusted source/image/configuration bindings",
+    "Patch/replay worker integration and authentic mandatory gates",
+    "Exact authenticated human approval/write-token brokerage/live PR",
+    "Hidden evaluation and public deployment/submission"
+  ],
+  "warning": "Upstream Starlette anyio BlockingPortal alias deprecation"
+}

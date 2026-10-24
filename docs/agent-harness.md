@@ -145,3 +145,13 @@ M3 remains NOT CLOSED. The remaining critical work is admitted baseline/candidat
 clean execution, trusted report production and live seven-gate acceptance, then
 approval/publication and submission packaging. This closes the combined
 collection/triage scheduling increment, not the whole runtime graph.
+
+
+## Authenticated triage continuation - 2026-10-24
+
+Implementation4917e5c connects queued collection to the existing durable triage
+controller without worker GitHub/vault credentials. Triage requires explicit
+inference opt-in and a declared cost; default collection remains inference-off.
+Current membership, lease/version/consent and sticky request journals remain
+mandatory. See docs/authenticated-triage.md. Local fake-provider acceptance is
+not live inference, baseline execution, VERIFIED or M3/M4 completion.

@@ -194,3 +194,13 @@ See docs/authenticated-collection.md for the opt-in loopback broker and isolated
 worker startup. Selected reads preserve registered grants. Live small-file
 collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
 No inference, repository execution or publication is enabled by this slice.
+
+
+## Authenticated triage continuation - 2026-10-24
+
+Implementation4917e5c connects queued collection to the existing durable triage
+controller without worker GitHub/vault credentials. Triage requires explicit
+inference opt-in and a declared cost; default collection remains inference-off.
+Current membership, lease/version/consent and sticky request journals remain
+mandatory. See docs/authenticated-triage.md. Local fake-provider acceptance is
+not live inference, baseline execution, VERIFIED or M3/M4 completion.
