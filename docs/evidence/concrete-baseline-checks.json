@@ -1,0 +1,57 @@
+{
+  "implementation_commit": "80d544f",
+  "observed_date": "2026-10-25",
+  "full_backend": {
+    "tests": 1382,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds_console": 468.36,
+    "exit": 0,
+    "junit": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "1382",
+      "time": "468.330",
+      "timestamp": "2026-10-25T02:32:12.863445+05:30",
+      "hostname": "dhanu"
+    },
+    "path": "docs/evidence/concrete-baseline-final-postgres.xml",
+    "sha256": "441c22a861d4f495fb153a3b8836933e8c0c573c4b69fa0c88dc247c819783f6"
+  },
+  "unit_contract": {
+    "passed": 952,
+    "seconds": 5.06,
+    "exit": 0
+  },
+  "provider_unit": {
+    "passed": 11,
+    "seconds": 0.53,
+    "exit": 0
+  },
+  "focused_postgres": {
+    "passed": 20,
+    "seconds": 24.18,
+    "note": "Collected before seven additional provider unit negatives; all included in full regression"
+  },
+  "ruff": "PASS",
+  "format_files": 256,
+  "mypy_sources": 127,
+  "lock": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "secret_scan": "PASS",
+  "ui_changes": false,
+  "live_provider_calls": 0,
+  "cloud_charges": 0,
+  "remote_writes": 0,
+  "production_ready": false,
+  "release_blockers": [
+    "Actual trusted materialization/prepared workspace and collector deployment/bindings",
+    "Live baseline receipt and full patch/replay/mandatory verification integration",
+    "Exact authenticated human approval and isolated publication brokerage/live PR/hidden evaluation",
+    "Public deployment and submission acceptance"
+  ],
+  "warning": "Existing Starlette anyio BlockingPortal alias deprecation"
+}

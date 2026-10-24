@@ -2,7 +2,33 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - baseline queue/dispatch, 2026-10-25
+## Current focus - concrete prepared baseline provider, 2026-10-25
+
+- [x] Concrete NebiusBaselineProvider replaces the interface-only resolution gap,
+implementation80d544f. Stable plan/execution/tree/image/runner/configuration and
+retained reproduction bindings are checked without construction I/O. Baseline
+claims filter by configured run ID plus REPRODUCING; unrelated jobs are untouched.
+Context managers close REST clients; live dispatch remains explicitly opt-in.
+No prepared facts, collector identity or production verdict is invented.
+
+Acceptance:1382 backend tests passed,zero failures/errors/skips,468.36s,exit0;
+952 unit/contract passed;11 provider unit cases passed. Concrete provider composes
+with authenticated collection/triage and actual REST serializer using fake HTTP.
+Ruff/format256files, mypy127sources, lock/dependency audit/secret-value scan pass.
+See docs/evidence/concrete-baseline-checks.json and docs/baseline-worker.md.
+One upstream deprecation warning remains. UI code/dependencies are unchanged;
+previous browser acceptance is historical. No live calls, charges or remote writes.
+
+Production-ready remains false. Next critical task is actual trusted materializer/
+prepared-image and collector deployment/bindings, followed by baseline receipt ->
+patch -> candidate/clean replay -> mandatory seven-gate acceptance. The adapter
+consumes independently established facts; it does not establish them or install
+an automatic production registry. Application database migration/grants and live
+runtime wiring remain deliberate deployment work, not claimed by local tests.
+M2 fixed-checkout contingency remains accepted; M3/M4/M5 exits remain open,
+including exact human approval, write brokerage/live PR and hidden evaluation.
+
+## Historical baseline queue/dispatch focus - 2026-10-25
 
 - [x] Local reproduction-to-baseline handoff and durable admitted submission:
 e78ea60/a061648. Authenticated triage queues REPRODUCING atomically; collection

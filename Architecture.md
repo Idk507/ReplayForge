@@ -234,3 +234,11 @@ not claim baseline jobs. New migration0028 preserves immutable submission claims
 nonempty-ledger rollback remains refused. See docs/baseline-worker.md for actual
 REST/SDK findings, prerequisites and limitations. Tests use synthetic assessors
 and fake HTTP; no live VERIFIED or M3/M4 completion follows from submission.
+
+
+## Concrete baseline provider - 2026-10-25
+
+Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
+selection and immutable input validation. See docs/baseline-worker.md. Resolution
+performs no provider request and does not replace actual materialization or
+collector assessment. Live VERIFIED and production readiness remain unaccepted.

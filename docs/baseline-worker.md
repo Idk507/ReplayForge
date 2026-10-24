@@ -23,6 +23,30 @@ and a PreparedNebiusBackend-compatible port. These are trusted deployment inputs
 never browser/model JSON. The action is recorded through BaselineJournal before
 `dispatch_baseline` checks current scope, budget, lease/version and assessment.
 
+### Concrete provider (80d544f)
+
+`services.runner.baseline_provider.NebiusBaselineProvider` implements the port
+with the actual PreparedNebiusBackend. Supply a stable BaselineAction,
+PreparedImageBinding, capability attestation, trusted public-key verifier and
+SandboxConfig from privileged deployment configuration. No browser/model
+payload supplies these inputs. Construction validates exact plan/execution/tree,
+image, runner and configuration bindings without network I/O.
+
+Its run_id is derived from the immutable action. The baseline worker filters the
+database claim by both REPRODUCING and that run ID, leaving other queued incidents
+untouched. Resolution rechecks the retained reproduction/source/context and
+cancellation before opening a client. Context exit closes that client on success
+or error. Stable action identities survive process restart; no timestamp or
+execution ID is regenerated during resolution.
+
+Live construction and worker dispatch each require explicit allow_live=True.
+Without a test transport, construction fails closed until authorized. Any injected
+transport remains TEST_TRANSPORT and cannot supply production evidence. Always
+use this provider through tick_prepared_baseline; direct backend submission is a
+low-level operator API without the durable journal's duplicate-submission guard.
+This provider does not create or attest a workspace, register production keys,
+or claim remote compute has terminated when a client closes.
+
 The dispatcher requires SAVED_JUNIT or MEASURED command mode. Plain disposable
 pytest plans cannot lose their only report and still count as a valid baseline
 submission. It records an immutable assessment/runner/configuration/plan binding

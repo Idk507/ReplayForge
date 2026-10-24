@@ -118,3 +118,5 @@ Demo rehearsal and current release blockers: docs/demo-runbook.md.
 Authenticated collection-to-triage startup: docs/authenticated-triage.md.
 
 Admitted baseline queue/dispatch and required preparation: docs/baseline-worker.md.
+
+Concrete Nebius baseline provider and deployment prerequisites: docs/baseline-worker.md.
