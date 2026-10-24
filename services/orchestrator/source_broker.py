@@ -155,7 +155,10 @@ def dispatch_once(
 ) -> WorkerResult:
     """Probe readiness before claim. One POST only; never replay an unknown result."""
     client.ready()
-    lease = store.claim(worker_id)
+    lease = store.claim(
+        worker_id,
+        stages=(Stage.CREATED, Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING),
+    )
     if lease is None:
         return WorkerResult(status="IDLE")
     state_owner, state = store.claimed_run(lease)
@@ -199,6 +202,7 @@ def dispatch_triage_once(
         cost_policy=cost_policy,
         transport=transport,
         finish_job=True,
+        queue_baseline=True,
     )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage

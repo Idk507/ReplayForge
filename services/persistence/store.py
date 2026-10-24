@@ -634,10 +634,23 @@ class Store:
             )
             return state
 
-    def claim(self, worker: UUID, *, triage_only: bool = False) -> Lease | None:
+    def claim(
+        self,
+        worker: UUID,
+        *,
+        triage_only: bool = False,
+        stages: tuple[Stage, ...] | None = None,
+    ) -> Lease | None:
         """Claim queued/expired work; at most three acquisitions, server clock."""
         if type(triage_only) is not bool:
             raise StoreError("CLAIM_STAGE_INVALID")
+        if stages is not None and (
+            not stages
+            or len(set(stages)) != len(stages)
+            or any(not isinstance(s, Stage) for s in stages)
+        ):
+            raise StoreError("CLAIM_STAGE_INVALID")
+        names = None if stages is None else [s.value for s in stages]
         with self._connection() as conn:
             row = conn.execute(
                 """SELECT r.id, r.checkpoint FROM runs r
@@ -645,8 +658,10 @@ class Store:
                 (j.status='queued' OR (j.status='leased'
                     AND j.leased_until<=clock_timestamp()))
                 AND (r.checkpoint->>'current_stage'='TRIAGING')=%s
+                AND (%s::text[] IS NULL OR
+                     r.checkpoint->>'current_stage'=ANY(%s::text[]))
                 ORDER BY r.id FOR UPDATE OF r,j SKIP LOCKED LIMIT 1""",
-                (triage_only,),
+                (triage_only, names, names),
             ).fetchone()
             if row is None:
                 return None

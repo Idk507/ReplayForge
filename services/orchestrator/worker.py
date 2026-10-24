@@ -64,7 +64,10 @@ def tick(
     leave the claim for bounded expiry/recovery. A production loader must enforce
     its own byte/time/egress policy; synthetic adapters never prove live fetch.
     """
-    lease = store.claim(worker_id)
+    lease = store.claim(
+        worker_id,
+        stages=(Stage.CREATED, Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING),
+    )
     if lease is None:
         return WorkerResult(status="IDLE")
     owner, _ = store.claimed_run(lease)

@@ -181,6 +181,7 @@ def run_triage(
     transport: httpx.BaseTransport | None = None,
     cost_policy: ModelCostPolicy | None = None,
     finish_job: bool = False,
+    queue_baseline: bool = False,
 ) -> RunState:
     """Reserve once, request once, retain once; never retry uncertain inference.
 
@@ -190,6 +191,8 @@ def run_triage(
     paid request after an uncertain outcome. Completed retention is reconciled
     from the checkpoint without making a new call.
     """
+    if queue_baseline and not finish_job:
+        raise StoreError("TRIAGE_HANDOFF_INVALID")
     config = NebiusConfig.from_env(
         {
             "NEBIUS_API_KEY": config.api_key.get_secret_value(),
@@ -249,4 +252,5 @@ def run_triage(
         proposal.reproduction,
         expected_version=reserved_version,
         finish_job=finish_job,
+        queue_baseline=queue_baseline,
     )
