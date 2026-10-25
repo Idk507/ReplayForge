@@ -198,3 +198,8 @@ Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
 selection and immutable input validation. See docs/baseline-worker.md. Resolution
 performs no provider request and does not replace actual materialization or
 collector assessment. Live VERIFIED and production readiness remain unaccepted.
+
+Session review/publication2026-10-25: contracts in docs/authenticated-approval.md.
+Review recovery preserves original publication_version/TTL. Serialized receipts
+never grant write authority. Human review, scoped minting and each publisher POST
+reload trusted authority. M3/M4 live acceptance requirements remain unchanged.

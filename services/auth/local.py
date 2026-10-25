@@ -2,8 +2,12 @@
 
 import os
 from collections.abc import Mapping
+from pathlib import Path
 
 import psycopg
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from fastapi import FastAPI
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretBytes, SecretStr
@@ -25,6 +29,8 @@ class AuthLocalConfig(BaseModel):
     hash_key: SecretBytes
     allow_live: bool
     collection_key: SecretStr | None = None
+    approval_target_branch: str | None = None
+    publication_key_path: str | None = None
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AuthLocalConfig":
@@ -83,7 +89,21 @@ class AuthLocalConfig(BaseModel):
                 if enabled != "true" or not re.fullmatch(r"[A-Za-z0-9_-]{43}", key):
                     raise ValueError
                 collection_key = SecretStr(key)
+            publication = values.get("REPLAYFORGE_ENABLE_GITHUB_PUBLICATION", "false")
+            if publication not in {"true", "false"}:
+                raise ValueError
+            key_path = values.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
+            branch = values.get("REPLAYFORGE_APPROVAL_TARGET_BRANCH") or None
+            if publication == "true" and (
+                enabled != "true"
+                or not key_path
+                or len(key_path) > 1024
+                or branch is None
+            ):
+                raise ValueError
             return cls(
+                approval_target_branch=branch,
+                publication_key_path=key_path if publication == "true" else None,
                 collection_key=collection_key,
                 api_dsn=api,
                 auth_dsn=auth,
@@ -151,6 +171,7 @@ def create_from_env() -> FastAPI:
         config.settings,
         client,
         access,
+        approval_target_branch=config.approval_target_branch,
     )
 
     if config.collection_key is not None:
@@ -164,5 +185,40 @@ def create_from_env() -> FastAPI:
                 config.collection_key,
                 allow_live=config.allow_live,
             ),
+        )
+    if config.publication_key_path is not None:
+        from services.auth.installation import InstallationTokenBroker
+        from services.auth.publication import install_publication_route
+
+        try:
+            path = Path(config.publication_key_path)
+            if not path.is_absolute() or path.is_symlink() or not path.is_file():
+                raise ValueError
+            with path.open("rb") as file:
+                pem = file.read(16385)
+            if len(pem) > 16384:
+                raise ValueError
+            private_key = load_pem_private_key(pem, password=None)
+            if (
+                not isinstance(private_key, RSAPrivateKey)
+                or private_key.key_size < 2048
+            ):
+                raise ValueError
+        except (OSError, ValueError, TypeError, UnsupportedAlgorithm):
+            raise AuthDenied("AUTH_INSTALLATION_CONFIG_INVALID") from None
+
+        def broker() -> InstallationTokenBroker:
+            return InstallationTokenBroker(
+                config.settings.client_id, private_key, allow_live=True
+            )
+
+        assert config.approval_target_branch is not None
+        install_publication_route(
+            app,
+            Store(config.api_dsn.get_secret_value()),
+            access,
+            broker,
+            target_branch=config.approval_target_branch,
+            allow_live_writes=True,
         )
     return app

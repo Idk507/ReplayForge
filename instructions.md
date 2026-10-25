@@ -156,3 +156,9 @@ Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
 selection and immutable input validation. See docs/baseline-worker.md. Resolution
 performs no provider request and does not replace actual materialization or
 collector assessment. Live VERIFIED and production readiness remain unaccepted.
+
+Session human review and isolated publication now follow
+[docs/authenticated-approval.md](docs/authenticated-approval.md). Preserve existing
+migration authority/restricted grants and default-off publication flags. OAuth
+client secrets cannot replace App signing keys. Synthetic tests are not live PR
+acceptance; no incomplete milestone is closed by this composition.

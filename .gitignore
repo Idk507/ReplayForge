@@ -11,3 +11,7 @@ dist/
 artifacts/
 node_modules/
 .next/
+*.pem
+*.key
+*.p12
+*.pfx

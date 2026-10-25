@@ -196,3 +196,12 @@ Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
 selection and immutable input validation. See docs/baseline-worker.md. Resolution
 performs no provider request and does not replace actual materialization or
 collector assessment. Live VERIFIED and production readiness remain unaccepted.
+
+## Session review and publication continuation - 2026-10-25
+
+See docs/authenticated-approval.md for session/CSRF human review, one-repository
+App token brokerage and approval-bound publisher composition. ReviewPermission
+comes from authenticated owner and current write access. Workbench hashes the
+visible diff; draft PR creation is separate. Default startup performs no provider
+I/O/publication; keys stay excluded from Git and workers. Local synthetic tests
+are not live seven-gate/PR acceptance. M3/M4 exits remain unchanged.

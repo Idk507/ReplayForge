@@ -12,7 +12,8 @@ from services.publication.journal import PublicationJournal
 
 
 class PublisherPort(Protocol):
-    origin: str
+    @property
+    def origin(self) -> str: ...
 
     def __enter__(self) -> Self: ...
     def __exit__(self, *_: object) -> None: ...

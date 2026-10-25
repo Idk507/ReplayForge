@@ -120,3 +120,7 @@ Authenticated collection-to-triage startup: docs/authenticated-triage.md.
 Admitted baseline queue/dispatch and required preparation: docs/baseline-worker.md.
 
 Concrete Nebius baseline provider and deployment prerequisites: docs/baseline-worker.md.
+
+For exact session human review and restricted App token/draft-PR setup, see
+[authenticated review](docs/authenticated-approval.md). Live repair/PR acceptance
+and hidden evaluation remain unfinished.

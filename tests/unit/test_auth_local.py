@@ -22,6 +22,27 @@ def test_local_auth_explicit_config_no_implicit_live():
     assert not c.allow_live and c.settings.development
     assert "synthetic-client-secret" not in repr(c)
     assert "synthetic-database-password" not in repr(c)
+    assert c.publication_key_path is None and c.approval_target_branch is None
+
+
+@pytest.mark.parametrize("fault", ["key", "branch", "live", "flag"])
+def test_publication_requires_explicit_complete_config(fault):
+    v = values() | {
+        "REPLAYFORGE_AUTH_ENABLE_GITHUB": "true",
+        "REPLAYFORGE_ENABLE_GITHUB_PUBLICATION": "true",
+        "REPLAYFORGE_APPROVAL_TARGET_BRANCH": "main",
+        "GITHUB_APP_PRIVATE_KEY_PATH": "C:/explicit/private.pem",
+    }
+    if fault == "key":
+        v.pop("GITHUB_APP_PRIVATE_KEY_PATH")
+    if fault == "branch":
+        v.pop("REPLAYFORGE_APPROVAL_TARGET_BRANCH")
+    if fault == "live":
+        v["REPLAYFORGE_AUTH_ENABLE_GITHUB"] = "false"
+    if fault == "flag":
+        v["REPLAYFORGE_ENABLE_GITHUB_PUBLICATION"] = "anything"
+    with pytest.raises(AuthDenied):
+        AuthLocalConfig.from_env(v)
 
 
 @pytest.mark.parametrize(

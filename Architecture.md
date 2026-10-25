@@ -242,3 +242,10 @@ Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
 selection and immutable input validation. See docs/baseline-worker.md. Resolution
 performs no provider request and does not replace actual materialization or
 collector assessment. Live VERIFIED and production readiness remain unaccepted.
+
+## Authenticated review/publication - 2026-10-25
+
+Session review, recovery version, App-key custody, repository-reduced credentials
+and opt-in publication contracts are in docs/authenticated-approval.md. Workbench
+checks displayed diff bytes before human review. Actual live materialization,
+collector/repair gates, approved PR and hidden evaluation remain incomplete.

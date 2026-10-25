@@ -8,10 +8,10 @@ export async function sessionBridge(request: Request, segments: string[]): Promi
     return Response.json({error_class:"LOCAL_ORIGIN_REQUIRED"},{status:403});
   }
   const path=segments.join("/"), id="[a-fA-F0-9-]{36}", digest="sha256:[a-f0-9]{64}";
-  const read=new RegExp(`^runs(?:/${id}(?:/(?:events|verification|patch|research)|/evidence/${digest}(?:/artifacts/${digest})?)?)?$`);
+  const read=new RegExp(`^runs(?:/${id}(?:/(?:events|verification|patch|research|review)|/evidence/${digest}(?:/artifacts/${digest})?)?)?$`);
   const readable=read.test(path) || ["auth/me","github/installations","github/repositories","github/head"].includes(path);
   const writable=path==="runs" || path==="auth/logout" ||
-    new RegExp(`^runs/${id}/(?:cancel|approvals|pull-request)$`).test(path) ||
+    new RegExp(`^runs/${id}/(?:cancel|approval|publication)$`).test(path) ||
     /^repositories\/[1-9][0-9]{0,18}\/connect$/.test(path);
   if((request.method!=="GET" || !readable) && (request.method!=="POST" || !writable))
     return Response.json({error_class:"PATH_DENIED"},{status:404});
