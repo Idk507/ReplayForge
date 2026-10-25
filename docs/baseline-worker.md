@@ -117,3 +117,25 @@ required before real baseline execution can be accepted. Then connect retained
 baseline to patch generation, admitted candidate/clean replay and all mandatory
 verification gates. Exact human approval, isolated GitHub write brokerage and
 live PR/hidden evaluation remain M4 requirements. These exits are unchanged.
+
+## Source packaging for materialization
+
+`services.runner.source_archive.build_source_archive(manifest, files)` packages
+already admitted original source bytes into a deterministic uncompressed USTAR
+archive. It performs no filesystem reads, extraction, execution or network I/O.
+Callers must supply the exact manifest path set, original byte lengths, SHA256
+and Git blob IDs. Sanitized model context is not a substitute for original bytes.
+The archive uses explicit parent directories, uid/gid1000, timestamp0, file0644
+and directory0755 modes. It rejects unrepresentable USTAR paths and validates the
+result through the same archive_identity primitive used by workspace measurement.
+Both the complete wire archive (including tar overhead) and expanded contents
+must fit65536bytes; at most128 members including directories are admitted.
+
+This primitive is not yet wired to provider upload or a durable materialization
+journal. A manifest subset is not a complete repository checkout; executable mode
+metadata is not present in SourceManifest and is deliberately not reconstructed.
+Current authorization, full-tree completeness, remote extraction/upload, immutable
+saved-image measurement and independent capability/collector bindings remain the
+trusted controller's responsibilities. The returned bytes are private source data;
+do not put them into public events, logs or model memory. No execution authority
+or VERIFIED status follows from successful packaging.
