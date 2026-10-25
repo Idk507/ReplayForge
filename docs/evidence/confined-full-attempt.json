@@ -1,0 +1,8 @@
+{
+  "status": "DID_NOT_COMPLETE",
+  "exit_code": 1,
+  "child_timeout_seconds": 600,
+  "stdout_tail": "DB_TEST_FAILURE: inspect local service; credentials omitted",
+  "completed_junit": false,
+  "superseded_by": "confined-checks.json"
+}

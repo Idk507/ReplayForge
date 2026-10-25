@@ -1,0 +1,56 @@
+{
+  "implementation_commit": "2fca083",
+  "wrapper_commit": "fcc8e41",
+  "observed_date": "2026-10-25",
+  "backend_tests": 1470,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "all_collected_nodes_covered_exactly_once": true,
+  "execution": "1021 unit/contract plus three isolated PostgreSQL groups; not one monolithic pass",
+  "reports": [
+    {
+      "path": "docs/evidence/confined-final-unit-contract.xml",
+      "tests": 1021,
+      "seconds": 8.474,
+      "exit_code": 0,
+      "sha256": "cf1b9cd56cde60b1eec9e6ff1ca23930c289323746b818294eb476bf0f56cce8"
+    },
+    {
+      "path": "docs/evidence/confined-integration-group0.xml",
+      "tests": 150,
+      "seconds": 203.362,
+      "exit_code": 0,
+      "sha256": "8a863ef22572f4138253759cdf5c22995ced1493eba7edefad2e8496bdd2e2a9"
+    },
+    {
+      "path": "docs/evidence/confined-integration-group1.xml",
+      "tests": 150,
+      "seconds": 226.456,
+      "exit_code": 0,
+      "sha256": "9d685832d5d91605f1b523e3ea44530ec1a79e26a9ba0100d7b158b8218d797f"
+    },
+    {
+      "path": "docs/evidence/confined-integration-group2.xml",
+      "tests": 149,
+      "seconds": 256.733,
+      "exit_code": 0,
+      "sha256": "50e83ea3dde6ab6a897f159624bd01a590d89247f7301b203afc6df9b7f34f42"
+    }
+  ],
+  "ruff": "PASS",
+  "format_files": 274,
+  "mypy_sources": 137,
+  "secret_scan": "PASS",
+  "ui_and_dependencies": "unchanged; earlier same-day checks retained, not rerun",
+  "warning": "upstream Starlette/AnyIO deprecation",
+  "live_image_imports": 2,
+  "successful_live_image_imports": 0,
+  "inference_calls": 0,
+  "github_writes": 0,
+  "billing": "NOT_RETURNED",
+  "live_workload_acceptance": false,
+  "m3_complete": false,
+  "m4_complete": false,
+  "next": "Pinned runtime provenance; baseline/patch/candidate/clean orchestration and workbench; exact human-approved PR; hidden evaluation"
+}

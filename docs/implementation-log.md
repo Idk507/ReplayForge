@@ -3426,3 +3426,22 @@ exits2 before credential prompt; --help exits0. Ruff/format and mypy137pass.
 The449integration tests are now split150/150/149 by whole module into three
 independent random disposable databases, each with900second child bound.
 Latest1021unit/contract cases already passed; group outcomes remain pending.
+
+
+Final acceptance after2fca083/fcc8e41:1021unit/contract passed8.52s and
+three independent disposable PostgreSQL groups passed150in203.40s,
+150in226.49s and149in256.76s, all exit0. The aggregate1470node IDs exactly
+match a fresh full collection with no duplicates/omissions; failures/errors/
+skips0. This is grouped acceptance, not a monolithic pass. Original600second
+wrapper failure is retained in confined-full-attempt.json. All test DB/roles
+cleaned by wrappers. Ruff/format274files,mypy137sources pass. Current local
+source has no tracked .env/PEM/key files; secret comparison found0matches. One
+upstream warning remains. See confined-checks.json and its checksummed reports.
+
+Core implementation commit2fca083; wrapperfcc8e41. No UI/dependency change, no
+public deployment or GitHub write. Two failed image imports produced no image;
+retain guards and provider failures. Workload template remains live-unaccepted.
+User requested an end to repeated hardening/validation loops; next development
+focus is baseline/patch/candidate/clean orchestration and workbench handoff.
+Working immutable runtime provenance is an external live acceptance dependency.
+M3/M4/M5 remain incomplete; do not replace their exits with local contract tests.

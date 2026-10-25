@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="20" time="1.861" timestamp="2026-10-25T20:45:31.658251+05:30" hostname="dhanu"><testcase classname="tests.contract.test_receipt_producer" name="test_producer_signs_actual_baseline_and_cached_reads_preserve_time" time="0.037" /><testcase classname="tests.contract.test_receipt_producer" name="test_provider_minus_one_is_no_signal_not_a_termination_claim" time="0.012"><failure message="packages.contracts.sandbox.RunnerError: S_SCHEMA_INVALID">def test_provider_minus_one_is_no_signal_not_a_termination_claim():
+        backend, plan, binding, operation, _, _ = setup("no_signal_sentinel")
+        with backend:
+            backend.submit(plan, binding.execution_id, binding.tree_ref)
+&gt;           assert backend.collect_receipt(operation).signed.payload.signal is None
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\contract\test_receipt_producer.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;services.runner.producer.MeasuredPreparedBackend object at 0x000001958AA9DFD0&gt;
+operation_id = UUID('58d8ad08-8a39-4d6a-8d85-c8edf97dea61')
+
+    def collect_receipt(self, operation_id: UUID) -&gt; ProducedReceipt:
+        """Read actual process/report/workspace facts and sign their exact values.
+    
+        Failed tests or workspace mutation are signed honestly for the verifier
+        to reject. Pending/missing/invalid observations produce no receipt. There
+        is no caller-provided report, exit code or observed tree to launder.
+        """
+        self._owned(operation_id)
+        if self._receipt is not None:
+            return self._receipt
+        plan, source = self._measured_plan, self._source
+        if plan is None or source is None:
+            raise RunnerError("S_PREMEASUREMENT_MISSING")
+        operation = self.inspect(operation_id)
+        if operation.status not in {"SUCCESS", "FAILED"}:
+            raise RunnerError("S_REPORT_NOT_READY")
+        image = operation.result_image_uuid
+        if image is None or image == source.image_uuid:
+            raise RunnerError("S_REPORT_IMAGE_INVALID")
+        try:
+            state = self._process_state(operation, plan)
+            # Validate bounded receipt facts before report/measurement I/O.
+            payload = ExecutionReceipt(
+                execution_id=self._binding.execution_id,
+                run_id=plan.request.run_id,
+                plan_ref=plan_ref(plan),
+                source_tree_ref=source.tree_ref,
+                final_tree_ref=source.tree_ref,
+                junit_ref="sha256:" + "0" * 64,
+                origin=self.origin,
+                observed_at=datetime.now(UTC),
+                exit_code=state.exit_code,
+                terminal=True,
+                timed_out=state.timed_out,
+                signal=state.signal,
+            )
+        except ValidationError:
+&gt;           raise RunnerError("S_SCHEMA_INVALID") from None
+E           packages.contracts.sandbox.RunnerError: S_SCHEMA_INVALID
+
+services\runner\producer.py:158: RunnerError</failure></testcase><testcase classname="tests.contract.test_receipt_producer" name="test_no_receipt_on_unqualified_provider_result[pending]" time="0.026" /><testcase classname="tests.contract.test_receipt_producer" name="test_no_receipt_on_unqualified_provider_result[operation]" time="0.019" /><testcase classname="tests.contract.test_receipt_producer" name="test_no_receipt_on_unqualified_provider_result[same_image]" time="0.018" /><testcase classname="tests.contract.test_receipt_producer" name="test_no_receipt_on_unqualified_provider_result[state]" time="0.023" /><testcase classname="tests.contract.test_receipt_producer" name="test_signed_failing_facts_cannot_satisfy_verifier[mutated]" time="0.028" /><testcase classname="tests.contract.test_receipt_producer" name="test_signed_failing_facts_cannot_satisfy_verifier[timed_out]" time="0.015" /><testcase classname="tests.contract.test_receipt_producer" name="test_uncertain_submit_stays_sticky_and_never_produces_receipt" time="0.018" /><testcase classname="tests.contract.test_receipt_producer" name="test_mismatched_tree_and_unowned_collection_are_denied_without_submission" time="0.007" /><testcase classname="tests.contract.test_receipt_producer" name="test_replay_purpose_and_actual_exit_are_verified[0-CANDIDATE]" time="0.034" /><testcase classname="tests.contract.test_receipt_producer" name="test_replay_purpose_and_actual_exit_are_verified[0-CLEAN_REPLAY]" time="0.025" /><testcase classname="tests.contract.test_receipt_producer" name="test_replay_purpose_and_actual_exit_are_verified[1-CANDIDATE]" time="0.023" /><testcase classname="tests.contract.test_receipt_producer" name="test_replay_purpose_and_actual_exit_are_verified[1-CLEAN_REPLAY]" time="0.020" /><testcase classname="tests.contract.test_receipt_producer" name="test_actual_prepared_image_mismatch_blocks_post" time="0.009" /><testcase classname="tests.contract.test_receipt_producer" name="test_invalid_configuration_or_admission_never_measures_or_submits[key]" time="0.013" /><testcase classname="tests.contract.test_receipt_producer" name="test_invalid_configuration_or_admission_never_measures_or_submits[key_id]" time="0.030" /><testcase classname="tests.contract.test_receipt_producer" name="test_invalid_configuration_or_admission_never_measures_or_submits[admission]" time="0.009" /><testcase classname="tests.contract.test_receipt_producer" name="test_invalid_configuration_or_admission_never_measures_or_submits[command]" time="0.024" /><testcase classname="tests.contract.test_receipt_producer" name="test_invalid_configuration_or_admission_never_measures_or_submits[closed]" time="0.007" /></testsuite></testsuites>

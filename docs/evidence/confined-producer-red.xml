@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.873" timestamp="2026-10-25T20:41:04.462526+05:30" hostname="dhanu"><testcase classname="" name="tests.contract.test_confined_producer" time="0.000"><error message="collection failure">ImportError while importing test module 'C:\Users\dhanu\Downloads\ReplayForge\tests\contract\test_confined_producer.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\contract\test_confined_producer.py:12: in &lt;module&gt;
+    from services.runner.confined import ConfinedMeasuredBackend
+E   ModuleNotFoundError: No module named 'services.runner.confined'</error></testcase></testsuite></testsuites>
