@@ -1,5 +1,8 @@
 # ReplayForge — Blueprint Package
 
+Internal measured execution and its current acceptance limits are documented in
+[the confined runner contract](docs/confined-runner.md).
+
 ReplayForge is an evidence-backed incident-repair platform under implementation
 for the Nebius x NVIDIA Global AI Hackathon 2026. Implemented local components
 include the PostgreSQL run API/event ledger, Next.js workbench, durable worker

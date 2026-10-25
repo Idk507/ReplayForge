@@ -214,3 +214,12 @@ saved-workspace measurement. Only the fixed extractor runs; source/test remain
 data. One live tiny inert probe uploaded/measured2files/36bytes. This does not
 establish OCI/capability/collector trust, execute tests or complete M3/M4. Do not
 repeat the paid acceptance probe as routine testing or delete its attempt guard.
+
+## Confined execution continuation - 2026-10-25
+
+See docs/confined-runner.md for the opt-in measured pytest supervisor, exact
+configuration binding, protected child result collection and durable candidate/
+clean receipt recovery. Synthetic profiles remain synthetic; the earlier kernel
+diagnostic does not attest this workload template. Pinned OCI import failed
+HTTP404 after SDK URL normalization; preserve attempts and never substitute
+catalog UUID/tag for verified OCI identity. M3/M4 exits remain unchanged.

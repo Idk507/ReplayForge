@@ -166,3 +166,12 @@ acceptance; no incomplete milestone is closed by this composition.
 Use docs/materialization.md for preparation, migration0029 restricted grants and
 known-operation recovery. The default CLI does no I/O; live acceptance uses only
 an inert fixture and is not arbitrary repository execution or VERIFIED evidence.
+
+
+Confined execution follow-up2026-10-25: docs/confined-runner.md defines the
+opt-in measured pytest supervisor, exact payload binding, protected child-result
+collection and durable candidate/clean recovery. It does not supply a real
+capability profile or enable default live execution. Digest-pinned image import
+failed HTTP404 after SDK URL normalization; actual full repair/replay, all seven
+gates, exact human-approved PR and hidden evaluation remain open. Original
+M3/M4 exits are unchanged.

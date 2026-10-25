@@ -3372,3 +3372,46 @@ was independently fetched/hash-checked; no OCI import or derived-image claim yet
 Working-tree confinement workload launcher remains experimental pending actual
 measured execution and source/image/collector trust bindings. M3/M4 not complete.
 Next task is that admitted launcher,then full gates/approval-bound PR/evaluation.
+
+
+## 2026-10-25: confined measured collector and provider signal correction
+
+Implemented opt-in fixed remote pytest supervision, pure/testable classic-BPF
+policy, exact spawn configuration hashing, protected child-result correlation
+and DurableConfinedBackend candidate/clean recovery. No guest workload executes
+on the host. Existing direct prepared runner behavior remains intact.
+
+Observed local results before implementation commit: ruff check passed; format
+274files passed; strict mypy137sources passed. Latest unit/contract1021passed,
+8.52s,exit0 (confined-final-unit-contract.xml); focused contracts52passed,1.06s;
+Postgres durable18passed,68.96s,exit0 (confined-durable-focused.xml). The latter
+filename was corrected from an initial red label: it actually passed, not RED.
+The new class was added while the DB wrapper was preparing; its first observed
+run was green. Real RED evidence: missing confined module collection error and
+provider -1 signal test failure19passed/1failed. Both retained separately.
+
+A full disposable-Postgres regression is running; do not treat it as passed until
+the retained report is complete. Last BPF additions/refactor are also covered by
+the newer focused/unit suite above. Secret-value comparison12changed/new source
+files found0matches; no private keys staged. UI/dependency code unchanged; prior
+same-day browser/dependency audits remain retained, not rerun in this increment.
+
+Necessary live preparation: one malformed immutable import failed for missing
+URL scheme; installed official SDK source showed docker:// normalization. A
+second corrected digest import failed HTTP404 during registry pull. Operations
+01a173a2-b3fd-7406-915a-648016764605 and
+01a173a3-0a88-765e-91e1-7a4a476328da are terminalFAILED, no resultimage. Attempt
+guards and exact bounded observations retained under pinned-image-import*.
+Billing fields null; no inference or GitHub write. No blind retries or key reuse
+for routine tests. This proves failure for this source, not all image imports.
+
+Threat review: root setup stays in remoteVM; child drops identity/capabilities;
+no-new-privileges and filter surviveexec; file reads reject links and special
+files; anonymous socketpairs cannot address named Unix services via sendto.
+No capability signer/provenance is invented. Experimental workload template
+has not passed live execution; earlier diagnostic predates it.
+
+M3/M4 remain open. Next critical dependency: a working digest-import reference
+or provider resolution, pinned pytest environment and independently qualified
+controls/collector, then actual baseline/patch/candidate/clean seven-gate evidence
+and exact authenticated human approval/real PR plus hidden evaluation.

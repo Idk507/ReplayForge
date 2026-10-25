@@ -26,7 +26,7 @@ from tests.unit.test_runner_admission import fixture as capability_fixture
 store = test_postgres.store
 
 
-def setup(store):
+def setup(store, *, confined=False):
     lease, owner, run, actions, *_ = prepared(store, reserve=False)
     content = archive([("app.py", b"x=1\n", tarfile.REGTYPE)])
     tree = archive_identity(content)[0]
@@ -62,6 +62,27 @@ def setup(store):
     )
     operation, image, calls = uuid4(), uuid4(), []
     key = Ed25519PrivateKey.generate()
+    if confined:
+        from services.runner.admission import CapabilityVerifier
+        from services.runner.confinement import confinement_configuration_ref
+
+        reference = confinement_configuration_ref(
+            actions.candidate_plan, binding.image_uuid, binding.execution_id
+        )
+        binding = binding.model_copy(update={"configuration_ref": reference})
+        profile = profile.model_copy(update={"configuration_ref": reference})
+        original_sign = sign
+
+        def sign():
+            return original_sign(profile)
+
+        verifier = CapabilityVerifier(
+            verifier._keys,
+            runner_id=profile.runner_id,
+            backend="NEBIUS_CONTREE",
+            origin="REMOTE_SERVICE",
+            configuration_ref=reference,
+        )
 
     def handler(request):
         calls.append(request)
@@ -70,6 +91,38 @@ def setup(store):
         if request.url.path.endswith("/archive"):
             return httpx.Response(200, content=content)
         if request.url.path.endswith("/download"):
+            if request.url.params.get("path") == "/tmp/replayforge-execution.json":
+                return httpx.Response(
+                    200,
+                    json={
+                        "run_id": str(run.run_id),
+                        "execution_id": str(binding.execution_id),
+                        "plan_ref": binding.plan_ref,
+                        "argv": list(actions.candidate_plan.argv),
+                        "env": dict(actions.candidate_plan.env),
+                        "exit_code": 0,
+                        "timed_out": False,
+                        "output_limited": False,
+                        "confinement": {
+                            "uid": 1000,
+                            "gid": 1000,
+                            "process": {
+                                "CapEff": "0000000000000000",
+                                "NoNewPrivs": "1",
+                                "Seccomp": "2",
+                            },
+                            "root_mount_read_only": True,
+                            "tmp_bytes": 16777216,
+                            "workspace_bytes": 16777216,
+                            "cgroup": {
+                                "cpu.max": "100000 100000",
+                                "memory.max": "134217728",
+                                "memory.swap.max": "0",
+                                "pids.max": "16",
+                            },
+                        },
+                    },
+                )
             return httpx.Response(200, content=XML)
         return httpx.Response(
             200,
@@ -101,7 +154,11 @@ def setup(store):
         )
 
     def backend(**changes):
-        return DurableMeasuredBackend(
+        from services.runner.confined import DurableConfinedBackend
+
+        cls = DurableConfinedBackend if confined else DurableMeasuredBackend
+        extra = {"allow_privileged_setup": True} if confined else {}
+        return cls(
             config(),
             binding,
             sign(),
@@ -110,6 +167,7 @@ def setup(store):
             receipt_key_id="test",
             journal=journal(**changes),
             transport=httpx.MockTransport(handler),
+            **extra,
         )
 
     def submit(current):
@@ -125,6 +183,21 @@ def setup(store):
         )
 
     return lease, owner, run, operation, calls, backend, submit, journal
+
+
+def test_confined_producer_restores_signed_receipt_without_repeating_execution(store):
+    _, _, _, operation, calls, backend, submit, journal = setup(store, confined=True)
+    with backend() as current:
+        assert submit(current).status == "SUBMITTED"
+    with backend() as restarted:
+        result = restarted.collect_receipt(operation)
+        assert result.signed.payload.exit_code == 0
+    count = len(calls)
+    with backend() as restarted:
+        assert canonical(restarted.collect_receipt(operation)) == canonical(result)
+    assert len(calls) == count
+    assert sum(request.method == "POST" for request in calls) == 1
+    assert journal().restore(operation)[2] == result
 
 
 @pytest.mark.parametrize("collect_first", [False, True])

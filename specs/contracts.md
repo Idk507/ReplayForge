@@ -207,3 +207,12 @@ reload trusted authority. M3/M4 live acceptance requirements remain unchanged.
 Materialization custody2026-10-25: see docs/materialization.md. Source/test archive
 identity is distinct from OCI identity/capability trust. Recovery preserves
 original timestamp/expiry and cannot repeat unknown POST. M3/M4 exits unchanged.
+
+
+Confined execution follow-up2026-10-25: docs/confined-runner.md defines the
+opt-in measured pytest supervisor, exact payload binding, protected child-result
+collection and durable candidate/clean recovery. It does not supply a real
+capability profile or enable default live execution. Digest-pinned image import
+failed HTTP404 after SDK URL normalization; actual full repair/replay, all seven
+gates, exact human-approved PR and hidden evaluation remain open. Original
+M3/M4 exits are unchanged.

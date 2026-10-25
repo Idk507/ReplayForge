@@ -231,3 +231,12 @@ Materialization follow-up2026-10-25: actual tiny inert source/test upload and
 independent saved-workspace measurement passed. Durable intent/known operation/
 result records remain unsigned; docs/materialization.md defines limits. Actual
 admitted repair/replay, full gates, live approved PR and hidden evaluation remain.
+
+
+Confined execution follow-up2026-10-25: docs/confined-runner.md defines the
+opt-in measured pytest supervisor, exact payload binding, protected child-result
+collection and durable candidate/clean recovery. It does not supply a real
+capability profile or enable default live execution. Digest-pinned image import
+failed HTTP404 after SDK URL normalization; actual full repair/replay, all seven
+gates, exact human-approved PR and hidden evaluation remain open. Original
+M3/M4 exits are unchanged.
