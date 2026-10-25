@@ -3445,3 +3445,7 @@ User requested an end to repeated hardening/validation loops; next development
 focus is baseline/patch/candidate/clean orchestration and workbench handoff.
 Working immutable runtime provenance is an external live acceptance dependency.
 M3/M4/M5 remain incomplete; do not replace their exits with local contract tests.
+
+Artifact-only follow-up: retained original failing provider-signal JUnit bytes
+as provider-signal-red.xml.gz to avoid generated traceback whitespace in Git
+diff checks; decompressed bytes verified identical. No application change.
