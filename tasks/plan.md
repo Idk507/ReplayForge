@@ -226,3 +226,8 @@ collector assessment. Live VERIFIED and production readiness remain unaccepted.
 Follow-up2026-10-25: session review, reduced App credentials and publication
 composition implemented; see docs/authenticated-approval.md. Live materialization/
 seven-gate repair, actual approved PR and hidden variation evaluation remain open.
+
+Materialization follow-up2026-10-25: actual tiny inert source/test upload and
+independent saved-workspace measurement passed. Durable intent/known operation/
+result records remain unsigned; docs/materialization.md defines limits. Actual
+admitted repair/replay, full gates, live approved PR and hidden evaluation remain.

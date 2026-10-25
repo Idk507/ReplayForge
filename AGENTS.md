@@ -205,3 +205,12 @@ comes from authenticated owner and current write access. Workbench hashes the
 visible diff; draft PR creation is separate. Default startup performs no provider
 I/O/publication; keys stay excluded from Git and workers. Local synthetic tests
 are not live seven-gate/PR acceptance. M3/M4 exits remain unchanged.
+
+## Durable materialization continuation - 2026-10-25
+
+See docs/materialization.md for original-source plus separately retained test
+upload, durable pre-POST intent/budget, known-operation recovery and unsigned
+saved-workspace measurement. Only the fixed extractor runs; source/test remain
+data. One live tiny inert probe uploaded/measured2files/36bytes. This does not
+establish OCI/capability/collector trust, execute tests or complete M3/M4. Do not
+repeat the paid acceptance probe as routine testing or delete its attempt guard.

@@ -203,3 +203,7 @@ Session review/publication2026-10-25: contracts in docs/authenticated-approval.m
 Review recovery preserves original publication_version/TTL. Serialized receipts
 never grant write authority. Human review, scoped minting and each publisher POST
 reload trusted authority. M3/M4 live acceptance requirements remain unchanged.
+
+Materialization custody2026-10-25: see docs/materialization.md. Source/test archive
+identity is distinct from OCI identity/capability trust. Recovery preserves
+original timestamp/expiry and cannot repeat unknown POST. M3/M4 exits unchanged.

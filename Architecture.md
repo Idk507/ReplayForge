@@ -249,3 +249,7 @@ Session review, recovery version, App-key custody, repository-reduced credential
 and opt-in publication contracts are in docs/authenticated-approval.md. Workbench
 checks displayed diff bytes before human review. Actual live materialization,
 collector/repair gates, approved PR and hidden evaluation remain incomplete.
+
+Materialization now follows docs/materialization.md: one-shot durable source/test
+upload, actual saved-workspace readback and explicit test-origin/live distinction.
+Independent runner/collector admission and all repair gates remain mandatory.

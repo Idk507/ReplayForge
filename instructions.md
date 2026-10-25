@@ -162,3 +162,7 @@ Session human review and isolated publication now follow
 migration authority/restricted grants and default-off publication flags. OAuth
 client secrets cannot replace App signing keys. Synthetic tests are not live PR
 acceptance; no incomplete milestone is closed by this composition.
+
+Use docs/materialization.md for preparation, migration0029 restricted grants and
+known-operation recovery. The default CLI does no I/O; live acceptance uses only
+an inert fixture and is not arbitrary repository execution or VERIFIED evidence.

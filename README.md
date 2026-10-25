@@ -124,3 +124,7 @@ Concrete Nebius baseline provider and deployment prerequisites: docs/baseline-wo
 For exact session human review and restricted App token/draft-PR setup, see
 [authenticated review](docs/authenticated-approval.md). Live repair/PR acceptance
 and hidden evaluation remain unfinished.
+
+[Durable source materialization](docs/materialization.md) includes one observed
+live inert upload/readback, durable no-repeat intents and GET-only recovery.
+This does not establish complete live repair or production runner admission.
