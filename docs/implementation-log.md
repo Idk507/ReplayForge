@@ -3282,3 +3282,17 @@ checks.json. Ruff/format256/mypy127/lock/audit and secret-value scan pass. One
 existing upstream warning. Production-readiness review preserves explicit release
 blockers: real materialization/collector bindings, live full repair verification,
 human approval/publication and deployment. No production readiness claimed.
+
+### Source archive packaging — 2026-10-25
+
+Added a pure source packaging primitive for the next materialization step. The
+initial test failed with ModuleNotFoundError (RED); ten cases then passed. A new
+long-path test reproduced a raw tar ValueError; fixed to S_SOURCE_ARCHIVE_PATH.
+Focused pre-final acceptance:29passed0.59s; final unit/contract:963passed9.59s,
+exit0, one existing upstream Starlette/AnyIO deprecation warning. Uses only tiny
+inert source bytes; no repository code execution, provider calls or charges.
+Ruff check/format258files passed. Initial typecheck used an invalid apps/api path
+and failed; corrected command is the repository-configured `uv run mypy`.
+Full disposable PostgreSQL regression is pending; no milestone exit asserted.
+
+Final source archive acceptance,implementation155e3f6:1393passed,zero failures/errors/skips,499.38s,exit0; disposable DB cleanup completed. Full command used scripts.test_postgres with aggregate600s ceiling,not product limits. uv run mypy:128sources pass. Secret-value scan initially failed due missing optional dotenv and legacy non-UTF8 log bytes; corrected dependency-free byte scan passes,zero matches. Checks/evidence hashes:docs/evidence/source-archive-checks.json. No dependency/UI changes,provider calls,charges or remote writes. M3/M4/M5 unchanged.

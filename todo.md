@@ -2,7 +2,20 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - concrete prepared baseline provider, 2026-10-25
+## Current focus - source archive packaging, 2026-10-25
+
+- [x] Implementation155e3f6 packages the exact original manifest subset with Git
+blob/SHA256/length verification, deterministic USTAR and bounded wire/member sizes.
+Negative tests cover content drift, missing/extra files, ancestors and long paths.
+Acceptance:1393 backend tests passed,zero failures/errors/skips,499.38s,exit0;
+963 unit/contract passed; Ruff/format258files,mypy128sources,secret-value scan pass.
+Evidence:docs/evidence/source-archive-checks.json. One upstream warning remains.
+No provider calls,charges or remote writes. This is packaging,not remote upload
+or complete-checkout/attestation proof. M3/M4/M5 remain open; M2 fixture unchanged.
+Next:durable remote materialization and independently measured saved workspace,
+then full baseline/patch/replay gates and approved publication/deployment.
+
+## Historical concrete prepared baseline provider - 2026-10-25
 
 - [x] Concrete NebiusBaselineProvider replaces the interface-only resolution gap,
 implementation80d544f. Stable plan/execution/tree/image/runner/configuration and
