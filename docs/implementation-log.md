@@ -3296,3 +3296,48 @@ and failed; corrected command is the repository-configured `uv run mypy`.
 Full disposable PostgreSQL regression is pending; no milestone exit asserted.
 
 Final source archive acceptance,implementation155e3f6:1393passed,zero failures/errors/skips,499.38s,exit0; disposable DB cleanup completed. Full command used scripts.test_postgres with aggregate600s ceiling,not product limits. uv run mypy:128sources pass. Secret-value scan initially failed due missing optional dotenv and legacy non-UTF8 log bytes; corrected dependency-free byte scan passes,zero matches. Checks/evidence hashes:docs/evidence/source-archive-checks.json. No dependency/UI changes,provider calls,charges or remote writes. M3/M4/M5 unchanged.
+
+
+### Session human review and scoped GitHub publication - 2026-10-25
+
+Implementationb26e8c3. Read AGENTS/Architecture/instructions/milestones/todo and
+existing approval/publication/auth contracts. Consulted official GitHub App JWT/
+installation-token docs and Nebius instance API; references and limits are in
+docs/authenticated-approval.md. RED:new broker test initially ModuleNotFoundError.
+12 broker contracts passed after implementation; actual RSA signature checked
+with synthetic2048bit key. Tests cover reduction, wrong scope, extra permission,
+expiry, redirect/drop/no retry, post-mint approval change and live opt-in.
+
+Real disposable PG session/review tests:7passed12.57s,then9passed16.76s including
+no-mint without review and no consumption when live-disabled. Original receipt
+and publication version recover after restart without renewing TTL. Synthetic
+accepted verifier fixtures are not live repair proof. Unit/contract final:
+979passed5.22s. Ruff check/format263files and strict mypy131sources pass. A typed
+publication port initially rejected narrowed origin types; corrected its origin
+contract to read-only rather than using a cast/type suppression.
+
+UI lint/typecheck/build pass. Initial browser run5pass/1 ambiguous-alert selector
+failure:product correctly denied tampered hash,selector also matched hidden Next
+announcer. Scoped selector fixed; final session/review6passed12.9s. Workbench
+9passed20.8s/1 existing opt-in real API skip. Mobile screenshot visually reviewed
+after improving checkbox alignment/buttons/hash wrapping. Both browser fixtures
+are explicitly synthetic; no live provider/PR success is inferred.
+
+Full disposable regression command:uv run python with scripts.test_postgres,
+--evidence-name session-publication-full-postgres.xml, aggregate subprocess
+timeout600s (product limits unchanged). Actual1418passed,zero failures/errors/
+skips,541.64s,exit0; disposable DB/roles cleaned. One existing Starlette/AnyIO
+deprecation warning; browser NO_COLOR/FORCE_COLOR warnings remain.
+
+uvx pip-audit --path .venv/Lib/site-packages --format json --output
+docs/evidence/session-publication-dependency-audit.json:exit0,no known
+vulnerabilities. Actual env-secret and supplied PEM-body byte scan:23 changed
+source/doc files,zero matches; private PEM ignored by Git. Key was only format
+validated offline; App ownership not claimed. Local ignored .env stores its path
+reference; live publication flag unchanged. No live inference/sandbox/GitHub API
+call,remote write,charge,application migration/grant or public deploy.
+
+Acceptance/hashes:docs/evidence/session-publication-checks.json. M3 materializer/
+collector/live repair remains unfinished; M4 needs authentic evidence followed by
+exact human review,real idempotent PR and hidden evaluation. Existing exits and
+M2 contingency evidence preserved. Publication cannot bypass these requirements.

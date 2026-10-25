@@ -1,0 +1,57 @@
+{
+  "implementation_commit": "b26e8c3",
+  "observed_date": "2026-10-25",
+  "full_backend": {
+    "passed": 1418,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "console_seconds": 541.64,
+    "exit_code": 0,
+    "path": "docs\\evidence\\session-publication-full-postgres.xml",
+    "sha256": "945436df6d4acfc2ffaa284a9d4fecb1a001924f73afdd940a78db3a18504fb2"
+  },
+  "unit_contract": {
+    "passed": 979,
+    "seconds": 5.22,
+    "exit_code": 0
+  },
+  "focused_postgres": {
+    "passed": 9,
+    "seconds": 16.76,
+    "exit_code": 0
+  },
+  "browser": {
+    "session_review_passed": 6,
+    "session_review_seconds": 12.9,
+    "workbench_passed": 9,
+    "workbench_skipped": 1,
+    "workbench_seconds": 20.8,
+    "skip_reason": "existing opt-in real API smoke requires separate disposable API bootstrap",
+    "synthetic": true,
+    "mobile_screenshot_visually_reviewed": true
+  },
+  "ruff": "PASS",
+  "format_files": 263,
+  "mypy_sources": 131,
+  "ui_lint": "PASS",
+  "ui_typecheck": "PASS",
+  "ui_build": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "secret_scan": "PASS",
+  "key_format_validated_offline": true,
+  "key_git_ignored": true,
+  "inference_calls": 0,
+  "sandbox_calls": 0,
+  "github_api_calls": 0,
+  "remote_writes": 0,
+  "publication_enabled_in_local_env": false,
+  "m3_complete": false,
+  "m4_complete": false,
+  "remaining": [
+    "Actual admitted materialization and measured collector deployment/identity",
+    "Live baseline/patch/candidate/clean replay and all mandatory gates",
+    "Exact human review after authentic evidence; real approval-bound PR and idempotent discovery",
+    "Hidden variation evaluation; deployment readiness"
+  ]
+}

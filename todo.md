@@ -2,7 +2,29 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - source archive packaging, 2026-10-25
+## Current focus - authenticated review and scoped publication, 2026-10-25
+
+- [x] Implementationb26e8c3 connects session/CSRF/exact human review, durable
+receipt recovery, one-repository/two-permission App token minting and existing
+approval-bound publisher. Workbench checks displayed diff SHA256; approval and
+draft PR creation are separate explicit actions. App keys excluded from Git;
+local key reference configured,publication activation unchanged/default-off.
+Acceptance:1418 backend tests passed,zero failures/errors/skips,541.64s,exit0;
+979 unit/contract;9 focused PostgreSQL;6 session/review browser;9 workbench browser
+with1 existing opt-in real API skip. Ruff/format263files,mypy131sources,UI lint/
+types/build,dependency audit and secret-value scan pass. Mobile screenshot
+visually reviewed. One upstream backend warning and color-env browser warnings
+remain. See docs/evidence/session-publication-checks.json and
+docs/authenticated-approval.md. No live model/sandbox/GitHub API call or write.
+
+M3/M4 are NOT complete: actual admitted materialization/measured collector/live
+repair gates, exact subsequent human review/real PR and hidden evaluation remain.
+M2 fixed-fixture contingency remains accepted; M5 remains open. No application
+DB migration/grants/public deployment was performed. Next critical dependency is
+actual prepared workspace and independently evidenced runner/collector identity;
+a provider UUID or signing key alone cannot establish those facts.
+
+## Historical source archive packaging - 2026-10-25
 
 - [x] Implementation155e3f6 packages the exact original manifest subset with Git
 blob/SHA256/length verification, deterministic USTAR and bounded wire/member sizes.
