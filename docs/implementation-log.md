@@ -3415,3 +3415,14 @@ M3/M4 remain open. Next critical dependency: a working digest-import reference
 or provider resolution, pinned pytest environment and independently qualified
 controls/collector, then actual baseline/patch/candidate/clean seven-gate evidence
 and exact authenticated human approval/real PR plus hidden evaluation.
+
+
+Test-wrapper correction after2fca083: the monolithic backend run did not finish
+within its600second override; shell exit1,DB_TEST_FAILURE, no completed JUnit.
+No full-suite pass is claimed for that attempt. The checked-in wrapper still
+had an obsolete180second default, below the retained prior527second regression.
+Added --timeout-seconds with default900 and validated bounds30..1800. Invalid1
+exits2 before credential prompt; --help exits0. Ruff/format and mypy137pass.
+The449integration tests are now split150/150/149 by whole module into three
+independent random disposable databases, each with900second child bound.
+Latest1021unit/contract cases already passed; group outcomes remain pending.

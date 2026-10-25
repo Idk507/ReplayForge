@@ -19,11 +19,19 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-name", default="m1-postgres-tests.xml")
     parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=900,
+        help="Bound the child run (30-1800 seconds; full regression exceeds 180)",
+    )
+    parser.add_argument(
         "--web",
         action="store_true",
         help="Run real local API/browser acceptance in the disposable DB",
     )
     args = parser.parse_args()
+    if not 30 <= args.timeout_seconds <= 1800:
+        parser.error("timeout-seconds must be between 30 and 1800")
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}\.xml", args.evidence_name):
         parser.error("evidence-name must be a simple lowercase XML filename")
     password = getpass.getpass("Local postgres administrator password: ")
@@ -86,7 +94,7 @@ def main() -> int:
                     result = subprocess.run(
                         child,
                         env=env,
-                        timeout=180,
+                        timeout=args.timeout_seconds,
                         check=False,
                     )
                     return result.returncode
