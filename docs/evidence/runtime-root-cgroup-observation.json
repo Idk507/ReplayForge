@@ -1,0 +1,25 @@
+{
+  "purpose": "UNSIGNED_SETUP_DIAGNOSTIC",
+  "operation_id": "01a1729a-eb0d-70ae-9236-a65575b08cd8",
+  "operation_status": "SUCCESS",
+  "observed": {
+    "uid": 0,
+    "supported_cgroup_filesystems": [
+      "cgroup",
+      "cgroup2"
+    ],
+    "controllers": [
+      "cpuset",
+      "cpu",
+      "io",
+      "memory",
+      "hugetlb",
+      "pids",
+      "rdma"
+    ],
+    "mount_exit": 0,
+    "limits_writable": true
+  },
+  "can_authorize_execution": false,
+  "can_authorize_verification": false
+}

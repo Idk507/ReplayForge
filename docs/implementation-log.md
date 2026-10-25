@@ -3341,3 +3341,34 @@ Acceptance/hashes:docs/evidence/session-publication-checks.json. M3 materializer
 collector/live repair remains unfinished; M4 needs authentic evidence followed by
 exact human review,real idempotent PR and hidden evaluation. Existing exits and
 M2 contingency evidence preserved. Publication cannot bypass these requirements.
+
+
+### Durable materialization acceptance - 2026-10-25
+Implementation554bf3d; exact source original and separately bound reproduction
+upload, pre-POST intent/time/command debit, known UUID, saved result measurement
+and stable observed-time recovery. Migration0029 grants SELECT/INSERT only.
+Initial absent-module RED; initial PG6fail/3pass event-type allowlist mismatch
+rolled back before POST, fixed migration; focused9pass14.89s. Initial full test
+collection duplicate basename fixed by naming contract test_nebius_materialization.
+RED archives retained. Final full1436passed,zero failures/errors/skips,527.75s,
+exit0; unit/contract988passed6.65s. Ruff/format270files,mypy135sources,actual-env
+secret scan pass. UI/dependencies unchanged; earlier audits remain evidence.
+
+One live inert materialize_once through disposable PG:2files36bytes independently
+read back equal expected archive identity, operation01a1728e-c884-758a-bc6f-a708e29eda9d.
+No source/test execution/inference/GitHub writes. Attempt guard fsynced beforePOST
+prevents repeat even after DB cleanup; billing not collected, saved image retention
+not deletion. Probe default CLI checked NOT_RUN/exit2 without provider/DB I/O.
+
+Three additional bounded fixed runtime diagnostics, no repository code: default
+non-root observed RW root,seccomp0,NoNewPrivs0,absent cgroup-v2 files,LandlockENOSYS,
+working user/mount namespace. Root prerequisite probe mounted cgroup2 and wrote
+cpu/memory/pids controls. Confined child prototype observed uid/gid1000,caps0,RO
+root,seccomp2,NoNewPrivs1,fork/write denial,CPU1core quota,memory128MiB,pids16 and
+tmpfs16MiB/256inodes. All observations remain UNSIGNED and cannot authorize
+execution/VERIFIED. No model/GitHub call. Public official Python OCI descriptor
+was independently fetched/hash-checked; no OCI import or derived-image claim yet.
+
+Working-tree confinement workload launcher remains experimental pending actual
+measured execution and source/image/collector trust bindings. M3/M4 not complete.
+Next task is that admitted launcher,then full gates/approval-bound PR/evaluation.

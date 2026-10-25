@@ -1,0 +1,18 @@
+import json, os, pathlib, shutil, subprocess
+supported=[v.split()[-1] for v in pathlib.Path('/proc/filesystems').read_text().splitlines() if v.split()[-1] in ('cgroup','cgroup2')]
+out={'uid':os.getuid(),'supported_cgroup_filesystems':supported,'controllers':[],'mount_exit':None,'limits_writable':False}
+if 'cgroup2' in supported and shutil.which('mount'):
+    root=pathlib.Path('/sys/fs/cgroup'); root.mkdir(parents=True,exist_ok=True)
+    p=subprocess.run(['mount','-t','cgroup2','none',str(root)],capture_output=True,timeout=3)
+    out['mount_exit']=p.returncode
+    if p.returncode==0:
+        controllers=(root/'cgroup.controllers').read_text().split()
+        out['controllers']=controllers
+        if all(v in controllers for v in ('cpu','memory','pids')):
+            (root/'cgroup.subtree_control').write_text('+cpu +memory +pids')
+            probe=root/'replayforge-probe'; probe.mkdir()
+            for name,value in (('cpu.max','10000 100000'),('memory.max','33554432'),('pids.max','16')):
+                (probe/name).write_text(value)
+            out['limits_writable']=True
+            probe.rmdir()
+print(json.dumps(out))

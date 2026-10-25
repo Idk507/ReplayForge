@@ -1,0 +1,2 @@
+{"phase": "CLAIMED", "observed_at": "2026-10-25T10:15:21.274203+00:00", "run_id": "672b54be-0906-4cef-85aa-13ab358acac7", "input_kind": "SYNTHETIC_INERT_FIXTURE", "image_uuid": "4fa16c8f-62a9-35a4-a4ea-07b7e8cd44ae"}
+{"phase": "MEASURED", "observed_at": "2026-10-25T10:15:27.112012+00:00", "operation_id": "01a1728e-c884-758a-bc6f-a708e29eda9d", "result_image_uuid": "124e516e-11c5-492c-868a-1ab793c785a0"}

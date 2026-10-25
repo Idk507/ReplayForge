@@ -2,7 +2,32 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - authenticated review and scoped publication, 2026-10-25
+## Current focus - durable live materialization, 2026-10-25
+
+- [x] Implementation554bf3d: original-source/new-test upload, pre-POST durable
+intent/budget, immutable known operation and measured result, fenced recovery.
+One live inert upload/readback succeeded:2files/36bytes; no test code executed.
+Acceptance:1436 backend tests passed,zero failures/errors/skips,527.75s,exit0;
+988 unit/contract;9 focused PG. Ruff/format270files,mypy135sources,secret scan
+pass. UI/dependencies unchanged; previous audits/browser evidence retained.
+Source:docs/materialization.md; evidence:docs/evidence/materialization-checks.json.
+Initial event-allowlist and duplicate-test-name failures retained as RED archives.
+
+Current kernel diagnostics found default root RW/seccomp0/NoNewPrivs0, then proved
+root setup supports CPU/memory/PID cgroups. An unsigned confined diagnostic
+observed child uid/gid1000,caps0,read-only root,seccomp2,NoNewPrivs1,fork/root-write
+denial,CPU100000/100000,memory128MiB,pids16,tmpfs16MiB/256inodes. This supersedes
+any suggestion that guest kernel confinement is unsupported. It does not
+establish all22controls or deploy a production workload launcher.
+
+Next critical work: finish/test confined measured workload launcher, OCI-source/
+prepared-environment/collector bindings, baseline/patch/candidate/clean replay and
+all gates. M3/M4 remain open,including actual exact human-approved PR and hidden
+evaluation. M2 fixed fixture remains accepted; M5 open. Three diagnostic VM
+operations accompanied the one upload; billing not collected. No inference or
+GitHub write. Application DB migrations/grants unchanged; tests used disposableDB.
+
+## Historical authenticated review and scoped publication - 2026-10-25
 
 - [x] Implementationb26e8c3 connects session/CSRF/exact human review, durable
 receipt recovery, one-repository/two-permission App token minting and existing
