@@ -13,8 +13,16 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretStr
 
+from packages.contracts.inference import ModelCostPolicy
 from packages.policies.repository import safe_tree_path
-from services.orchestrator.source_broker import BrokerClient, BrokerError, dispatch_once
+from packages.providers.nebius import NebiusConfig, ProbeError
+from services.orchestrator.source_broker import (
+    BrokerClient,
+    BrokerError,
+    dispatch_once,
+    dispatch_patch_once,
+    dispatch_triage_once,
+)
 from services.persistence.store import Store, StoreError
 
 
@@ -97,14 +105,47 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true")
     parser.add_argument("--max-ticks", type=int, choices=range(1, 1001), default=1)
+    parser.add_argument("--triage", action="store_true")
+    parser.add_argument("--patch", action="store_true")
+    parser.add_argument("--allow-live-inference", action="store_true")
+    parser.add_argument("--estimated-call-microusd", type=int)
     args = parser.parse_args()
     if not args.run:
         print(json.dumps({"status": "NOT_RUN", "reason": "Explicit --run required"}))
         return 2
+    if (
+        (args.triage or args.patch) != args.allow_live_inference
+        or (args.triage and args.patch)
+        or (
+            (args.triage or args.patch)
+            and not (
+                args.estimated_call_microusd is not None
+                and 1 <= args.estimated_call_microusd <= 2_000_000
+            )
+        )
+        or (
+            not (args.triage or args.patch) and args.estimated_call_microusd is not None
+        )
+    ):
+        parser.error(
+            "choose triage or patch; inference requires opt-in and estimate 1..2000000"
+        )
     stop = Event()
     previous = {}
     try:
-        c = BrokerWorkerConfig.from_env()
+        values = dict(os.environ)
+        model = None
+        cost = None
+        if args.triage or args.patch:
+            model = NebiusConfig.from_env(values)
+            values.pop("NEBIUS_API_KEY", None)
+            cost = ModelCostPolicy(
+                model=model.model,
+                base_url=model.base_url,
+                policy_version="operator-estimate-v1",
+                estimated_spend_microusd=args.estimated_call_microusd,
+            )
+        c = BrokerWorkerConfig.from_env(values)
         with psycopg.connect(c.dsn.get_secret_value()) as db:
             role = db.execute(
                 "SELECT rolsuper,rolcreatedb,rolcreaterole,"
@@ -122,12 +163,18 @@ def main() -> int:
             for _ in range(args.max_ticks):
                 if stop.is_set():
                     break
-                result = dispatch_once(store, worker, client, c.paths)
+                result = (
+                    dispatch_patch_once(store, worker, client, model, cost)
+                    if args.patch and model is not None and cost is not None
+                    else dispatch_triage_once(store, worker, client, model, cost)
+                    if model is not None and cost is not None
+                    else dispatch_once(store, worker, client, c.paths)
+                )
                 print(result.model_dump_json())
                 if result.status == "IDLE" and stop.wait(1):
                     break
         return 0
-    except (ConfigError, BrokerError, StoreError, psycopg.Error) as error:
+    except (ConfigError, BrokerError, StoreError, ProbeError, psycopg.Error) as error:
         print(
             json.dumps(
                 {

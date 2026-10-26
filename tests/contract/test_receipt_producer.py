@@ -72,7 +72,7 @@ def setup(fault=None, *, phase="BASELINE", exit_code=1, body=XML):
                             "state": {
                                 "exit_code": True if fault == "state" else exit_code,
                                 "timed_out": fault == "timed_out",
-                                "signal": None,
+                                "signal": -1 if fault == "no_signal_sentinel" else None,
                             },
                             "stdout": "private-stdout-never-retain",
                         }
@@ -131,6 +131,13 @@ def test_producer_signs_actual_baseline_and_cached_reads_preserve_time():
         assert "private-stdout" not in result.model_dump_json()
         assert "<testsuites" not in repr(result)
         assert not result.can_authorize_verification
+
+
+def test_provider_minus_one_is_no_signal_not_a_termination_claim():
+    backend, plan, binding, operation, _, _ = setup("no_signal_sentinel")
+    with backend:
+        backend.submit(plan, binding.execution_id, binding.tree_ref)
+        assert backend.collect_receipt(operation).signed.payload.signal is None
 
 
 @pytest.mark.parametrize("fault", ["pending", "operation", "same_image", "state"])

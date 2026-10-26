@@ -124,6 +124,7 @@ class OperationJournal:
         phase: Phase,
         expected_version: int,
         operation_id: UUID | None = None,
+        require_new: bool = False,
     ) -> OperationRecord:
         """Retain one bounded assertion under a live lease, without dispatch.
 
@@ -187,6 +188,8 @@ class OperationJournal:
                         or previous.operation_id != record.operation_id
                     ):
                         raise StoreError("OPERATION_CONFLICT")
+                    if require_new:
+                        raise StoreError("OPERATION_ALREADY_RECORDED")
                     return previous
             if len(history) == 3 or record.phase != PHASES[len(history)]:
                 raise StoreError("OPERATION_ORDER_DENIED")

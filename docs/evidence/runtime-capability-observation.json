@@ -1,0 +1,34 @@
+{
+  "purpose": "UNSIGNED_RUNTIME_DIAGNOSTIC",
+  "operation_id": "01a17297-8364-750f-b36a-c166106b6684",
+  "image_uuid": "4fa16c8f-62a9-35a4-a4ea-07b7e8cd44ae",
+  "operation_status": "SUCCESS",
+  "process_exit": 0,
+  "observed": {
+    "uid": 1000,
+    "gid": 1000,
+    "root_mount_read_only": false,
+    "process": {
+      "CapEff": "0000000000000000",
+      "NoNewPrivs": "0",
+      "Seccomp": "0"
+    },
+    "cgroup": {
+      "cpu.max": {
+        "unavailable": "FileNotFoundError"
+      },
+      "memory.max": {
+        "unavailable": "FileNotFoundError"
+      },
+      "pids.max": {
+        "unavailable": "FileNotFoundError"
+      }
+    },
+    "landlock_abi": -1,
+    "landlock_errno": 38,
+    "unshare_available": true,
+    "user_mount_namespace_exit": 0
+  },
+  "can_authorize_execution": false,
+  "can_authorize_verification": false
+}

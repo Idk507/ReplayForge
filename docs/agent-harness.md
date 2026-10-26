@@ -145,3 +145,23 @@ M3 remains NOT CLOSED. The remaining critical work is admitted baseline/candidat
 clean execution, trusted report production and live seven-gate acceptance, then
 approval/publication and submission packaging. This closes the combined
 collection/triage scheduling increment, not the whole runtime graph.
+
+
+## Authenticated triage continuation - 2026-10-24
+
+Implementation4917e5c connects queued collection to the existing durable triage
+controller without worker GitHub/vault credentials. Triage requires explicit
+inference opt-in and a declared cost; default collection remains inference-off.
+Current membership, lease/version/consent and sticky request journals remain
+mandatory. See docs/authenticated-triage.md. Local fake-provider acceptance is
+not live inference, baseline execution, VERIFIED or M3/M4 completion.
+
+
+## Admitted baseline continuation - 2026-10-25
+
+Implementations e78ea60/a061648 connect reproduction retention to a stage-specific
+baseline queue and one-shot prepared-workspace dispatch. Collection workers do
+not claim baseline jobs. New migration0028 preserves immutable submission claims;
+nonempty-ledger rollback remains refused. See docs/baseline-worker.md for actual
+REST/SDK findings, prerequisites and limitations. Tests use synthetic assessors
+and fake HTTP; no live VERIFIED or M3/M4 completion follows from submission.

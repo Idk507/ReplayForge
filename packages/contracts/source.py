@@ -71,3 +71,23 @@ class SealedSnapshot(BaseModel):
     key_id: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,64}$")
     nonce: str = Field(pattern=r"^[a-f0-9]{24}$")
     ciphertext_b64: str = Field(min_length=24, max_length=4000032, repr=False)
+
+
+class MaterializationSourceFile(BaseModel):
+    """Base64 transfer for one raw, manifest-pinned source file."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    path: str = Field(min_length=1, max_length=240)
+    content_b64: str = Field(max_length=87384, repr=False)
+
+
+class MaterializationSourceResult(BaseModel):
+    """Private worker-only transfer; constructing it grants no execution rights."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    run_id: UUID
+    version: int = Field(strict=True, ge=0)
+    source_commit: CommitSHA
+    manifest_ref: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    files: tuple[MaterializationSourceFile, ...] = Field(min_length=1, max_length=16)
+    status: Literal["ADMITTED"] = "ADMITTED"

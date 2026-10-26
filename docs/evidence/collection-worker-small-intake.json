@@ -1,0 +1,10 @@
+{
+  "run_id": "74c14cc0-4ed7-4d1a-ad20-609ab3431ece",
+  "repository": "Idk507/maf_ds_agent",
+  "source_commit": "08d828835fcb0cada16aca45c721ad0075e0c70e",
+  "selected_paths": [
+    "pyproject.toml"
+  ],
+  "purpose": "READ_ONLY_COLLECTION_ACCEPTANCE",
+  "verified": false
+}

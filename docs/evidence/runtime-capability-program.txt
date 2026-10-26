@@ -1,0 +1,17 @@
+import ctypes, errno, json, os, pathlib, shutil, subprocess
+libc=ctypes.CDLL(None,use_errno=True)
+abi=libc.syscall(444,0,0,1)
+abi_errno=ctypes.get_errno() if abi<0 else 0
+status={}
+for line in pathlib.Path('/proc/self/status').read_text().splitlines():
+    if line.split(':',1)[0] in ('NoNewPrivs','Seccomp','CapEff'):
+        k,v=line.split(':',1); status[k]=v.strip()
+limits={}
+for name in ('cpu.max','memory.max','pids.max'):
+    try: limits[name]=(pathlib.Path('/sys/fs/cgroup')/name).read_text()[:128].strip()
+    except OSError as error: limits[name]={'unavailable':type(error).__name__}
+unshare=shutil.which('unshare')
+code=None
+if unshare:
+    code=subprocess.run([unshare,'--user','--map-root-user','--mount','/bin/true'],capture_output=True,timeout=3).returncode
+print(json.dumps({'uid':os.getuid(),'gid':os.getgid(),'root_mount_read_only':bool(os.statvfs('/').f_flag & os.ST_RDONLY),'process':status,'cgroup':limits,'landlock_abi':abi,'landlock_errno':abi_errno,'unshare_available':bool(unshare),'user_mount_namespace_exit':code}))

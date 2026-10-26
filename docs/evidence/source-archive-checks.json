@@ -1,0 +1,27 @@
+{
+  "implementation_commit": "155e3f6",
+  "date": "2026-10-25",
+  "full_regression": {
+    "tests": 1393,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "console_seconds": 499.38,
+    "exit_code": 0,
+    "evidence": "docs\\evidence\\source-archive-full-postgres.xml",
+    "sha256": "39490b5b5f67c7a5a5214ce656a2397d47f5472c6e8adf785ad897fe7bade4b3"
+  },
+  "unit_contract": {
+    "tests": 963,
+    "seconds": 9.59,
+    "exit_code": 0
+  },
+  "ruff": "PASS",
+  "format_files": 258,
+  "mypy_sources": 128,
+  "secret_value_scan": "PASS",
+  "live_calls": 0,
+  "remote_writes": 0,
+  "production_ready": false,
+  "next": "durable remote materialization and independently measured saved workspace"
+}

@@ -1,5 +1,8 @@
 # ReplayForge — Blueprint Package
 
+Internal measured execution and its current acceptance limits are documented in
+[the confined runner contract](docs/confined-runner.md).
+
 ReplayForge is an evidence-backed incident-repair platform under implementation
 for the Nebius x NVIDIA Global AI Hackathon 2026. Implemented local components
 include the PostgreSQL run API/event ledger, Next.js workbench, durable worker
@@ -104,3 +107,27 @@ you select a repository. Confirm access, connect, then use **Start an investigat
 to open the prefilled incident form. **Manage GitHub access** and **Refresh
 repositories** handle installation changes. Filters apply to the current page.
 No tests start until an incident is submitted through the admitted workflow.
+
+
+## Authenticated collection handoff - 2026-10-24
+
+See docs/authenticated-collection.md for the opt-in loopback broker and isolated
+worker startup. Selected reads preserve registered grants. Live small-file
+collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
+No inference, repository execution or publication is enabled by this slice.
+
+Demo rehearsal and current release blockers: docs/demo-runbook.md.
+
+Authenticated collection-to-triage startup: docs/authenticated-triage.md.
+
+Admitted baseline queue/dispatch and required preparation: docs/baseline-worker.md.
+
+Concrete Nebius baseline provider and deployment prerequisites: docs/baseline-worker.md.
+
+For exact session human review and restricted App token/draft-PR setup, see
+[authenticated review](docs/authenticated-approval.md). Live repair/PR acceptance
+and hidden evaluation remain unfinished.
+
+[Durable source materialization](docs/materialization.md) includes one observed
+live inert upload/readback, durable no-repeat intents and GET-only recovery.
+This does not establish complete live repair or production runner admission.

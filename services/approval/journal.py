@@ -70,6 +70,32 @@ class ApprovalJournal:
     def __init__(self, store: Store, *, target_branch: str) -> None:
         self.store, self.target = store, target_branch
 
+    def read(
+        self, expected: ApprovalBinding, permission: ReviewPermission
+    ) -> tuple[HumanDecision, int] | None:
+        """Owner-private current review for recovery; never renew its expiry."""
+        expected = ApprovalBinding.model_validate(expected.model_dump())
+        permission = ReviewPermission.model_validate(permission.model_dump())
+        with self.store._connection() as conn:
+            self._current(conn, expected, permission)
+            row = conn.execute(
+                "SELECT payload,digest,from_version,"
+                "expires_at>clock_timestamp() AS active "
+                "FROM approval_decisions WHERE run_id=%s",
+                (expected.run_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            value = _decode(row, HumanDecision)
+            if (
+                not row["active"]
+                or value.binding != expected
+                or value.reviewer_id != permission.reviewer_id
+                or type(row["from_version"]) is not int
+            ):
+                raise ApprovalDenied("APPROVAL_RECORD_CONFLICT")
+            return value, int(str(row["from_version"])) + 1
+
     def _current(
         self,
         conn: psycopg.Connection[dict[str, Any]],

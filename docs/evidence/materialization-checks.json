@@ -1,0 +1,42 @@
+{
+  "implementation_commit": "554bf3d",
+  "date": "2026-10-25",
+  "full_backend": {
+    "passed": 1436,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "console_seconds": 527.75,
+    "exit_code": 0,
+    "path": "docs\\evidence\\materialization-full-postgres.xml",
+    "sha256": "4bb9d1e8e2c5b57eeec898789d05e69e190ac9ce7ee9c413a550c48c0cb1f242"
+  },
+  "unit_contract": {
+    "passed": 988,
+    "seconds": 6.65,
+    "exit_code": 0
+  },
+  "focused_postgres": {
+    "passed": 9,
+    "seconds": 14.89,
+    "exit_code": 0
+  },
+  "ruff": "PASS",
+  "format_files": 270,
+  "mypy_sources": 135,
+  "ui": "UNCHANGED; prior acceptance retained",
+  "dependency_graph": "UNCHANGED; prior no-known-vulnerabilities audit retained",
+  "live_upload": {
+    "files": 2,
+    "bytes": 36,
+    "purpose": "SYNTHETIC_INERT_FIXTURE",
+    "independent_readback_matches": true,
+    "tests_executed": 0
+  },
+  "inference_calls": 0,
+  "github_writes": 0,
+  "billing_cost": "NOT_COLLECTED",
+  "m3_complete": false,
+  "m4_complete": false,
+  "next": "Trusted confined measured execution and independently bound runtime/image/collector identity; all repair gates, exact live human approval/PR and hidden evaluation remain"
+}

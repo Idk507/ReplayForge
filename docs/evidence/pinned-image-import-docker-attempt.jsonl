@@ -1,0 +1,2 @@
+{"phase": "CLAIMED", "source": "docker://docker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301", "payload": {"registry": {"url": "docker://docker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301"}, "tag": null, "timeout": 120}}
+{"phase": "OPERATION_KNOWN", "operation_id": "01a173a3-0a88-765e-91e1-7a4a476328da"}

@@ -36,6 +36,8 @@ def accept_retained_baseline(
     owner: UUID,
     execution_id: UUID,
     verifier: ReceiptVerifier,
+    *,
+    queue_patch: bool = False,
 ) -> RunState:
     """Resume after receipt commit, using retained bytes and the trusted reducer.
 
@@ -50,7 +52,13 @@ def accept_retained_baseline(
     report = journal.report(execution_id, owner)
     try:
         return journal.accept(
-            lease, owner, execution_id, report, verifier, expected_version=run.version
+            lease,
+            owner,
+            execution_id,
+            report,
+            verifier,
+            expected_version=run.version,
+            queue_patch=queue_patch,
         )
     except StoreError as error:
         if str(error) not in {"STALE_VERSION", "BASELINE_STAGE_DENIED", "LEASE_LOST"}:
@@ -66,6 +74,8 @@ def receive_baseline(
     signed: SignedReceipt,
     junit: bytes,
     verifier: ReceiptVerifier,
+    *,
+    queue_patch: bool = False,
 ) -> RunState:
     """Receive an external collector's signed report, retain, then reduce it.
 
@@ -103,4 +113,6 @@ def receive_baseline(
         or journal.report(execution_id, owner) != junit
     ):
         raise StoreError("BASELINE_CONFLICT")
-    return accept_retained_baseline(store, lease, owner, execution_id, verifier)
+    return accept_retained_baseline(
+        store, lease, owner, execution_id, verifier, queue_patch=queue_patch
+    )

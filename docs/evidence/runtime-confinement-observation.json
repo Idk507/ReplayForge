@@ -1,0 +1,27 @@
+{
+  "purpose": "UNSIGNED_CONFINEMENT_DIAGNOSTIC",
+  "operation_id": "01a172a5-2984-7327-b24e-ab0d176150fa",
+  "image_uuid": "4fa16c8f-62a9-35a4-a4ea-07b7e8cd44ae",
+  "process_exit": 0,
+  "can_authorize_execution": false,
+  "can_authorize_verification": false,
+  "observed": {
+    "uid": 1000,
+    "gid": 1000,
+    "process": {
+      "CapEff": "0000000000000000",
+      "NoNewPrivs": "1",
+      "Seccomp": "2"
+    },
+    "root_mount_read_only": true,
+    "root_write_denied": true,
+    "fork_denied": true,
+    "tmp_bytes": 16777216,
+    "tmp_inodes": 256,
+    "cgroup": {
+      "cpu.max": "100000 100000",
+      "memory.max": "134217728",
+      "pids.max": "16"
+    }
+  }
+}

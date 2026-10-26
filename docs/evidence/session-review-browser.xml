@@ -1,0 +1,18 @@
+<testsuites id="" name="" tests="6" failures="0" skipped="0" errors="0" time="12.941257">
+<testsuite name="review.spec.ts" timestamp="2026-10-25T05:09:27.499Z" hostname="" tests="2" failures="0" skipped="0" time="2.857" errors="0">
+<testcase name="synthetic exact review, tampered hash=false" classname="review.spec.ts" time="1.799">
+</testcase>
+<testcase name="synthetic exact review, tampered hash=true" classname="review.spec.ts" time="1.058">
+</testcase>
+</testsuite>
+<testsuite name="session.spec.ts" timestamp="2026-10-25T05:09:27.499Z" hostname="" tests="4" failures="0" skipped="0" time="3.58" errors="0">
+<testcase name="session bridge forwards only session identity and never the local bearer" classname="session.spec.ts" time="0.048">
+</testcase>
+<testcase name="anonymous browser cannot render private workbench" classname="session.spec.ts" time="0.747">
+</testcase>
+<testcase name="synthetic session can connect an allowed repository and sign out" classname="session.spec.ts" time="1.901">
+</testcase>
+<testcase name="large-account pages and discovery failures preserve identity and allow refresh" classname="session.spec.ts" time="0.884">
+</testcase>
+</testsuite>
+</testsuites>

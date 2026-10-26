@@ -16,6 +16,7 @@ from packages.contracts.run import CommitSHA
 from services.api.app import LocalAuth, create_app
 from services.auth.app import create_auth_app
 from services.auth.github import AuthDenied
+from services.auth.installation import WriteScope
 from services.auth.journal import AuthJournal, SessionUser
 from services.auth.repositories import (
     GitHubRepository,
@@ -275,6 +276,26 @@ class AuthAccess:
             if repo.full_name != row["full_name"] or repo.private != grant.private:
                 raise AuthDenied("AUTH_REPOSITORY_DENIED")
 
+    def write_scope(self, owner: UUID, repository_id: UUID) -> WriteScope:
+        """Resolve mint scope from a current write-authorized saved connection."""
+        self.authorize(owner, repository_id, write=True)
+        with self.journal.store._connection() as c:
+            row = c.execute(
+                "SELECT installation_id,github_repository_id,full_name FROM "
+                "auth_repository_connections WHERE repository_id=%s AND user_id=%s "
+                "AND revoked_at IS NULL",
+                (repository_id, owner),
+            ).fetchone()
+        if row is None:
+            raise AuthDenied("AUTH_REPOSITORY_DENIED")
+        return WriteScope(
+            owner_id=owner,
+            repository_id=repository_id,
+            installation_id=int(str(row["installation_id"])),
+            github_repository_id=int(str(row["github_repository_id"])),
+            full_name=str(row["full_name"]),
+        )
+
 
 def create_session_app(
     api_store: Store,
@@ -284,6 +305,7 @@ def create_session_app(
     access: AuthAccess,
     *,
     allow_test: bool = False,
+    approval_target_branch: str | None = None,
 ) -> FastAPI:
     """Compose current identity with existing owner checks; never bearer fallback."""
     if (
@@ -301,6 +323,12 @@ def create_session_app(
     app = create_auth_app(
         journal, settings, client_factory, allow_test=allow_test, api_app=core
     )
+    if approval_target_branch is not None:
+        from services.auth.approval import install_review_routes
+
+        install_review_routes(
+            app, api_store, access, target_branch=approval_target_branch
+        )
 
     @app.get("/api/v1/github/installations")
     def installations(request: Request) -> tuple[Installation, ...]:

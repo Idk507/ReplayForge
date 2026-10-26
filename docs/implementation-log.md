@@ -3063,3 +3063,396 @@ in auth-picker-checks.json. Historical pending-permission screenshot left intact
 Next critical work is authenticated source-broker/worker integration for the
 queued job, then authentic runner/verifier handoff. Login/selector/intake alone
 are not end-to-end repair readiness. M3/M4/M5 remain open; no milestone weakened.
+
+
+## 2026-10-24 - Credential-isolated collection dispatch
+
+Implementation 3f5704f (parent6c652f4). Added opt-in authenticated loopback source
+broker, bounded worker/client and isolated launcher. Exact lease/version/consent
+and registered path checks remain mandatory. Selected paths no longer rewrite
+RepositoryGrant; blob reads fetch only requested approved files. No host execution.
+
+RED missing-module and selected-path regression failures are retained compressed.
+Initial source fixture lacked SourceManifest and failed SOURCE_MANIFEST_REQUIRED;
+fixed the fixture, not the gate. Focused real-Postgres suite29passed19.35s; final
+worker/auth unit25passed2.59s; selected-source regression45passed1.23s. Preliminary
+full regression1332passed477.31s predates the final launcher/selection tests.
+Ruff check, format247files, strict mypy123sources, uv lock --check and diff check
+passed before dependency remediation. No new frontend code; prior UI evidence
+remains historical. No bypass of browser URL restriction.
+
+Local role setup parser warning exposed the newly generated local worker password
+in tool output. Rotated that password immediately and stored URL-form DSN privately.
+The launcher now excludes inherited operator/provider secrets; isolation tested.
+Worker has no auth-table access/grant INSERT/admin privileges. API operation role
+has context/source INSERT only as required by existing reducer. Ignored env files
+remain untracked. Scoped secret patterns flagged only two synthetic private-key
+markers in test parameter names; no actual credentials found.
+
+Live read-only user-approved public fixture: README15629bytes was omitted by
+context budget (metadata-only); fresh pyproject.toml2117bytes retained one file
+and source manifest, reached TRIAGING, exit0. Exact SHA/run/artifacts recorded in
+collection-worker-small-acceptance.json. Earlier sample INCONCLUSIVE was preserved.
+No inference, sandbox, remote write, approval or publication occurred.
+
+Dependency audit initial invocation incorrectly combined --local/--path (exit1);
+corrected invocation found certifi PYSEC-2026-4320 and pytest PYSEC-2026-1845
+(two installed pytest metadata entries, three rows total). Official references:
+https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2
+https://github.com/pypa/advisory-database/blob/main/vulns/pytest/PYSEC-2026-1845.yaml
+Updates and final regression evidence follow below. No milestone exit weakened.
+
+Final: implementation3f5704f full1335passed499.37s exit0 (one upstream Starlette
+deprecation warning). Dependency remediation88b46ef pins pytest9.0.3 and locks
+certifi2026.10.23. After update922 unit/contract passed6.54s; isolated PostgreSQL
+focused98passed1237deselected23.80s, exit0. Full suite not repeated after this
+dependency-only change. Corrected pip-audit --path .venv/Lib/site-packages reports
+no known vulnerabilities, exit0; local editable project is not a PyPI package.
+Ruff/format247/mypy123/lock/diff pass. Evidence checksums in collection-worker-checks.json.
+Threat review: workload key is independent of browser identity; repeated current
+consent/fences; narrow source reads; no token leaves auth custody. Remaining
+launcher supervision/incident path selection and complete repair integration are
+explicit limitations. Next critical task remains authentic small-incident repair
+and seven-gate worker acceptance, then exact human approval/publication.
+
+
+## 2026-10-24 - Demo-critical relevant context selection
+
+Implementation a79a994 prefers bounded approved incident file references before
+source acquisition; no whole-repository fetch, absolute-prefix stripping, URL
+following, basename guessing or scope expansion. Fallback remains validated.
+RED absent module retained; GREEN10 unit negatives passed0.18s. Added PostgreSQL
+incident-to-source regression selecting src/checkout.py instead of README.
+Unit+contract932passed5.06s; mypy124sources, ruff249files pass. Full PostgreSQL
+regression result follows. Browser npm lint/typecheck pass; auth4passed19.5s;
+workbench7passed20.4s/1 opt-in actual API skip. Reports retained compressed.
+Offline scripts.check_checkout returns M2_FIXTURE_ACCEPTED exit0; no fresh cloud
+call or invented VERIFIED claim. Demo runbook records actual scope and blockers.
+Local auth API restarted successfully on127.0.0.1:8000. Automatic approval review
+rejected the web startup command with temporary environment flags, stating only
+blocked by policy. No bypass or alternate-identity startup attempted.
+
+Demo credential-value scan PASS: changed files/new evidence were compared against
+configured local secret values without emitting those values. Workbench browser
+JUnit retained compressed; authentication counts are from the successful console
+run (Playwright cleaned its earlier report directory before the next suite).
+No frontend source changed. Dependency audit remains clean after pinned updates.
+
+Final a79a994 acceptance: demo-context-final-postgres.xml1346passed,zero failures/
+errors/skips447.25s exit0, after dependency remediation. JUnit SHA256 and explicit
+readiness gaps in demo-context-checks.json. One upstream deprecation warning.
+Full test used disposable DB/roles,600s aggregate test ceiling; cleanup completed.
+No model, sandbox or publication ran. Current demo remains incomplete; no M3/M4/M5
+exit was weakened. Next is admitted checkout repair/replay worker integration.
+
+
+## 2026-10-24 - Authenticated durable triage continuation
+
+Implementation4917e5c. The source broker now performs an internal current-access
+check bound to exact lease/run/version before the separate worker calls existing
+run_triage. Browser/model tools cannot invoke this route. No GitHub token or vault
+key leaves auth custody. Worker mode requires --triage, --allow-live-inference
+and explicit estimated-call-microusd before I/O. Launcher only admits inference
+keys in that mode and strips other inherited credentials. Collection default
+remains unchanged. Existing sticky inference journal/budget/atomic retention used;
+no new shell, baseline, patch, verifier or publisher dispatch was enabled.
+
+RED missing dispatch_triage_once retained as auth-triage-red.xml.gz. First local
+fixture import was removed as unused; fixed to explicit test_postgres.store alias.
+The revocation case initially expected a return rather than denial; corrected the
+test to assert BrokerError and zero model calls, preserving fail-closed behavior.
+That failure retained as auth-triage-focused.xml.gz. Focused disposable-Postgres
+run:12passed1345deselected27.55s exit0. Unit/contract941passed5.19s exit0.
+Ruff/format250files, strict mypy124sources, lock check pass. Dependency audit has
+no known vulnerabilities; secret-value scan passes without emitting values.
+
+No UI source/dependencies changed; previous auth4/workbench7 browser acceptance
+remains historical with its explicit opt-in API skip. New internal path is not
+added to BFF/model vocabulary. Auth API restarted successfully at127.0.0.1:8000
+without access logs after code update. No paid/provider call, sandbox execution,
+external write, PR, merge or deployment performed. Live triage remains unverified.
+
+Remaining baseline acceptance requires configured admitted materializer/collector
+and independently established source/image/configuration facts plus trusted keys.
+PreparedImageBinding and CapabilityAttestation are trusted external/operator
+inputs; no production facts were inferred from expected digests or image UUIDs.
+M3/M4/M5 exits unchanged; reproduction proposal is not repair completion.
+
+Final4917e5c: full isolated PostgreSQL regression1357passed,zero failures/errors/
+skips454.73s,exit0. Artifact auth-triage-final-postgres.xml and exact SHA256 in
+auth-triage-checks.json. Disposable DB/roles cleaned;600s aggregate test ceiling
+only, product limits unchanged. Defaults NOT_RUN/exit2 remain unit-tested; saved
+checkout checker M2_FIXTURE_ACCEPTED/exit0. All milestone limitations preserved.
+Implementation source committed; evidence/docs commit follows.
+
+
+## 2026-10-25 - Durable admitted baseline worker
+
+Implementation e78ea60 adds stage-specific baseline queue handoff, typed prepared
+workspace provider, one-use baseline dispatcher and migration0028. Follow-up
+a061648 requires saved/measured JUnit mode and tests actual REST serialization.
+Authenticated triage queues REPRODUCING atomically; collection claims exclude it.
+Legacy triage default remains finish-job. New dispatcher retains assessment/runner/
+configuration/plan binding and audit before POST, reuses budget/operation journals,
+and never repeats unknown submission. Saved report is required before reservation.
+
+RED missing module retained compressed. First concurrent test found stale-version
+reconciliation after another caller had reserved budget; corrected reconciliation
+against exact persisted from/to versions. Later tests covered crash after budget
+reservation, legacy operation refusal and racing operation record. A temporary
+undefined test assertion name was fixed (not production behavior). Failed JUnit
+artifacts preserved compressed. Focused baseline-worker15passed20.58s; final REST
+focused16passed1355deselected22.59s exit0. Unit/contract941passed4.43s before the
+report-mode follow-up; unchanged unit implementation exercised again in full run.
+Ruff/format254files, mypy126sources and lock checks pass. Dependency audit clean.
+Earlier aggregate test process was lost across session interruption with no final
+JUnit; no full-suite pass claimed for that interrupted run. Final aggregate rerun
+result follows below. No UI code/dependency changed; prior browser evidence remains
+historical. All new source uses tiny fixtures and fake HTTP, not host execution.
+
+Research used official Nebius overview, execution-lifecycle, image/checkpoint and
+security/data-handling docs; references and findings in docs/baseline-worker.md.
+The installed SDK0.3.6 ImageLike.run has no networking argument; admitted execution
+uses the existing REST serializer. Explicit save mode preserves JUnit for collection;
+operation SUCCESS is separate from process success; client interruption is not
+permission to resubmit. No invented SDK flag, OCI identity or cleanup guarantee.
+
+Migration0028 applied only in disposable test databases; restricted test role gets
+SELECT/INSERT, UPDATE/DELETE remains denied. Downgrade refuses nonempty claims to
+avoid removing duplicate-submission protection. The configured app DB was not
+migrated or regranted. Deployment still needs actual independent prepared image,
+source/configuration and trusted collector/assessor bindings. No production facts
+were signed from expected values, no live provider call/charge, no GitHub write,
+PR, merge or deployment occurred. Reproduction/submission is not verified repair.
+
+Follow-up b742a76: full run exposed the old migration smoke test attempting to
+remove shared synthetic submission claims. Kept0028 nonempty-ledger downgrade
+refusal and moved downgrade/reapply smoke to a fresh UUID schema in the verified
+rf_test database. Schema identifiers are quoted; cleanup applies only to that
+created schema. No submission ledger rows or assertions were deleted to pass.
+Reproduced: baseline-migration-regression.xml14passed/1failed14.78s; corrected
+baseline-migration-fixed.xml15passed19.22s. Earlier aggregate1370passed/1failed
+526.96s preserved as baseline-worker-reset-failure.xml.gz. Final clean rerun below.
+
+UI now explains TRIAGING and REPRODUCING checkpoints without claiming tests ran.
+RED2 missing notices observed against prior build; GREEN auth4passed9.6s and
+workbench9passed23.4s/1 opt-in real-API skip. npm lint/typecheck/build pass. New
+mobile state screenshot visually checked for legible wrapping/no horizontal
+scroll; synthetic state explicitly, not live repair proof. Workbench JUnit and
+screenshot retained. Backend full test independently covers the durable flow.
+No provider calls, charges, remote writes or deployment during this acceptance.
+
+Final clean acceptance b742a76:1371passed,zero failures/errors/skips471.58s exit0.
+JUnit and SHA256 in baseline-worker-checks.json. Disposable DB/roles cleaned by
+harness;600s aggregate ceiling only, no product limit weakened. UI13passed total
+plus1opt-in API skip; remaining scope explicitly recorded. No live repaired run,
+production VERIFIED, PR, remote write or deployment claimed.
+
+
+## 2026-10-25 - Concrete run-scoped Nebius baseline provider
+
+Implementation80d544f replaces the preparation-port-only gap with a concrete
+read-only NebiusBaselineProvider backed by PreparedNebiusBackend. Exact stable
+plan/execution/tree/image/configuration inputs are validated before client
+construction; current reproduction/source/cancellation is checked at resolution.
+Claim filters bind REPRODUCING to the provider's configured run, avoiding claims
+against unrelated queued incidents. No facts or keys are generated by resolving
+operator configuration; actual trusted materialization remains required.
+
+RED missing module retained compressed. GREEN11unit cases passed0.53s; first
+focused real-Postgres composition20passed24.18s (before7 additional unit negatives,
+which passed separately). The integrated intake/triage/baseline test now uses
+this concrete provider and actual REST serializer with fake HTTP rather than a
+custom fake prepared-backend factory. It asserts one submission and no re-claim
+of its currently leased job. Unit cases cover live opt-in, exact run selection,
+client close, run/source/cancellation denial and6 inconsistent binding fields.
+Unit+contract952passed5.06s; ruff/format256files and strict mypy127sources pass.
+Full regression result follows. No UI source/dependency changed in this increment;
+prior13 browser passes remain historical, including1 explicit real-API skip.
+No model/sandbox/provider call, charge, remote write or deployment was made.
+
+Production readiness remains false until actual source/image/configuration and
+collector/assessor trust bindings, materialization/receipt orchestration, mandatory
+verification gates, exact human approval/live publication and deployment acceptance
+are established. The new adapter does not manufacture those prerequisites.
+
+Final80d544f:1382passed,zero failures/errors/skips468.36s exit0. Full disposable
+PostgreSQL harness cleaned its DB/roles. Exact JUnit SHA256 in concrete-baseline-
+checks.json. Ruff/format256/mypy127/lock/audit and secret-value scan pass. One
+existing upstream warning. Production-readiness review preserves explicit release
+blockers: real materialization/collector bindings, live full repair verification,
+human approval/publication and deployment. No production readiness claimed.
+
+### Source archive packaging — 2026-10-25
+
+Added a pure source packaging primitive for the next materialization step. The
+initial test failed with ModuleNotFoundError (RED); ten cases then passed. A new
+long-path test reproduced a raw tar ValueError; fixed to S_SOURCE_ARCHIVE_PATH.
+Focused pre-final acceptance:29passed0.59s; final unit/contract:963passed9.59s,
+exit0, one existing upstream Starlette/AnyIO deprecation warning. Uses only tiny
+inert source bytes; no repository code execution, provider calls or charges.
+Ruff check/format258files passed. Initial typecheck used an invalid apps/api path
+and failed; corrected command is the repository-configured `uv run mypy`.
+Full disposable PostgreSQL regression is pending; no milestone exit asserted.
+
+Final source archive acceptance,implementation155e3f6:1393passed,zero failures/errors/skips,499.38s,exit0; disposable DB cleanup completed. Full command used scripts.test_postgres with aggregate600s ceiling,not product limits. uv run mypy:128sources pass. Secret-value scan initially failed due missing optional dotenv and legacy non-UTF8 log bytes; corrected dependency-free byte scan passes,zero matches. Checks/evidence hashes:docs/evidence/source-archive-checks.json. No dependency/UI changes,provider calls,charges or remote writes. M3/M4/M5 unchanged.
+
+
+### Session human review and scoped GitHub publication - 2026-10-25
+
+Implementationb26e8c3. Read AGENTS/Architecture/instructions/milestones/todo and
+existing approval/publication/auth contracts. Consulted official GitHub App JWT/
+installation-token docs and Nebius instance API; references and limits are in
+docs/authenticated-approval.md. RED:new broker test initially ModuleNotFoundError.
+12 broker contracts passed after implementation; actual RSA signature checked
+with synthetic2048bit key. Tests cover reduction, wrong scope, extra permission,
+expiry, redirect/drop/no retry, post-mint approval change and live opt-in.
+
+Real disposable PG session/review tests:7passed12.57s,then9passed16.76s including
+no-mint without review and no consumption when live-disabled. Original receipt
+and publication version recover after restart without renewing TTL. Synthetic
+accepted verifier fixtures are not live repair proof. Unit/contract final:
+979passed5.22s. Ruff check/format263files and strict mypy131sources pass. A typed
+publication port initially rejected narrowed origin types; corrected its origin
+contract to read-only rather than using a cast/type suppression.
+
+UI lint/typecheck/build pass. Initial browser run5pass/1 ambiguous-alert selector
+failure:product correctly denied tampered hash,selector also matched hidden Next
+announcer. Scoped selector fixed; final session/review6passed12.9s. Workbench
+9passed20.8s/1 existing opt-in real API skip. Mobile screenshot visually reviewed
+after improving checkbox alignment/buttons/hash wrapping. Both browser fixtures
+are explicitly synthetic; no live provider/PR success is inferred.
+
+Full disposable regression command:uv run python with scripts.test_postgres,
+--evidence-name session-publication-full-postgres.xml, aggregate subprocess
+timeout600s (product limits unchanged). Actual1418passed,zero failures/errors/
+skips,541.64s,exit0; disposable DB/roles cleaned. One existing Starlette/AnyIO
+deprecation warning; browser NO_COLOR/FORCE_COLOR warnings remain.
+
+uvx pip-audit --path .venv/Lib/site-packages --format json --output
+docs/evidence/session-publication-dependency-audit.json:exit0,no known
+vulnerabilities. Actual env-secret and supplied PEM-body byte scan:23 changed
+source/doc files,zero matches; private PEM ignored by Git. Key was only format
+validated offline; App ownership not claimed. Local ignored .env stores its path
+reference; live publication flag unchanged. No live inference/sandbox/GitHub API
+call,remote write,charge,application migration/grant or public deploy.
+
+Acceptance/hashes:docs/evidence/session-publication-checks.json. M3 materializer/
+collector/live repair remains unfinished; M4 needs authentic evidence followed by
+exact human review,real idempotent PR and hidden evaluation. Existing exits and
+M2 contingency evidence preserved. Publication cannot bypass these requirements.
+
+
+### Durable materialization acceptance - 2026-10-25
+Implementation554bf3d; exact source original and separately bound reproduction
+upload, pre-POST intent/time/command debit, known UUID, saved result measurement
+and stable observed-time recovery. Migration0029 grants SELECT/INSERT only.
+Initial absent-module RED; initial PG6fail/3pass event-type allowlist mismatch
+rolled back before POST, fixed migration; focused9pass14.89s. Initial full test
+collection duplicate basename fixed by naming contract test_nebius_materialization.
+RED archives retained. Final full1436passed,zero failures/errors/skips,527.75s,
+exit0; unit/contract988passed6.65s. Ruff/format270files,mypy135sources,actual-env
+secret scan pass. UI/dependencies unchanged; earlier audits remain evidence.
+
+One live inert materialize_once through disposable PG:2files36bytes independently
+read back equal expected archive identity, operation01a1728e-c884-758a-bc6f-a708e29eda9d.
+No source/test execution/inference/GitHub writes. Attempt guard fsynced beforePOST
+prevents repeat even after DB cleanup; billing not collected, saved image retention
+not deletion. Probe default CLI checked NOT_RUN/exit2 without provider/DB I/O.
+
+Three additional bounded fixed runtime diagnostics, no repository code: default
+non-root observed RW root,seccomp0,NoNewPrivs0,absent cgroup-v2 files,LandlockENOSYS,
+working user/mount namespace. Root prerequisite probe mounted cgroup2 and wrote
+cpu/memory/pids controls. Confined child prototype observed uid/gid1000,caps0,RO
+root,seccomp2,NoNewPrivs1,fork/write denial,CPU1core quota,memory128MiB,pids16 and
+tmpfs16MiB/256inodes. All observations remain UNSIGNED and cannot authorize
+execution/VERIFIED. No model/GitHub call. Public official Python OCI descriptor
+was independently fetched/hash-checked; no OCI import or derived-image claim yet.
+
+Working-tree confinement workload launcher remains experimental pending actual
+measured execution and source/image/collector trust bindings. M3/M4 not complete.
+Next task is that admitted launcher,then full gates/approval-bound PR/evaluation.
+
+
+## 2026-10-25: confined measured collector and provider signal correction
+
+Implemented opt-in fixed remote pytest supervision, pure/testable classic-BPF
+policy, exact spawn configuration hashing, protected child-result correlation
+and DurableConfinedBackend candidate/clean recovery. No guest workload executes
+on the host. Existing direct prepared runner behavior remains intact.
+
+Observed local results before implementation commit: ruff check passed; format
+274files passed; strict mypy137sources passed. Latest unit/contract1021passed,
+8.52s,exit0 (confined-final-unit-contract.xml); focused contracts52passed,1.06s;
+Postgres durable18passed,68.96s,exit0 (confined-durable-focused.xml). The latter
+filename was corrected from an initial red label: it actually passed, not RED.
+The new class was added while the DB wrapper was preparing; its first observed
+run was green. Real RED evidence: missing confined module collection error and
+provider -1 signal test failure19passed/1failed. Both retained separately.
+
+A full disposable-Postgres regression is running; do not treat it as passed until
+the retained report is complete. Last BPF additions/refactor are also covered by
+the newer focused/unit suite above. Secret-value comparison12changed/new source
+files found0matches; no private keys staged. UI/dependency code unchanged; prior
+same-day browser/dependency audits remain retained, not rerun in this increment.
+
+Necessary live preparation: one malformed immutable import failed for missing
+URL scheme; installed official SDK source showed docker:// normalization. A
+second corrected digest import failed HTTP404 during registry pull. Operations
+01a173a2-b3fd-7406-915a-648016764605 and
+01a173a3-0a88-765e-91e1-7a4a476328da are terminalFAILED, no resultimage. Attempt
+guards and exact bounded observations retained under pinned-image-import*.
+Billing fields null; no inference or GitHub write. No blind retries or key reuse
+for routine tests. This proves failure for this source, not all image imports.
+
+Threat review: root setup stays in remoteVM; child drops identity/capabilities;
+no-new-privileges and filter surviveexec; file reads reject links and special
+files; anonymous socketpairs cannot address named Unix services via sendto.
+No capability signer/provenance is invented. Experimental workload template
+has not passed live execution; earlier diagnostic predates it.
+
+M3/M4 remain open. Next critical dependency: a working digest-import reference
+or provider resolution, pinned pytest environment and independently qualified
+controls/collector, then actual baseline/patch/candidate/clean seven-gate evidence
+and exact authenticated human approval/real PR plus hidden evaluation.
+
+
+Test-wrapper correction after2fca083: the monolithic backend run did not finish
+within its600second override; shell exit1,DB_TEST_FAILURE, no completed JUnit.
+No full-suite pass is claimed for that attempt. The checked-in wrapper still
+had an obsolete180second default, below the retained prior527second regression.
+Added --timeout-seconds with default900 and validated bounds30..1800. Invalid1
+exits2 before credential prompt; --help exits0. Ruff/format and mypy137pass.
+The449integration tests are now split150/150/149 by whole module into three
+independent random disposable databases, each with900second child bound.
+Latest1021unit/contract cases already passed; group outcomes remain pending.
+
+
+Final acceptance after2fca083/fcc8e41:1021unit/contract passed8.52s and
+three independent disposable PostgreSQL groups passed150in203.40s,
+150in226.49s and149in256.76s, all exit0. The aggregate1470node IDs exactly
+match a fresh full collection with no duplicates/omissions; failures/errors/
+skips0. This is grouped acceptance, not a monolithic pass. Original600second
+wrapper failure is retained in confined-full-attempt.json. All test DB/roles
+cleaned by wrappers. Ruff/format274files,mypy137sources pass. Current local
+source has no tracked .env/PEM/key files; secret comparison found0matches. One
+upstream warning remains. See confined-checks.json and its checksummed reports.
+
+Core implementation commit2fca083; wrapperfcc8e41. No UI/dependency change, no
+public deployment or GitHub write. Two failed image imports produced no image;
+retain guards and provider failures. Workload template remains live-unaccepted.
+User requested an end to repeated hardening/validation loops; next development
+focus is baseline/patch/candidate/clean orchestration and workbench handoff.
+Working immutable runtime provenance is an external live acceptance dependency.
+M3/M4/M5 remain incomplete; do not replace their exits with local contract tests.
+
+Artifact-only follow-up: retained original failing provider-signal JUnit bytes
+as provider-signal-red.xml.gz to avoid generated traceback whitespace in Git
+diff checks; decompressed bytes verified identical. No application change.
+
+## 2026-10-26 - Authorized source handoff and clean replay selection
+
+- Added the authenticated worker-only manifest source read and validated its source bytes through the existing collection broker contract.
+- Fixed clean replay materialization to package the pristine pinned source plus unchanged reproduction test, independently from the patched candidate archive.
+- Evidence: `uv run pytest tests/unit/test_candidate_workspace.py -q` (10 passed); `uv run pytest tests/unit -q` (812 passed); `uv run pytest tests/contract -q` (227 passed, one upstream deprecation warning); disposable PostgreSQL focused collection/materialization run (14 passed, exit 0, `docs/evidence/authorized-source-materialization-focused.xml`); Ruff, format and Mypy passed.
+- This is synthetic/local transport evidence. No real repository download, Nebius replay, trusted signed receipt, seven-gate verdict or complete M3 journey was produced. Pinned image import remains blocked by retained HTTP 404; see `docs/authorized-materialization.md` and `docs/confined-runner.md`.

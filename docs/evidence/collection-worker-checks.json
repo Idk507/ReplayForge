@@ -1,0 +1,87 @@
+{
+  "implementation_commit": "3f5704f",
+  "dependency_commit": "88b46ef",
+  "observed_date": "2026-10-24",
+  "full_regression_pre_dependency_update": {
+    "passed": 1335,
+    "exit": 0,
+    "seconds": 499.37
+  },
+  "post_update_unit_contract": {
+    "passed": 922,
+    "exit": 0,
+    "seconds": 6.54
+  },
+  "post_update_focused_postgres": {
+    "passed": 98,
+    "deselected": 1237,
+    "exit": 0,
+    "seconds": 23.8
+  },
+  "ruff": "PASS",
+  "format_files": 247,
+  "mypy_sources": 123,
+  "lock": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "secret_scan": "No actual credentials; two synthetic PEM markers in test parameter names",
+  "artifacts": [
+    {
+      "path": "docs/evidence/collection-worker-final-postgres.xml",
+      "sha256": "30ff69c9fe53b9f41654727b0c1a969b1e0b6b0bdc979a41cbbbfe1fe0220e76",
+      "suite": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "1335",
+        "time": "499.338",
+        "timestamp": "2026-10-24T15:16:52.030089+05:30",
+        "hostname": "dhanu"
+      }
+    },
+    {
+      "path": "docs/evidence/collection-worker-remediated-unit.xml",
+      "sha256": "1c40497cf6a8887f406ca74c0d00b09cca3874c6377dbb36881d83bdc562a2be",
+      "suite": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "922",
+        "time": "6.506",
+        "timestamp": "2026-10-24T15:25:35.944312+05:30",
+        "hostname": "dhanu"
+      }
+    },
+    {
+      "path": "docs/evidence/collection-worker-remediated-focused.xml",
+      "sha256": "1e35e49d5eff15760b5bc2c536be74fb8554cee85ec7323e75e162ffabe94f4b",
+      "suite": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "98",
+        "time": "23.777",
+        "timestamp": "2026-10-24T15:25:44.134850+05:30",
+        "hostname": "dhanu"
+      }
+    },
+    {
+      "path": "docs/evidence/collection-worker-dependency-audit.json",
+      "sha256": "6b9e5dd341595cc857db4c02508ec5d966bb989faf94210d8b331247727d6bf3"
+    },
+    {
+      "path": "docs/evidence/collection-worker-small-acceptance.json",
+      "sha256": "ef9081abbd89501f84d445f4562beb01fd84d0041d19da49b985f522bdc75100"
+    }
+  ],
+  "limitations": [
+    "Full suite not repeated after dependency-only update",
+    "Existing Starlette anyio alias deprecation warning",
+    "Collection acceptance only; M3/M4/M5 remain open"
+  ],
+  "external_writes": 0,
+  "inference_calls": 0,
+  "sandbox_calls": 0
+}

@@ -131,8 +131,7 @@ class PreparedNebiusBackend:
     ) -> UUID:
         """Submit the exact reserved plan once; ambiguous failures stay unknown."""
         plan = self._validate_submission(plan, execution_id, expected_tree_ref)
-        binding = self._binding
-        payload = build_test_spawn(plan, binding.image_uuid)
+        payload = self._spawn_payload(plan)
         self._exports_junit = plan.command_id in {
             "PYTEST_FILES_SAVED_JUNIT_V1",
             "PYTEST_FILES_MEASURED_V1",
@@ -150,6 +149,10 @@ class PreparedNebiusBackend:
             # Match the dispatch port's safe uncertain-submission convention.
             raise TimeoutError("S_SUBMISSION_UNKNOWN") from None
         return self._operation
+
+    def _spawn_payload(self, plan: TestCommandPlan) -> dict[str, object]:
+        """Fixed command template; specialized runners must preserve admission."""
+        return build_test_spawn(plan, self._binding.image_uuid)
 
     def _owned(self, operation_id: UUID) -> None:
         if self._closed or self._operation is None or self._operation != operation_id:

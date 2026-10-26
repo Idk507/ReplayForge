@@ -136,9 +136,14 @@ class ReproductionJournal:
         *,
         expected_version: int,
         finish_job: bool = False,
+        queue_baseline: bool = False,
     ) -> RunState:
         """Commit candidate, reference, stage and event in a single transaction."""
-        if type(finish_job) is not bool:
+        if (
+            type(finish_job) is not bool
+            or type(queue_baseline) is not bool
+            or (queue_baseline and not finish_job)
+        ):
             raise StoreError("TRIAGE_HANDOFF_INVALID")
         lease = Lease.model_validate(lease.model_dump())
         with self._store._connection() as conn:
@@ -188,10 +193,18 @@ class ReproductionJournal:
             )
             self._store._save(conn, updated)
             if finish_job:
-                conn.execute(
-                    "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
-                    (run.run_id,),
-                )
+                if queue_baseline:
+                    conn.execute(
+                        "UPDATE job_leases SET status='queued',token=NULL,"
+                        "worker_id=NULL,attempt_count=0 WHERE run_id=%s",
+                        (run.run_id,),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE job_leases SET status='done',token=NULL "
+                        "WHERE run_id=%s",
+                        (run.run_id,),
+                    )
             return updated
 
     def get(self, run_id: UUID, owner: UUID) -> ReproductionArtifact:

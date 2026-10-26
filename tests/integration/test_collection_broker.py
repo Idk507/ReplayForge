@@ -18,7 +18,7 @@ from tests.integration.test_session_access import connect, setup
 store = test_postgres.store
 
 
-def prepared(store):
+def prepared(store, incident="Small README demonstration"):
     c, j, session, headers, access, calls = setup(store)
     repo = connect(access, session)
     with j.store._connection() as db:
@@ -29,7 +29,7 @@ def prepared(store):
         json={
             "repository_id": str(repo.repository_id),
             "commit_sha": "a" * 40,
-            "incident_text": "Small README demonstration",
+            "incident_text": incident,
             "idempotency_key": str(uuid4()),
         },
     )
@@ -42,12 +42,17 @@ def prepared(store):
     def factory(token, paths):
         def load(run, grant):
             fetched.append(paths)
-            body = b"Small trusted synthetic demo text"
-            f = FileIdentity("README.md", "b" * 40, sha256(body).hexdigest(), len(body))
+            body = b"# Small trusted synthetic demo text\n"
+            import hashlib
+
+            blob = hashlib.sha1(
+                f"blob {len(body)}\0".encode() + body, usedforsecurity=False
+            ).hexdigest()
+            f = FileIdentity(paths[0], blob, sha256(body).hexdigest(), len(body))
             snap = Snapshot(
                 "a" * 40,
                 (f,),
-                MappingProxyType({"README.md": body}),
+                MappingProxyType({paths[0]: body}),
                 evidence_origin="TEST_TRANSPORT",
                 commit_identity="GITHUB_HTTPS_METADATA",
             )
@@ -107,6 +112,19 @@ def test_collection_broker_retains_context_without_returning_credentials(store):
         == 409
     )
     assert len(fetched) == 1
+
+
+def test_incident_reference_selects_relevant_file_before_source_read(store):
+    c, j, session, broker, payload, fetched = prepared(
+        store, 'AssertionError in File "src/checkout.py", line 12'
+    )
+    r = c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+    assert r.status_code == 200 and r.json()["stage"] == "TRIAGING"
+    assert fetched == [("src/checkout.py",)]
 
 
 @pytest.mark.parametrize(
@@ -181,3 +199,63 @@ def test_cancelled_collection_never_fetches_source(store):
         headers={"authorization": "Bearer " + "s" * 43},
     )
     assert r.status_code == 409 and not fetched
+
+
+def test_materialization_source_is_fetched_by_manifest_after_fresh_access(store):
+    import httpx
+    from pydantic import SecretStr
+
+    from packages.contracts.run import Stage
+    from services.orchestrator.authorized_materialization import (
+        fetch_authorized_source,
+    )
+    from services.orchestrator.source_broker import BrokerClient
+
+    c, j, session, broker, payload, fetched = prepared(store)
+    response = c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+    assert response.status_code == 200
+    lease = store.claim(uuid4(), triage_only=True, stages=(Stage.TRIAGING,))
+    assert lease is not None
+    _, current = store.claimed_run(lease)
+    current = store.advance(lease, Stage.REPRODUCING, expected_version=current.version)
+
+    def handle(request):
+        response = c.request(
+            request.method,
+            request.url.path,
+            headers=dict(request.headers),
+            content=request.content,
+        )
+        return httpx.Response(response.status_code, content=response.content)
+
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(handle),
+    ) as client:
+        manifest, files = fetch_authorized_source(
+            store,
+            client,
+            lease,
+            session.user_id,
+            expected_version=current.version,
+        )
+    assert manifest.source_commit == current.source_commit
+    assert fetched == [("README.md",), ("README.md",)]
+    assert files == {"README.md": b"# Small trusted synthetic demo text\n"}
+    broker.access.disconnect(session.user_id, current.repository_id)
+    body = {
+        "lease": lease.model_dump(mode="json"),
+        "expected_version": current.version,
+    }
+    denied = c.post(
+        "/internal/v1/collection/materialization-source",
+        json=body,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+    assert denied.status_code == 403
+    assert len(fetched) == 2

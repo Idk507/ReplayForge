@@ -206,3 +206,59 @@ and owner checks remain mandatory. Provider errors do not impersonate expired
 browser sessions. One-time App/DB configuration belongs to operators; end users
 choose a repository and explicitly consent. See docs/github-authentication.md for
 bounds, stale-page recovery and final acceptance evidence. M3/M4 exits unchanged.
+
+
+## Authenticated collection handoff - 2026-10-24
+
+See docs/authenticated-collection.md for the opt-in loopback broker and isolated
+worker startup. Selected reads preserve registered grants. Live small-file
+collection reached TRIAGING; this does not grant VERIFIED or close M3/M4.
+No inference, repository execution or publication is enabled by this slice.
+
+
+## Authenticated triage continuation - 2026-10-24
+
+Implementation4917e5c connects queued collection to the existing durable triage
+controller without worker GitHub/vault credentials. Triage requires explicit
+inference opt-in and a declared cost; default collection remains inference-off.
+Current membership, lease/version/consent and sticky request journals remain
+mandatory. See docs/authenticated-triage.md. Local fake-provider acceptance is
+not live inference, baseline execution, VERIFIED or M3/M4 completion.
+
+
+## Admitted baseline continuation - 2026-10-25
+
+Implementations e78ea60/a061648 connect reproduction retention to a stage-specific
+baseline queue and one-shot prepared-workspace dispatch. Collection workers do
+not claim baseline jobs. New migration0028 preserves immutable submission claims;
+nonempty-ledger rollback remains refused. See docs/baseline-worker.md for actual
+REST/SDK findings, prerequisites and limitations. Tests use synthetic assessors
+and fake HTTP; no live VERIFIED or M3/M4 completion follows from submission.
+
+
+## Concrete baseline provider - 2026-10-25
+
+Implementation80d544f supplies NebiusBaselineProvider with exact per-run claim
+selection and immutable input validation. See docs/baseline-worker.md. Resolution
+performs no provider request and does not replace actual materialization or
+collector assessment. Live VERIFIED and production readiness remain unaccepted.
+
+## Authenticated review/publication - 2026-10-25
+
+Session review, recovery version, App-key custody, repository-reduced credentials
+and opt-in publication contracts are in docs/authenticated-approval.md. Workbench
+checks displayed diff bytes before human review. Actual live materialization,
+collector/repair gates, approved PR and hidden evaluation remain incomplete.
+
+Materialization now follows docs/materialization.md: one-shot durable source/test
+upload, actual saved-workspace readback and explicit test-origin/live distinction.
+Independent runner/collector admission and all repair gates remain mandatory.
+
+
+Confined execution follow-up2026-10-25: docs/confined-runner.md defines the
+opt-in measured pytest supervisor, exact payload binding, protected child-result
+collection and durable candidate/clean recovery. It does not supply a real
+capability profile or enable default live execution. Digest-pinned image import
+failed HTTP404 after SDK URL normalization; actual full repair/replay, all seven
+gates, exact human-approved PR and hidden evaluation remain open. Original
+M3/M4 exits are unchanged.

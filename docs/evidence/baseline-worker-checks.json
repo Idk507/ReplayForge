@@ -1,0 +1,76 @@
+{
+  "observed_date": "2026-10-25",
+  "implementation_commits": [
+    "e78ea60",
+    "a061648",
+    "b742a76"
+  ],
+  "full_backend": {
+    "tests": 1371,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds_console": 471.58,
+    "exit": 0,
+    "junit": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "1371",
+      "time": "471.536",
+      "timestamp": "2026-10-25T02:18:03.503512+05:30",
+      "hostname": "dhanu"
+    },
+    "path": "docs/evidence/baseline-worker-final-postgres.xml",
+    "sha256": "4c4ae34d052755f6ac13705d7e8165989f9ae729553982139aec9573d09e3254"
+  },
+  "focused_rest": {
+    "passed": 16,
+    "deselected": 1355,
+    "seconds": 22.59,
+    "exit": 0
+  },
+  "migration_regression_fixed": {
+    "passed": 15,
+    "seconds": 19.22,
+    "exit": 0
+  },
+  "unit_contract": {
+    "passed": 941,
+    "seconds": 4.43,
+    "exit": 0
+  },
+  "auth_browser": {
+    "passed": 4,
+    "seconds": 9.6,
+    "source": "successful console output"
+  },
+  "workbench_browser": {
+    "passed": 9,
+    "skipped": 1,
+    "seconds": 23.4,
+    "scope": "Synthetic HTTP plus retained research; optional real API test skipped"
+  },
+  "ui_lint": "PASS",
+  "ui_typecheck": "PASS",
+  "ui_build": "PASS",
+  "ruff": "PASS",
+  "format_files": 254,
+  "mypy_sources": 126,
+  "lock": "PASS",
+  "dependency_audit": "NO_KNOWN_VULNERABILITIES",
+  "retained_checkout": "M2_FIXTURE_ACCEPTED",
+  "cloud_calls": 0,
+  "remote_writes": 0,
+  "app_database_migrated": false,
+  "live_baseline_verified": false,
+  "production_verified": false,
+  "remaining": [
+    "Trusted materialization/collector deployment and actual prepared image/source/configuration bindings",
+    "Patch and replay worker integration plus authentic mandatory verification gates",
+    "Exact human approval and isolated GitHub write-token brokerage/live PR/hidden evaluation",
+    "Public deployment and submission packaging"
+  ],
+  "warning": "Upstream Starlette/AnyIO BlockingPortal alias deprecation"
+}

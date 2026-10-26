@@ -1,0 +1,41 @@
+{
+  "status": "WORKSPACE_UPLOADED_AND_MEASURED",
+  "input_kind": "SYNTHETIC_INERT_FIXTURE",
+  "result": {
+    "plan": {
+      "run_id": "672b54be-0906-4cef-85aa-13ab358acac7",
+      "repository_id": "6ab5b023-9788-47a9-b5be-cec3ced36336",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_manifest_ref": "sha256:ebc9c892870f6564422013e48861c1fa7fe97a962c6a40361f403053678bbbb0",
+      "reproduction_test_ref": "sha256:ae356d9da100accb5e32874482936fb69c7c3a562c05c5d0848920dcbd0f8e8c",
+      "image_uuid": "4fa16c8f-62a9-35a4-a4ea-07b7e8cd44ae",
+      "archive_ref": "sha256:e237b5217678bce19817af52b6e9d2b538b34a201f6d0dc668f003b94becbf08",
+      "workspace_ref": "sha256:cae814cfdb97bd29ba64f871c006cac666d3a6d1a6ff1be5d966718be5fcecb2",
+      "paths": [
+        "src/a.py",
+        "tests/test_a.py"
+      ]
+    },
+    "operation_id": "01a1728e-c884-758a-bc6f-a708e29eda9d",
+    "result_image_uuid": "124e516e-11c5-492c-868a-1ab793c785a0",
+    "measurement": {
+      "image_uuid": "124e516e-11c5-492c-868a-1ab793c785a0",
+      "tree_ref": "sha256:cae814cfdb97bd29ba64f871c006cac666d3a6d1a6ff1be5d966718be5fcecb2",
+      "files": 2,
+      "bytes_measured": 36,
+      "evidence_origin": "REMOTE_SERVICE",
+      "can_authorize_verification": false
+    },
+    "observed_at": "2026-10-25T10:15:26.931022Z",
+    "can_authorize_execution": false
+  },
+  "tests_executed": 0,
+  "inference_calls": 0,
+  "can_authorize_execution": false,
+  "limitations": [
+    "Synthetic source/reproduction identity, not a GitHub repair.",
+    "Fixed extractor only; source/test code was not executed.",
+    "Unsigned measurement is not OCI/capability attestation.",
+    "Saved image remains subject to provider retention."
+  ]
+}

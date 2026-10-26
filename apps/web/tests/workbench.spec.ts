@@ -152,3 +152,29 @@ test("queued incident explains worker handoff without claiming execution", async
   await expect(page.getByText("Queued: waiting for a worker",{exact:true})).toBeVisible();
   await expect(page.getByText(/background worker must start collection/)).toBeVisible();
 });
+
+for (const [stage, title] of [
+  ["TRIAGING", "Context recorded: triage is not complete"],
+  ["REPRODUCING", "Reproduction proposed: baseline not accepted"],
+] as const) {
+  test(`synthetic ${stage} checkpoint explains missing execution evidence`, async ({page}) => {
+    const pending = {...synthetic, current_stage:stage, failure_reason:null};
+    await page.route("**/api/backend/**", route => {
+      const path = new URL(route.request().url()).pathname;
+      if(path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:""});
+      if(path.endsWith("/research")) return route.fulfill({json:[]});
+      if(path.endsWith("/patch")) return route.fulfill({status:404,json:{}});
+      return route.fulfill({json:path.endsWith("/runs")?[pending]:pending});
+    });
+    await page.goto("/");
+    await page.getByRole("button",{name:/Run 12345678/}).click();
+    await expect(page.getByText(title,{exact:true})).toBeVisible();
+    if(stage === "REPRODUCING") {
+      await page.setViewportSize({width:390,height:844});
+      expect(await page.evaluate(()=>document.body.scrollWidth<=window.innerWidth)).toBe(true);
+      await page.screenshot({path:resolve("test-results/baseline-pending-mobile.png"),fullPage:true});
+    }
+    await page.getByRole("tab",{name:"evidence",exact:false}).click();
+    await expect(page.getByText("No retained verdict")).toBeVisible();
+  });
+}

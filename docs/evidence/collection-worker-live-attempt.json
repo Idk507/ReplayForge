@@ -1,0 +1,16 @@
+{
+  "status": "LIVE_COLLECTION_ATTEMPT_TERMINAL",
+  "observed_date": "2026-10-24",
+  "run_id": "1e4ad695-57d5-4572-943c-18bbb8801434",
+  "stage": "INCONCLUSIVE",
+  "failure_reason": "CONTEXT_REJECTED",
+  "context_ref_count": 0,
+  "worker_credentials_isolated": true,
+  "requested_paths": [
+    "README.md"
+  ],
+  "inference_calls": 0,
+  "sandbox_calls": 0,
+  "external_writes": 0,
+  "verified": false
+}

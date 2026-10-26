@@ -89,6 +89,15 @@ def debit_research(
     )
 
 
+def debit_materialization(
+    store: Store, conn: psycopg.Connection[dict[str, object]], run: RunState
+) -> Budget:
+    """Reserve the fixed15-second upload command before its immutable intent."""
+    return _debit(
+        store, conn, run, (("sandbox_commands", 1), ("execution_seconds", 15))
+    )
+
+
 def debit_replays(
     store: Store,
     conn: psycopg.Connection[dict[str, object]],

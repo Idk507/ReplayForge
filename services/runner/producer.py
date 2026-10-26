@@ -26,7 +26,7 @@ from services.runner.receipts import (
     plan_ref,
 )
 from services.runner.remote import SandboxConfig
-from services.runner.responses import ProcessState
+from services.runner.responses import Operation, ProcessState
 from services.runner.workspace import WorkspaceMeasurement, archive_identity
 
 
@@ -137,11 +137,8 @@ class MeasuredPreparedBackend(PreparedNebiusBackend):
         image = operation.result_image_uuid
         if image is None or image == source.image_uuid:
             raise RunnerError("S_REPORT_IMAGE_INVALID")
-        process = operation.metadata.get("result")
-        if not isinstance(process, dict):
-            raise RunnerError("S_SCHEMA_INVALID")
         try:
-            state = ProcessState.model_validate(process.get("state"))
+            state = self._process_state(operation, plan)
             # Validate bounded receipt facts before report/measurement I/O.
             payload = ExecutionReceipt(
                 execution_id=self._binding.execution_id,
@@ -197,3 +194,17 @@ class MeasuredPreparedBackend(PreparedNebiusBackend):
             junit=report,
         )
         return self._receipt
+
+    def _process_state(
+        self, operation: Operation, plan: TestCommandPlan
+    ) -> ProcessState:
+        """Actual direct-child state; supervisors must correlate their inner child."""
+        process = operation.metadata.get("result")
+        if not isinstance(process, dict):
+            raise RunnerError("S_SCHEMA_INVALID")
+        state = ProcessState.model_validate(process.get("state"))
+        # Nebius uses -1 for no terminating signal, also accepted by its smoke
+        # and materialization adapters. The signed contract uses None instead.
+        return (
+            state.model_copy(update={"signal": None}) if state.signal == -1 else state
+        )

@@ -44,6 +44,9 @@ def prepare_store() -> Store:
         )
         conn.execute(sql.SQL("GRANT SELECT ON repository_grants TO {}").format(role))
         conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON baseline_submissions TO {}").format(role)
+        )
+        conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON replay_reservations TO {}").format(role)
         )
         conn.execute(
@@ -88,6 +91,19 @@ def prepare_store() -> Store:
             sql.SQL("GRANT SELECT,INSERT,UPDATE ON runs,job_leases TO {}").format(role)
         )
         conn.execute(sql.SQL("GRANT SELECT,INSERT ON run_events TO {}").format(role))
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON materialization_intents,"
+                "materialization_operations,materialization_results TO {}"
+            ).format(role)
+        )
+        conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON patched_materialization_intents,"
+                "patched_materialization_operations,"
+                "patched_materialization_results TO {}"
+            ).format(role)
+        )
         conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON reproduction_artifacts TO {}").format(role)
         )
@@ -2593,9 +2609,34 @@ def test_dispatch_reservation_denied(store: Store, fault: str) -> None:
         ).fetchone() == (0,)
 
 
-def test_migration_downgrade_and_reapply(store: Store) -> None:
-    # Last scenario in this module; disposable database only.
-    command.downgrade(Config("alembic.ini"), "base")
-    command.upgrade(Config("alembic.ini"), "head")
-    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
-        assert conn.execute("SELECT count(*) FROM runs").fetchone() == (0,)
+def test_migration_downgrade_and_reapply(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise the full migration chain without erasing other tests' ledgers."""
+    from sqlalchemy.engine import make_url
+
+    original = os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]
+    schema = "rf_migration_" + uuid4().hex
+    with psycopg.connect(original) as conn:
+        assert conn.info.dbname.startswith("rf_test_")
+        conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+    isolated = (
+        make_url(original)
+        .update_query_dict({"options": "-csearch_path=" + schema})
+        .render_as_string(hide_password=False)
+    )
+    try:
+        monkeypatch.setenv("REPLAYFORGE_MIGRATION_DATABASE_URL", isolated)
+        command.upgrade(Config("alembic.ini"), "head")
+        command.downgrade(Config("alembic.ini"), "base")
+        command.upgrade(Config("alembic.ini"), "head")
+        with psycopg.connect(original) as conn:
+            assert conn.execute(
+                sql.SQL("SELECT count(*) FROM {}.runs").format(sql.Identifier(schema))
+            ).fetchone() == (0,)
+    finally:
+        monkeypatch.setenv("REPLAYFORGE_MIGRATION_DATABASE_URL", original)
+        with psycopg.connect(original) as conn:
+            conn.execute(
+                sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema))
+            )

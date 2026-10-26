@@ -2,26 +2,247 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
 
-## Current focus - reconciled 2026-10-24
+## Current focus - core repair orchestration, 2026-10-25
 
-Implementation b169a81 fixes the observed367-repository discovery failure and
-false session-expiry loop. Explicit one-page reads, fresh page membership checks,
-automatic source pinning and direct prefilled incident intake now pass local
-acceptance:1308 backend tests,zero failures/errors/skips,485.05s,exit0. Auth browser
-4 pass; local browser6 pass/1 opt-in real-API skip. Lint/format/type/build and lock/
-scoped credential checks pass. See docs/evidence/auth-onboarding-checks.json.
+- [x] Authorized source-to-workspace handoff and clean replay correction,
+2026-10-26. The internal auth broker now fetches only current-consent manifest
+paths and validates each returned Git blob/SHA256/length. The worker composition
+uses this handoff for baseline and patched workspace materialization. A found
+phase-selection defect is fixed: CLEAN_REPLAY now receives a fresh archive of
+the original source plus unchanged reproduction test; CANDIDATE receives the
+patched archive. Acceptance: candidate workspace unit10passed; full unit812
+passed; contract227passed; disposable PostgreSQL collection/materialization14
+passed, all exit0. Ruff/format/mypy passed. Evidence:
+docs/authorized-materialization.md and
+docs/evidence/authorized-source-materialization-focused.xml.
+These are local/fake-transport tests; M3 live source, Nebius executions, trusted
+signed receipts, seven gates, and demonstrated repair journey remain open.
 
-Actual GitHub login/logout and restricted-role startup were previously observed;
-current live selector confirmation remains pending because browser URL policy
-blocked automated observation. User has been asked to reload the updated UI.
-No bypass, GitHub write, paid call or repository execution was performed here.
+- [x] Local confined measured runner/collector and durable candidate/clean
+recovery: implementation2fca083. Latest backend acceptance covers1470distinct
+collected tests exactly once:1021unit/contract and150+150+149Postgres tests,
+zero failures/errors/skips. Ruff/format274files,mypy137sources,secret scan pass.
+The monolithic600second attempt did not finish; preserve that result. Wrapper
+fcc8e41 now exposes a bounded timeout(default900seconds). All grouped DBs/roles
+were disposable and cleaned. Evidence:docs/evidence/confined-checks.json.
 
-M2 fixed-checkout contingency remains accepted. M3 authentic seven-gate flow,
-M4 approved live publication/hidden evaluation and M5 launch/submission remain
-open; their written exits are unchanged. Next: user selector confirmation, then
-session-derived exact approval and reduced installation-token brokerage alongside
-M3's outstanding authentic evidence/worker handoff. Do not treat repository
-connection or login as authority to publish.
+- [!] Live runtime preparation: corrected Docker digest import failed HTTP404,
+operation01a173a3-0a88-765e-91e1-7a4a476328da; no resultimage. Earlier missing
+scheme failure is also retained. No automatic paid retry, inference or GitHub
+write. Billing was not returned. See docs/confined-runner.md for exact source
+and limitations. Current catalog UUID is not verified OCI provenance.
+
+- [ ] Complete baseline/patch/candidate/clean orchestration and workbench handoff
+against a qualified pinned runtime; capture all seven actual gates. Then exact
+human approval, real idempotent PR and hidden variation evaluation. M3/M4 remain
+open; M2 fixed fixture accepted, M5 deployment/submission open. No further runner
+hardening round is scheduled; prioritize this vertical feature journey.
+
+- [x] Accepted baseline-to-patch-to-verification queue handoff and exact
+candidate archive packaging: PATCHING is opt-in, membership/consent-fenced and
+uses a sticky bounded model request; candidate source hunk application is
+in-memory, manifest/context/patch-bound and keeps the retained test unchanged.
+Local acceptance: 1,037 unit/contract tests, 39 launcher/candidate tests and six
+disposable-PostgreSQL patch-worker tests all passed; see docs/patch-worker.md and
+docs/evidence/patch-worker-*.xml. This does not materialize a candidate remotely,
+execute it, generate gates, verify a repair, or close M3/M4.
+
+- [x] Candidate/clean phase-specific durable workspace custody: migration0030
+separates immutable candidate and clean upload intents, known operations and
+measurements under the current patch, consent, lease and VERIFYING fence. Local
+focused disposable-PostgreSQL acceptance: two tests passed with exit 0 in 6.04s
+(`docs/evidence/patched-materialization-focused.xml`); the three-case rerun also
+exercised one-POST known-operation recovery through the fixed materializer.
+Remote measurements remain explicitly pending.
+
+## Historical durable live materialization, 2026-10-25
+
+- [x] Implementation554bf3d: original-source/new-test upload, pre-POST durable
+intent/budget, immutable known operation and measured result, fenced recovery.
+One live inert upload/readback succeeded:2files/36bytes; no test code executed.
+Acceptance:1436 backend tests passed,zero failures/errors/skips,527.75s,exit0;
+988 unit/contract;9 focused PG. Ruff/format270files,mypy135sources,secret scan
+pass. UI/dependencies unchanged; previous audits/browser evidence retained.
+Source:docs/materialization.md; evidence:docs/evidence/materialization-checks.json.
+Initial event-allowlist and duplicate-test-name failures retained as RED archives.
+
+Current kernel diagnostics found default root RW/seccomp0/NoNewPrivs0, then proved
+root setup supports CPU/memory/PID cgroups. An unsigned confined diagnostic
+observed child uid/gid1000,caps0,read-only root,seccomp2,NoNewPrivs1,fork/root-write
+denial,CPU100000/100000,memory128MiB,pids16,tmpfs16MiB/256inodes. This supersedes
+any suggestion that guest kernel confinement is unsupported. It does not
+establish all22controls or deploy a production workload launcher.
+
+Next critical work: finish/test confined measured workload launcher, OCI-source/
+prepared-environment/collector bindings, baseline/patch/candidate/clean replay and
+all gates. M3/M4 remain open,including actual exact human-approved PR and hidden
+evaluation. M2 fixed fixture remains accepted; M5 open. Three diagnostic VM
+operations accompanied the one upload; billing not collected. No inference or
+GitHub write. Application DB migrations/grants unchanged; tests used disposableDB.
+
+## Historical authenticated review and scoped publication - 2026-10-25
+
+- [x] Implementationb26e8c3 connects session/CSRF/exact human review, durable
+receipt recovery, one-repository/two-permission App token minting and existing
+approval-bound publisher. Workbench checks displayed diff SHA256; approval and
+draft PR creation are separate explicit actions. App keys excluded from Git;
+local key reference configured,publication activation unchanged/default-off.
+Acceptance:1418 backend tests passed,zero failures/errors/skips,541.64s,exit0;
+979 unit/contract;9 focused PostgreSQL;6 session/review browser;9 workbench browser
+with1 existing opt-in real API skip. Ruff/format263files,mypy131sources,UI lint/
+types/build,dependency audit and secret-value scan pass. Mobile screenshot
+visually reviewed. One upstream backend warning and color-env browser warnings
+remain. See docs/evidence/session-publication-checks.json and
+docs/authenticated-approval.md. No live model/sandbox/GitHub API call or write.
+
+M3/M4 are NOT complete: actual admitted materialization/measured collector/live
+repair gates, exact subsequent human review/real PR and hidden evaluation remain.
+M2 fixed-fixture contingency remains accepted; M5 remains open. No application
+DB migration/grants/public deployment was performed. Next critical dependency is
+actual prepared workspace and independently evidenced runner/collector identity;
+a provider UUID or signing key alone cannot establish those facts.
+
+## Historical source archive packaging - 2026-10-25
+
+- [x] Implementation155e3f6 packages the exact original manifest subset with Git
+blob/SHA256/length verification, deterministic USTAR and bounded wire/member sizes.
+Negative tests cover content drift, missing/extra files, ancestors and long paths.
+Acceptance:1393 backend tests passed,zero failures/errors/skips,499.38s,exit0;
+963 unit/contract passed; Ruff/format258files,mypy128sources,secret-value scan pass.
+Evidence:docs/evidence/source-archive-checks.json. One upstream warning remains.
+No provider calls,charges or remote writes. This is packaging,not remote upload
+or complete-checkout/attestation proof. M3/M4/M5 remain open; M2 fixture unchanged.
+Next:durable remote materialization and independently measured saved workspace,
+then full baseline/patch/replay gates and approved publication/deployment.
+
+## Historical concrete prepared baseline provider - 2026-10-25
+
+- [x] Concrete NebiusBaselineProvider replaces the interface-only resolution gap,
+implementation80d544f. Stable plan/execution/tree/image/runner/configuration and
+retained reproduction bindings are checked without construction I/O. Baseline
+claims filter by configured run ID plus REPRODUCING; unrelated jobs are untouched.
+Context managers close REST clients; live dispatch remains explicitly opt-in.
+No prepared facts, collector identity or production verdict is invented.
+
+Acceptance:1382 backend tests passed,zero failures/errors/skips,468.36s,exit0;
+952 unit/contract passed;11 provider unit cases passed. Concrete provider composes
+with authenticated collection/triage and actual REST serializer using fake HTTP.
+Ruff/format256files, mypy127sources, lock/dependency audit/secret-value scan pass.
+See docs/evidence/concrete-baseline-checks.json and docs/baseline-worker.md.
+One upstream deprecation warning remains. UI code/dependencies are unchanged;
+previous browser acceptance is historical. No live calls, charges or remote writes.
+
+Production-ready remains false. Next critical task is actual trusted materializer/
+prepared-image and collector deployment/bindings, followed by baseline receipt ->
+patch -> candidate/clean replay -> mandatory seven-gate acceptance. The adapter
+consumes independently established facts; it does not establish them or install
+an automatic production registry. Application database migration/grants and live
+runtime wiring remain deliberate deployment work, not claimed by local tests.
+M2 fixed-checkout contingency remains accepted; M3/M4/M5 exits remain open,
+including exact human approval, write brokerage/live PR and hidden evaluation.
+
+## Historical baseline queue/dispatch focus - 2026-10-25
+
+- [x] Local reproduction-to-baseline handoff and durable admitted submission:
+e78ea60/a061648. Authenticated triage queues REPRODUCING atomically; collection
+workers cannot steal those jobs. Baseline worker resolves an operator-prepared
+workspace, reserves budget and records immutable submission binding before POST.
+Restart/timeout/concurrency do not repeat submission; saved JUnit is mandatory.
+- [x] b742a76 isolates migration smoke tests without deleting submission ledgers
+or weakening rollback protection. Workbench explains TRIAGING/REPRODUCING pending
+states and preserves missing verification gates; mobile screenshot reviewed.
+
+Final acceptance:1371 backend tests passed,zero failures/errors/skips,471.58s,
+exit0. Real REST-serializer focused16passed22.59s; migration15passed19.22s.
+Auth browser4passed; workbench9passed/1 opt-in real API skip. UI lint/typecheck/
+build, ruff/format254files, mypy126sources, lock and dependency audit pass.
+See docs/evidence/baseline-worker-checks.json and docs/baseline-worker.md.
+Previous full1370pass/1 migration-reset failure retained, never claimed green.
+One upstream deprecation warning remains. No cloud calls/charges/remote writes.
+
+Next: actual trusted materialization/prepared-image and measured collector wiring,
+then admitted baseline receipt -> patch -> candidate/clean replay -> mandatory
+seven-gate acceptance. Prepared workspace provider is an internal deployment
+port; no default production registry or public execution endpoint is installed.
+Actual source/image/configuration/assessor/collector bindings cannot be inferred
+from expected hashes or image UUIDs. Migration0028 was applied only to disposable
+test databases; application database/worker grants need deliberate local setup.
+
+M2 fixed-checkout contingency remains accepted. M3 live full repair/verification,
+M4 exact human approval/live PR/hidden evaluation and M5 deployment/submission
+remain open. This work is not a claim that the complete demo is ready.
+
+## Historical authenticated triage focus - 2026-10-24
+
+- [x] Local authenticated collection-to-triage worker handoff, implementation
+4917e5c. Current user/installation/consent check via auth broker precedes existing
+budgeted inference journal. Worker receives no GitHub or vault credentials.
+Explicit triage/inference/cost flags required; default remains no I/O/inference.
+Fake-provider acceptance retains reproduction and stops at REPRODUCING; revoked
+consent prevents inference and completed-job polling makes no second model call.
+
+Acceptance:1357 backend tests passed,zero failures/errors/skips,454.73s,exit0;
+focused PostgreSQL12passed27.55s; unit/contract941passed5.19s. Ruff/format250files,
+mypy124sources, lock, dependency audit and configured-secret-value scan pass.
+See docs/evidence/auth-triage-checks.json and docs/authenticated-triage.md.
+One upstream deprecation warning remains. No UI source/dependency changes; prior
+browser acceptance is historical. Auth API8000 restarted without access logs.
+No live inference, sandbox execution, paid call, remote write or deploy occurred.
+
+Next critical dependency: admitted baseline materialization/collection with actual
+trusted source/image/configuration and assessor/collector key bindings. Existing
+PreparedImageBinding/CapabilityAttestation cannot be invented from expected hashes
+or image UUIDs. Live triage remains unverified; collection-only DB role is not a
+triage deployment role. Follow the dedicated restricted grants/startup guide.
+
+M2 fixed-checkout contingency remains accepted. M3 full repair/seven-gate live
+acceptance, M4 exact human approval/live PR/hidden evaluation, M5 deployment and
+submission remain open. Reproduction proposal is not a verified repair. No
+milestone exit criteria or publication approval requirements were weakened.
+
+## Historical collection focus - reconciled 2026-10-24
+
+Implementation 3f5704f adds the authenticated collection broker, isolated worker
+launcher and selected-file acquisition under the original registered grant.
+Full backend regression:1335passed,zero failures/errors/skips,499.37s,exit0.
+This full run predates the dependency-only pytest/certifi updates; post-update
+unit/contract922passed6.54s and focused PostgreSQL evidence are recorded in
+collection-worker-checks.json. Ruff/format/mypy/lock and dependency audit results
+are recorded there. See docs/authenticated-collection.md for safe startup.
+
+- [x] Authenticated intake-to-collection-to-TRIAGING handoff, including current
+membership/consent and lease/version fences. Live small-file read retained one
+context file/source manifest at exact pinned SHA; no inference/sandbox/write.
+README metadata-only and missing-file INCONCLUSIVE results are preserved.
+
+M2 fixed-checkout contingency remains accepted. M3 authentic seven-gate replay
+and integrated repair worker, M4 session-bound approval/live PR/hidden evaluation,
+and M5 deployment/submission remain open. No milestone checkbox is closed by
+collection acceptance. Repository selection currently pins the default-branch
+SHA; explicit branch/commit selection remains follow-up work.
+
+Next: incident-driven bounded relevant-file selection and triage/repair worker
+handoff on a small real incident, then authentic runner/verifier acceptance.
+The live acceptance incident explicitly requested collection only; no repair
+or VERIFIED claim may be inferred from reaching TRIAGING. Approval/publication
+requires exact independently authenticated human authority and explicit writes.
+
+### Latest demo increment - implementation a79a994
+
+- [x] Incident/traceback references select at most16 approved relative files
+before network acquisition, preserving the registered grant and bounded fallback.
+Full final PostgreSQL1346passed447.25s,zero failures/errors/skips,exit0, after
+pytest/certifi remediation. Unit/contract932passed; auth browser4passed;
+workbench7passed/1 opt-in API skip. Ruff/format249/mypy124/UI lint/typecheck/lock
+pass. Audit has no known vulnerabilities; configured-secret-value scan passes.
+See docs/evidence/demo-context-checks.json and docs/demo-runbook.md.
+
+Next critical task supersedes the earlier path-selection item: integrate the
+admitted triage/baseline/patch/replay worker on the tiny checkout incident.
+Production trust bindings, exact human approval/live PR, hidden evaluation and
+public deployment remain open. Demo is not complete. Local API8000 started;
+web restart with temporary config was rejected by automatic approval policy.
+No bypass, paid call or external write occurred in this increment.
 
 ## Historical focus snapshot � reconciled 2026-10-23
 
@@ -59,9 +280,11 @@ hidden evaluation. Preserve the original milestone exits; local contracts alone
 cannot close them. No public approval route or automatic writer was enabled.
 
 ## Status conventions
+
 `[ ]` not evidenced; `[x]` verified by committed change and test artifact; `[!]` blocked; `[~]` working but not acceptance-ready (replace symbols manually when appropriate). A task is complete only when its acceptance test has been actually run and evidence logged in `docs/implementation-log.md`. Track owner, commit, observed execution date and blocker there. Critical path is M0 -> M1 -> M2 -> M3 -> M4 -> M5.
 
 ## M0 — Day 1–2, Oct 12–13: Platform viability (stop/go)
+
 - [~] First code unit: bounded Nebius catalog/completion probe, offline negative tests and Windows setup. See implementation log; live inference, CI and clean-clone acceptance remain pending. Changes are local and uncommitted.
 - [ ] Register on Devpost; confirm eligibility and rules. Acceptance: project draft exists in account.
 - [ ] Apply Nebius program credits; verify account key is private. Acceptance: console or API usage visible, never print key.
@@ -90,6 +313,7 @@ access and M3 authentic agent-path acceptance remain unverified. No live M0
 checkbox is completed by these offline tests.
 
 ## M1 — Oct 14–16: Control plane + agent loop
+
 - [~] Pydantic schemas and enums: local RunState, stages, artifact references and action budgets validated; full agent/API contracts and durable integration remain pending. See implementation log.
 - [~] Postgres/Alembic checkpoint, event outbox and fenced job leases: real local process-death, rollback, concurrency and recovery tests passed. Three expired collection claims now atomically close the run as INCONCLUSIVE with LEASE_EXHAUSTED; cancellation and audit rollback tested. Full domain schema, later-stage failure routing and merged acceptance remain pending. See m1-exhaustion-checks.json.
 - [~] FastAPI run creation, GET and cancellation: loopback-only bearer authentication, repository UUID scope and real DB tests passed. Redacted incident reports now commit atomically with intake; owner, checksum, expiry, idempotency and rollback tested. Repository consent resolution, rate limiting and production auth remain pending. See m1-incident-checks.json.
@@ -191,6 +415,7 @@ This closes requested-time reservation only; assessed runner/collector signing,
 general dispatch, worker integration and measured usage reconciliation remain open.
 
 ## M3 — Oct 21–23: Verification and experience
+
 - [x] Prepared-image Nebius REST backend, offline acceptance (2026-10-22):
   exact prepared image/OCI/plan/execution/tree bindings, capability checks,
   network-disabled one-use POST, owned status/cancellation, explicit live opt-in
@@ -377,6 +602,7 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
   live seven-gate acceptance. See docs/replay-collection.md.
 
 ## M4 — Oct 24–26: External write and benchmark
+
 - [~] M4 started (2026-10-21): deterministic human approval binding policy
   validates exact run/repository/owner/source/diff/verdict/branch/policy,
   independently supplied reviewer permission, explicit approval, TTL and nonce
@@ -399,6 +625,7 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
 **Gate:** one fully approved PR and evaluation report; at least one unsuccessful/inconclusive case shown honestly.
 
 ## M5 — Oct 27–29: Submission
+
 - [ ] Deploy with public stable URL and demo-only safe accounts. Acceptance: independent browser can complete approved demo flow.
 - [ ] Public repository with license, reproducible setup, architecture and limitations. Acceptance: clean-clone test.
 - [ ] Record sub-3-minute public YouTube demo with authentic evidence. Acceptance: playback and visibility verified in anonymous browser.
@@ -409,11 +636,13 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
 **Gate:** publicly accessible, compliant, tested submission.
 
 ## Kill-switch and contingency decisions
+
 If runner isolation is not ready by Oct 17, reduce scope to a *trusted synthetic benchmark-only* remote runner and explicitly constrain accepted repositories to fixed fixtures; never fall back to arbitrary local execution. If reproduction cannot be achieved by Oct 20, freeze UI work and concentrate on one verified checkout case. If GitHub write permission cannot be safely obtained by Oct 25, ship reviewable patch artifacts with a clearly marked PR integration limitation; do not claim full feature completion. If Nebius credits are low, disable speculative multi-agent calls, use one supported NVIDIA model and cached deterministic fixtures; live user actions must still call Token Factory. If B/C are unstable by Oct 26, demonstrate A thoroughly and publish truthful benchmark gaps.
 
 ## Final acceptance ledger template (not current status)
+
 | Gate | Expected evidence | Observed result | Commit / artifact | Date |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Live NVIDIA on Nebius | request ID + model + timestamp | Pending | — | — |
 | Sandbox isolated | policy negative test + runner log | Pending | — | — |
 | Baseline reproduced | original failure signature | Pending | — | — |
@@ -428,6 +657,7 @@ User has reassigned authentication implementation to this workstream. The earlie
 teammate ownership statements describe the prior arrangement; the new plan is
 `tasks/plan.md` with proposed ADR `docs/adr/014-github-authentication.md`.
 No authentication code or live login is claimed by this planning increment.
+
 - [x] A: explicit auth settings and bounded mocked GitHub transport (51e4343,
   43 focused/auth and 1277 full backend cases; auth-foundation-checks.json).
 - [x] B: browser-bound one-use OAuth/PKCE and durable opaque sessions
@@ -446,12 +676,10 @@ credentials, paid calls or external writes were used. Next: session-derived exac
 review and reduced installation-token brokerage, then configured human login.
 Authentication completion is separate from seven-gate/M4 evaluation acceptance.
 
-
 Latest local continuation (2026-10-23): 638feb6 adds session/repository API and
 Next.js integration. Full backend1299 pass, zero skips,417.46s. Earlier current-
 focus statements about pending session integration/teammate ownership are
 superseded. M3/M4/M5 exits remain open; see auth-session-checks.json.
-
 
 2026-10-23 local auth setup: independent keys and a new dedicated PostgreSQL
 database/three restricted roles prepared in ignored .env. Migration0026 and actual
@@ -461,7 +689,6 @@ migration URL format and was cleaned; corrected URL passed. Existing databases
 untouched. See docs/evidence/auth-local-setup-checks.json and docs/github-app-setup.md.
 Remaining external step: user registers/installs the App and privately configures
 Client ID/secret, then completes browser consent. Actual login remains unverified.
-
 
 2026-10-23 live GitHub login smoke: user supplied App client settings privately.
 Validated configuration and restricted-role startup; enabled local GitHub mode.
@@ -486,7 +713,6 @@ server generated transient rules/type paths; these are excluded from this change
 explicit refresh/error recovery; [x] automatic default source pin and prefilled
 intake handoff, observed in synthetic browser tests. [ ] updated actual user-tab
 selector acceptance (blocked browser automation); [ ] full M3/M4 exits.
-
 
 2026-10-24 user feedback follow-up (a6250b2): repository selection now uses
 searchable radio rows, page-specific retry, and fresh consent per source. Local

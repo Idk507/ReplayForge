@@ -86,6 +86,7 @@ def run_patch(
     *,
     transport: httpx.BaseTransport | None = None,
     cost_policy: ModelCostPolicy | None = None,
+    queue_verification: bool = False,
 ) -> RunState:
     """Generate from retained context/baseline once; never apply generated code.
 
@@ -169,7 +170,13 @@ def run_patch(
     )
     if version is None:
         raise StoreError("MODEL_RESERVATION_REQUIRED")
-    return journal.retain(lease, owner, proposal, expected_version=version)
+    return journal.retain(
+        lease,
+        owner,
+        proposal,
+        expected_version=version,
+        queue_verification=queue_verification,
+    )
 
 
 def run_triage(
@@ -181,6 +188,7 @@ def run_triage(
     transport: httpx.BaseTransport | None = None,
     cost_policy: ModelCostPolicy | None = None,
     finish_job: bool = False,
+    queue_baseline: bool = False,
 ) -> RunState:
     """Reserve once, request once, retain once; never retry uncertain inference.
 
@@ -190,6 +198,8 @@ def run_triage(
     paid request after an uncertain outcome. Completed retention is reconciled
     from the checkpoint without making a new call.
     """
+    if queue_baseline and not finish_job:
+        raise StoreError("TRIAGE_HANDOFF_INVALID")
     config = NebiusConfig.from_env(
         {
             "NEBIUS_API_KEY": config.api_key.get_secret_value(),
@@ -249,4 +259,5 @@ def run_triage(
         proposal.reproduction,
         expected_version=reserved_version,
         finish_job=finish_job,
+        queue_baseline=queue_baseline,
     )
