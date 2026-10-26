@@ -65,6 +65,8 @@ exit 0 (`docs/evidence/patch-worker-unit-contract.xml`); candidate and launcher
 focus ran 39 cases with exit 0 (`docs/evidence/patch-launcher-candidate-unit.xml`).
 The phase-custody/provider-composition focus ran three cases with exit 0 in 7.25s
 (`docs/evidence/patched-materialization-focused.xml`).
-Ruff check/format passed over 278 files and mypy passed over the ten changed core
-modules. These use fake model/provider transport and are not a live inference,
+The final unit/contract sweep ran 1,037 cases with exit 0 in 5.70s
+(`docs/evidence/patch-workspace-final-unit-contract.xml`); ruff check and format
+passed over 282 files. Mypy passed over the changed core modules. These use fake
+model/provider transport and are not a live inference,
 sandbox execution, signed gate result, VERIFIED repair, approval, or PR.
