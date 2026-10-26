@@ -98,6 +98,13 @@ def prepare_store() -> Store:
             ).format(role)
         )
         conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON patched_materialization_intents,"
+                "patched_materialization_operations,"
+                "patched_materialization_results TO {}"
+            ).format(role)
+        )
+        conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON reproduction_artifacts TO {}").format(role)
         )
         conn.execute(

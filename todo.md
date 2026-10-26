@@ -33,6 +33,13 @@ disposable-PostgreSQL patch-worker tests all passed; see docs/patch-worker.md an
 docs/evidence/patch-worker-*.xml. This does not materialize a candidate remotely,
 execute it, generate gates, verify a repair, or close M3/M4.
 
+- [x] Candidate/clean phase-specific durable workspace custody: migration0030
+separates immutable candidate and clean upload intents, known operations and
+measurements under the current patch, consent, lease and VERIFYING fence. Local
+focused disposable-PostgreSQL acceptance: two tests passed with exit 0 in 6.04s
+(`docs/evidence/patched-materialization-focused.xml`). Provider POST wiring and
+remote measurements remain explicitly pending.
+
 ## Historical durable live materialization, 2026-10-25
 
 - [x] Implementation554bf3d: original-source/new-test upload, pre-POST durable

@@ -36,6 +36,16 @@ cannot authorize execution. Candidate and clean execution still require distinct
 durable phase-specific upload/submission records, measured workspaces, remote
 receipts and the seven-gate verifier.
 
+`PatchedMaterializationJournal` now provides the first of those records. It
+stores one pre-POST intent, operation ID, and unsigned measured workspace result
+for each of `CANDIDATE` and `CLEAN_REPLAY`; both bind the same retained patch,
+source/test identity, lease, current grant and `VERIFYING` stage. The two phase
+operations are distinct, while a known operation/result can be recovered without
+a repeated POST. A sibling phase's durable version increment does not invalidate
+the other phase's known operation; stage, consent and exact patch identity are
+rechecked on every recovery. It is still not wired to a provider POST in this
+slice, so it remains local durable custody rather than remote execution evidence.
+
 ## Local acceptance
 
 On 2026-10-26, focused disposable-PostgreSQL acceptance ran six patch-worker
