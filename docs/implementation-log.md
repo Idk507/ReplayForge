@@ -3449,3 +3449,10 @@ M3/M4/M5 remain incomplete; do not replace their exits with local contract tests
 Artifact-only follow-up: retained original failing provider-signal JUnit bytes
 as provider-signal-red.xml.gz to avoid generated traceback whitespace in Git
 diff checks; decompressed bytes verified identical. No application change.
+
+## 2026-10-26 - Authorized source handoff and clean replay selection
+
+- Added the authenticated worker-only manifest source read and validated its source bytes through the existing collection broker contract.
+- Fixed clean replay materialization to package the pristine pinned source plus unchanged reproduction test, independently from the patched candidate archive.
+- Evidence: `uv run pytest tests/unit/test_candidate_workspace.py -q` (10 passed); `uv run pytest tests/unit -q` (812 passed); `uv run pytest tests/contract -q` (227 passed, one upstream deprecation warning); disposable PostgreSQL focused collection/materialization run (14 passed, exit 0, `docs/evidence/authorized-source-materialization-focused.xml`); Ruff, format and Mypy passed.
+- This is synthetic/local transport evidence. No real repository download, Nebius replay, trusted signed receipt, seven-gate verdict or complete M3 journey was produced. Pinned image import remains blocked by retained HTTP 404; see `docs/authorized-materialization.md` and `docs/confined-runner.md`.

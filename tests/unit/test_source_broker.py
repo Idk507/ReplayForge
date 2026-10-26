@@ -265,3 +265,62 @@ def test_patch_launcher_passes_explicit_mode_and_only_worker_model_credentials(
     assert (
         env["NEBIUS_API_KEY"] == "synthetic-only" and "GITHUB_CLIENT_SECRET" not in env
     )
+
+
+def test_materialization_source_client_checks_manifest_and_git_blob_identity():
+    import base64
+    import hashlib
+    from datetime import UTC, datetime
+
+    from packages.contracts.source import SourceFile, SourceManifest
+    from services.runner.receipts import canonical
+
+    body = b"def sample():\n    return 1\n"
+    blob_id = hashlib.sha1(
+        f"blob {len(body)}\0".encode() + body, usedforsecurity=False
+    ).hexdigest()
+    claimed = lease()
+    manifest = SourceManifest(
+        repository_id=uuid4(),
+        source_commit="a" * 40,
+        root_tree="b" * 40,
+        evidence_origin="REMOTE_SERVICE",
+        observed_at=datetime.now(UTC),
+        trace_id=uuid4(),
+        files=(
+            SourceFile(
+                path="src/a.py",
+                blob_id=blob_id,
+                sha256=hashlib.sha256(body).hexdigest(),
+                size_bytes=len(body),
+            ),
+        ),
+    )
+    response = {
+        "run_id": str(claimed.run_id),
+        "version": 7,
+        "source_commit": manifest.source_commit,
+        "manifest_ref": "sha256:" + hashlib.sha256(canonical(manifest)).hexdigest(),
+        "files": [{"path": "src/a.py", "content_b64": base64.b64encode(body).decode()}],
+        "status": "ADMITTED",
+    }
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=response)
+        ),
+    ) as client:
+        assert client.fetch_materialization_source(claimed, 7, manifest) == {
+            "src/a.py": body
+        }
+    response["files"][0]["content_b64"] = base64.b64encode(body + b"evil").decode()
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=response)
+        ),
+    ) as client:
+        with pytest.raises(BrokerError, match="SOURCE_UNCONFIRMED"):
+            client.fetch_materialization_source(claimed, 7, manifest)

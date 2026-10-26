@@ -11,7 +11,7 @@ from packages.contracts.repair import PatchProposal, ReproductionProposal
 from packages.contracts.run import Stage
 from services.orchestrator.reproduction import ReproductionArtifact
 from services.persistence.patch import RetainedPatch
-from services.runner.candidate_workspace import prepare_candidate
+from services.runner.candidate_workspace import prepare_candidate, workspace_for_phase
 from services.runner.patches import PatchDenied, admit_patch
 from services.runner.receipts import canonical
 from tests.unit.test_patch_admission import DIFF, context
@@ -98,9 +98,28 @@ def test_candidate_contains_actual_patch_and_byte_identical_reproduction():
             == values[2].proposal.test_source.encode()
         )
     assert candidate.original.workspace_ref != candidate.upload.plan.workspace_ref
+    with tarfile.open(
+        fileobj=io.BytesIO(candidate.clean_upload.archive), mode="r:"
+    ) as tree:
+        assert tree.extractfile("src/a.py").read() == b"x=1\n"
+        assert (
+            tree.extractfile("tests/test_a.py").read()
+            == values[2].proposal.test_source.encode()
+        )
+    assert candidate.clean_upload.plan.workspace_ref == candidate.original.workspace_ref
     assert candidate.patch_ref == values[3].admission.patch_ref
     assert not candidate.can_authorize_execution
     assert "x=2" not in repr(candidate)
+
+
+def test_replay_phase_selects_independent_candidate_and_pristine_uploads():
+    prepared = call(inputs())
+    candidate = workspace_for_phase(prepared, "CANDIDATE")
+    clean = workspace_for_phase(prepared, "CLEAN_REPLAY")
+    assert candidate.upload.plan.workspace_ref != clean.upload.plan.workspace_ref
+    assert candidate.upload.archive != clean.upload.archive
+    assert candidate.patch_ref == clean.patch_ref
+    assert candidate.original == clean.original
 
 
 @pytest.mark.parametrize(

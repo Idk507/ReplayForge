@@ -1,5 +1,8 @@
 """Credential-isolated client for one loopback collection broker dispatch."""
 
+import base64
+import binascii
+import hashlib
 import re
 import time
 from types import TracebackType
@@ -11,11 +14,13 @@ from pydantic import BaseModel, ConfigDict, SecretStr
 
 from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
+from packages.contracts.source import MaterializationSourceResult, SourceManifest
 from packages.providers.nebius import NebiusConfig
 from services.orchestrator.patch_worker import tick_patch
 from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
 from services.persistence.store import Lease, Store
+from services.runner.receipts import canonical
 
 
 class BrokerError(Exception):
@@ -72,8 +77,15 @@ class BrokerClient:
         self._client.close()
 
     def _request(
-        self, method: str, path: str, body: dict[str, object] | None = None
+        self,
+        method: str,
+        path: str,
+        body: dict[str, object] | None = None,
+        *,
+        max_bytes: int = 4096,
     ) -> bytes:
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 131072:
+            raise BrokerError("BROKER_LIMIT_INVALID")
         deadline = time.monotonic() + 65
         try:
             with self._client.stream(method, path, json=body) as response:
@@ -85,7 +97,10 @@ class BrokerClient:
                     )
                 data = bytearray()
                 for chunk in response.iter_bytes(chunk_size=4096):
-                    if len(data) + len(chunk) > 4096 or time.monotonic() >= deadline:
+                    if (
+                        len(data) + len(chunk) > max_bytes
+                        or time.monotonic() >= deadline
+                    ):
                         raise BrokerError("COLLECTION_UNCONFIRMED")
                     data.extend(chunk)
                 return bytes(data)
@@ -166,6 +181,75 @@ class BrokerClient:
             raise BrokerError("PATCH_ADMISSION_UNCONFIRMED") from None
         if admitted.run_id != lease.run_id or admitted.version != version:
             raise BrokerError("PATCH_ADMISSION_UNCONFIRMED")
+
+    def authorize_materialization_source(self, lease: Lease, version: int) -> None:
+        """Freshly authorize pinned source read/runner I/O without returning data."""
+        try:
+            admitted = TriageAdmission.model_validate_json(
+                self._request(
+                    "POST",
+                    "/internal/v1/collection/authorize-materialization-source",
+                    {
+                        "lease": lease.model_dump(mode="json"),
+                        "expected_version": version,
+                    },
+                )
+            )
+        except ValueError:
+            raise BrokerError("MATERIALIZATION_ADMISSION_UNCONFIRMED") from None
+        if admitted.run_id != lease.run_id or admitted.version != version:
+            raise BrokerError("MATERIALIZATION_ADMISSION_UNCONFIRMED")
+
+    def fetch_materialization_source(
+        self, lease: Lease, version: int, manifest: SourceManifest
+    ) -> dict[str, bytes]:
+        """Fetch raw source only from the auth broker's exact current manifest."""
+        try:
+            response = MaterializationSourceResult.model_validate_json(
+                self._request(
+                    "POST",
+                    "/internal/v1/collection/materialization-source",
+                    {
+                        "lease": lease.model_dump(mode="json"),
+                        "expected_version": version,
+                    },
+                    max_bytes=131072,
+                )
+            )
+        except ValueError:
+            raise BrokerError("MATERIALIZATION_SOURCE_UNCONFIRMED") from None
+        if (
+            response.run_id != lease.run_id
+            or response.version != version
+            or response.source_commit != manifest.source_commit
+            or response.manifest_ref
+            != "sha256:" + hashlib.sha256(canonical(manifest)).hexdigest()
+            or tuple(item.path for item in response.files)
+            != tuple(item.path for item in manifest.files)
+        ):
+            raise BrokerError("MATERIALIZATION_SOURCE_UNCONFIRMED")
+        files: dict[str, bytes] = {}
+        total = 0
+        try:
+            for transfer, expected in zip(response.files, manifest.files, strict=True):
+                body = base64.b64decode(transfer.content_b64, validate=True)
+                blob = hashlib.sha1(
+                    f"blob {len(body)}\0".encode() + body, usedforsecurity=False
+                ).hexdigest()
+                if (
+                    transfer.path != expected.path
+                    or len(body) != expected.size_bytes
+                    or hashlib.sha256(body).hexdigest() != expected.sha256
+                    or blob != expected.blob_id
+                ):
+                    raise BrokerError("MATERIALIZATION_SOURCE_UNCONFIRMED")
+                total += len(body)
+                if total > 65536:
+                    raise BrokerError("MATERIALIZATION_SOURCE_UNCONFIRMED")
+                files[transfer.path] = body
+        except (binascii.Error, ValueError):
+            raise BrokerError("MATERIALIZATION_SOURCE_UNCONFIRMED") from None
+        return files
 
 
 def dispatch_once(

@@ -4,6 +4,20 @@
 
 ## Current focus - core repair orchestration, 2026-10-25
 
+- [x] Authorized source-to-workspace handoff and clean replay correction,
+2026-10-26. The internal auth broker now fetches only current-consent manifest
+paths and validates each returned Git blob/SHA256/length. The worker composition
+uses this handoff for baseline and patched workspace materialization. A found
+phase-selection defect is fixed: CLEAN_REPLAY now receives a fresh archive of
+the original source plus unchanged reproduction test; CANDIDATE receives the
+patched archive. Acceptance: candidate workspace unit10passed; full unit812
+passed; contract227passed; disposable PostgreSQL collection/materialization14
+passed, all exit0. Ruff/format/mypy passed. Evidence:
+docs/authorized-materialization.md and
+docs/evidence/authorized-source-materialization-focused.xml.
+These are local/fake-transport tests; M3 live source, Nebius executions, trusted
+signed receipts, seven gates, and demonstrated repair journey remain open.
+
 - [x] Local confined measured runner/collector and durable candidate/clean
 recovery: implementation2fca083. Latest backend acceptance covers1470distinct
 collected tests exactly once:1021unit/contract and150+150+149Postgres tests,

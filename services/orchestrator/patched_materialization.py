@@ -73,6 +73,8 @@ def materialize_patched_once(
         if fresh:
 
             def claim(_plan: MaterializationPlan) -> bool:
+                if _plan != intent.plan:
+                    raise StoreError("PATCH_WORKSPACE_BINDING_DENIED")
                 current()
                 return fresh
 

@@ -30,13 +30,25 @@ from services.runner.workspace import archive_identity
 
 
 class CandidateWorkspace(BaseModel):
-    """Private packaging, not a saved-image measurement or dispatch permit."""
+    """Independent source and patched packages, never execution authority."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     original: MaterializationPlan
+    clean_upload: MaterializationUpload
     upload: MaterializationUpload
     patch_ref: ArtifactID
     can_authorize_execution: Literal[False] = False
+
+
+def workspace_for_phase(
+    workspace: CandidateWorkspace, phase: Literal["CANDIDATE", "CLEAN_REPLAY"]
+) -> CandidateWorkspace:
+    """Select patched candidate or pristine source for a fresh remote replay."""
+    if phase == "CANDIDATE":
+        return workspace
+    if phase == "CLEAN_REPLAY":
+        return workspace.model_copy(update={"upload": workspace.clean_upload})
+    raise ValueError("PATCH_WORKSPACE_PHASE_INVALID")
 
 
 def _apply(files: Mapping[str, bytes], diff: str) -> dict[str, bytes]:
@@ -183,5 +195,8 @@ def prepare_candidate(
         archive=body,
     )
     return CandidateWorkspace(
-        original=original.plan, upload=upload, patch_ref=reference
+        original=original.plan,
+        clean_upload=original,
+        upload=upload,
+        patch_ref=reference,
     )

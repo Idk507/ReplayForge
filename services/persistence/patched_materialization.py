@@ -194,8 +194,13 @@ class PatchedMaterializationJournal:
         intent: PatchedMaterializationIntent,
         operation_id: UUID | None = None,
     ) -> UUID | None:
+        lease = Lease.model_validate(lease.model_dump())
+        intent = PatchedMaterializationIntent.model_validate(intent.model_dump())
         with self.store._connection() as conn:
-            self.authorize(lease, owner, intent)
+            saved, from_version = self._intent(conn, lease.run_id)
+            if saved != intent:
+                raise StoreError("PATCH_WORKSPACE_INTENT_DENIED")
+            run = self._fence(conn, lease, owner, saved, from_version + 1)
             row = conn.execute(
                 "SELECT operation_id FROM patched_materialization_operations "
                 "WHERE run_id=%s AND phase=%s",
@@ -214,7 +219,6 @@ class PatchedMaterializationJournal:
                     "(run_id,phase,operation_id) VALUES(%s,%s,%s)",
                     (lease.run_id, self.phase, operation_id),
                 )
-                run = self.store.get(lease.run_id, owner)
                 self.store._event(conn, run, "PATCH_WORKSPACE_OPERATION_KNOWN")
             return operation_id
 
@@ -225,8 +229,13 @@ class PatchedMaterializationJournal:
         intent: PatchedMaterializationIntent,
         observed: MaterializationResult | None = None,
     ) -> MaterializationResult | None:
+        lease = Lease.model_validate(lease.model_dump())
+        intent = PatchedMaterializationIntent.model_validate(intent.model_dump())
         with self.store._connection() as conn:
-            self.authorize(lease, owner, intent)
+            saved_intent, from_version = self._intent(conn, lease.run_id)
+            if saved_intent != intent:
+                raise StoreError("PATCH_WORKSPACE_INTENT_DENIED")
+            run = self._fence(conn, lease, owner, saved_intent, from_version + 1)
             row = conn.execute(
                 "SELECT payload,digest FROM patched_materialization_results "
                 "WHERE run_id=%s AND phase=%s",
@@ -234,20 +243,34 @@ class PatchedMaterializationJournal:
             ).fetchone()
             if row is not None:
                 saved = _decode(row["payload"], row["digest"], MaterializationResult)
+                operation = conn.execute(
+                    "SELECT operation_id FROM patched_materialization_operations "
+                    "WHERE run_id=%s AND phase=%s",
+                    (lease.run_id, self.phase),
+                ).fetchone()
                 if (
                     saved.plan != intent.plan
+                    or operation is None
+                    or operation["operation_id"] != saved.operation_id
                     or saved.measurement.evidence_origin != self.origin
+                    or saved.measurement.tree_ref != intent.plan.workspace_ref
+                    or saved.measurement.image_uuid != saved.result_image_uuid
                 ):
                     raise StoreError("PATCH_WORKSPACE_RESULT_DENIED")
                 return saved
             if observed is None:
                 return None
             observed = MaterializationResult.model_validate(observed.model_dump())
-            operation = self.operation(lease, owner, intent)
+            operation = conn.execute(
+                "SELECT operation_id FROM patched_materialization_operations "
+                "WHERE run_id=%s AND phase=%s",
+                (lease.run_id, self.phase),
+            ).fetchone()
             if (
                 operation is None
+                or not isinstance(operation["operation_id"], UUID)
                 or observed.plan != intent.plan
-                or observed.operation_id != operation
+                or observed.operation_id != operation["operation_id"]
                 or observed.measurement.evidence_origin != self.origin
                 or observed.measurement.tree_ref != intent.plan.workspace_ref
                 or observed.measurement.image_uuid != observed.result_image_uuid
@@ -259,6 +282,5 @@ class PatchedMaterializationJournal:
                 "(run_id,phase,payload,digest) VALUES(%s,%s,%s,%s)",
                 (lease.run_id, self.phase, body, sha256(body).hexdigest()),
             )
-            run = self.store.get(lease.run_id, owner)
             self.store._event(conn, run, "PATCH_WORKSPACE_MEASURED")
             return observed
