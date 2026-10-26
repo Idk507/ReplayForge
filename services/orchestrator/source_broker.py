@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, SecretStr
 from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
 from packages.providers.nebius import NebiusConfig
+from services.orchestrator.patch_worker import tick_patch
 from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
 from services.persistence.store import Lease, Store
@@ -149,6 +150,23 @@ class BrokerClient:
         if admitted.run_id != lease.run_id or admitted.version != version:
             raise BrokerError("TRIAGE_ADMISSION_UNCONFIRMED")
 
+    def authorize_patch(self, lease: Lease, version: int) -> None:
+        try:
+            admitted = TriageAdmission.model_validate_json(
+                self._request(
+                    "POST",
+                    "/internal/v1/collection/authorize-patch",
+                    {
+                        "lease": lease.model_dump(mode="json"),
+                        "expected_version": version,
+                    },
+                )
+            )
+        except ValueError:
+            raise BrokerError("PATCH_ADMISSION_UNCONFIRMED") from None
+        if admitted.run_id != lease.run_id or admitted.version != version:
+            raise BrokerError("PATCH_ADMISSION_UNCONFIRMED")
+
 
 def dispatch_once(
     store: Store, worker_id: UUID, client: BrokerClient, paths: tuple[str, ...]
@@ -206,4 +224,26 @@ def dispatch_triage_once(
     )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
+    )
+
+
+def dispatch_patch_once(
+    store: Store,
+    worker_id: UUID,
+    client: BrokerClient,
+    config: NebiusConfig,
+    cost_policy: ModelCostPolicy,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> WorkerResult:
+    """Fresh broker membership check, then one fenced inference/queue handoff."""
+    client.ready()
+    return tick_patch(
+        store,
+        worker_id,
+        config,
+        cost_policy,
+        allow_inference=True,
+        transport=transport,
+        authorize=client.authorize_patch,
     )

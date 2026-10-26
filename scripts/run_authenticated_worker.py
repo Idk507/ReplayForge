@@ -20,6 +20,7 @@ from services.orchestrator.source_broker import (
     BrokerClient,
     BrokerError,
     dispatch_once,
+    dispatch_patch_once,
     dispatch_triage_once,
 )
 from services.persistence.store import Store, StoreError
@@ -105,6 +106,7 @@ def main() -> int:
     parser.add_argument("--run", action="store_true")
     parser.add_argument("--max-ticks", type=int, choices=range(1, 1001), default=1)
     parser.add_argument("--triage", action="store_true")
+    parser.add_argument("--patch", action="store_true")
     parser.add_argument("--allow-live-inference", action="store_true")
     parser.add_argument("--estimated-call-microusd", type=int)
     args = parser.parse_args()
@@ -112,18 +114,21 @@ def main() -> int:
         print(json.dumps({"status": "NOT_RUN", "reason": "Explicit --run required"}))
         return 2
     if (
-        args.triage != args.allow_live_inference
+        (args.triage or args.patch) != args.allow_live_inference
+        or (args.triage and args.patch)
         or (
-            args.triage
+            (args.triage or args.patch)
             and not (
                 args.estimated_call_microusd is not None
                 and 1 <= args.estimated_call_microusd <= 2_000_000
             )
         )
-        or (not args.triage and args.estimated_call_microusd is not None)
+        or (
+            not (args.triage or args.patch) and args.estimated_call_microusd is not None
+        )
     ):
         parser.error(
-            "triage requires explicit inference opt-in and estimate 1..2000000"
+            "choose triage or patch; inference requires opt-in and estimate 1..2000000"
         )
     stop = Event()
     previous = {}
@@ -131,7 +136,7 @@ def main() -> int:
         values = dict(os.environ)
         model = None
         cost = None
-        if args.triage:
+        if args.triage or args.patch:
             model = NebiusConfig.from_env(values)
             values.pop("NEBIUS_API_KEY", None)
             cost = ModelCostPolicy(
@@ -159,7 +164,9 @@ def main() -> int:
                 if stop.is_set():
                     break
                 result = (
-                    dispatch_triage_once(store, worker, client, model, cost)
+                    dispatch_patch_once(store, worker, client, model, cost)
+                    if args.patch and model is not None and cost is not None
+                    else dispatch_triage_once(store, worker, client, model, cost)
                     if model is not None and cost is not None
                     else dispatch_once(store, worker, client, c.paths)
                 )

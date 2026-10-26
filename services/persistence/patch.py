@@ -132,8 +132,11 @@ class PatchJournal:
         proposal: PatchProposal,
         *,
         expected_version: int,
+        queue_verification: bool = False,
     ) -> RunState:
         """Re-admit the actual diff and atomically store it with VERIFYING state."""
+        if type(queue_verification) is not bool:
+            raise StoreError("PATCH_HANDOFF_INVALID")
         proposal = PatchProposal.model_validate(proposal.model_dump())
         lease = Lease.model_validate(lease.model_dump())
         with self._store._connection() as conn:
@@ -176,6 +179,12 @@ class PatchJournal:
                 expected_version=expected_version,
             )
             self._store._save(conn, updated)
+            if queue_verification:
+                conn.execute(
+                    "UPDATE job_leases SET status='queued',token=NULL,"
+                    "attempt_count=0 WHERE run_id=%s",
+                    (run.run_id,),
+                )
             return updated
 
     def get(self, run_id: UUID, owner: UUID) -> RetainedPatch:

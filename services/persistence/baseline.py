@@ -87,6 +87,7 @@ class BaselineJournal:
         verifier: ReceiptVerifier,
         *,
         expected_version: int,
+        queue_patch: bool = False,
     ) -> RunState:
         """Reduce a retained, reserved remote baseline into a durable checkpoint.
 
@@ -95,6 +96,8 @@ class BaselineJournal:
         closes INCONCLUSIVE; neither path claims a verified repair. A replay
         reads the checkpoint, rather than reaccepting or dispatching work.
         """
+        if type(queue_patch) is not bool:
+            raise StoreError("BASELINE_HANDOFF_INVALID")
         lease = Lease.model_validate(lease.model_dump())
         with self._store._connection() as conn:
             run = self._fence(conn, lease, owner, expected_version)
@@ -159,12 +162,59 @@ class BaselineJournal:
                 RunState.model_validate(data), target, expected_version=expected_version
             )
             self._store._save(conn, updated)
+            if target == Stage.PATCHING and queue_patch:
+                conn.execute(
+                    "UPDATE job_leases SET status='queued',token=NULL,"
+                    "attempt_count=0 WHERE run_id=%s",
+                    (run.run_id,),
+                )
             if target == Stage.INCONCLUSIVE:
                 conn.execute(
                     "UPDATE job_leases SET status='done',token=NULL WHERE run_id=%s",
                     (run.run_id,),
                 )
             return updated
+
+    def accepted_action(self, run_id: UUID, owner: UUID) -> BaselineAction:
+        """Resolve the checkpoint's exact accepted baseline without caller IDs.
+
+        A worker still needs a current lease and fresh scope checks before any
+        inference. This read neither accepts a baseline nor grants execution.
+        """
+        run = self._store.get(run_id, owner)
+        if run.current_stage != Stage.PATCHING or run.baseline_result_ref is None:
+            raise StoreError("PATCH_STAGE_DENIED")
+        with self._store._connection() as conn:
+            rows = conn.execute(
+                "SELECT a.execution_id FROM baseline_actions a "
+                "JOIN baseline_receipts s USING(execution_id) "
+                "WHERE a.run_id=%s AND a.expires_at>clock_timestamp() "
+                "AND s.expires_at>clock_timestamp() LIMIT 7",
+                (run_id,),
+            ).fetchall()
+        if len(rows) > 6:
+            raise StoreError("BASELINE_INTEGRITY")
+        for row in rows:
+            execution = UUID(str(row["execution_id"]))
+            receipt = self.receipt(execution, owner)
+            if (
+                "sha256:" + hashlib.sha256(canonical(receipt)).hexdigest()
+                == run.baseline_result_ref
+            ):
+                action = self.action(execution, owner)
+                request = action.plan.request
+                if (
+                    receipt.result.status != "MATCHED_SIGNED_REPORT"
+                    or receipt.signed.payload.origin != "REMOTE_SERVICE"
+                    or request.run_id != run_id
+                    or request.repository_id != run.repository_id
+                    or request.source_commit != run.source_commit
+                    or request.source_manifest_ref != run.source_manifest_ref
+                    or request.reproduction_test_ref != run.reproduction_test_ref
+                ):
+                    raise StoreError("PATCH_BASELINE_BINDING_DENIED")
+                return action
+        raise StoreError("PATCH_BASELINE_BINDING_DENIED")
 
     @staticmethod
     def _fence(

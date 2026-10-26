@@ -24,6 +24,15 @@ human approval, real idempotent PR and hidden variation evaluation. M3/M4 remain
 open; M2 fixed fixture accepted, M5 deployment/submission open. No further runner
 hardening round is scheduled; prioritize this vertical feature journey.
 
+- [x] Accepted baseline-to-patch-to-verification queue handoff and exact
+candidate archive packaging: PATCHING is opt-in, membership/consent-fenced and
+uses a sticky bounded model request; candidate source hunk application is
+in-memory, manifest/context/patch-bound and keeps the retained test unchanged.
+Local acceptance: 1,037 unit/contract tests, 39 launcher/candidate tests and six
+disposable-PostgreSQL patch-worker tests all passed; see docs/patch-worker.md and
+docs/evidence/patch-worker-*.xml. This does not materialize a candidate remotely,
+execute it, generate gates, verify a repair, or close M3/M4.
+
 ## Historical durable live materialization, 2026-10-25
 
 - [x] Implementation554bf3d: original-source/new-test upload, pre-POST durable

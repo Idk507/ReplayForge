@@ -36,24 +36,28 @@ def main() -> int:
     p.add_argument("--env-file", type=Path, default=Path(".env.worker"))
     p.add_argument("--max-ticks", type=int, choices=range(1, 1001), default=1)
     p.add_argument("--triage", action="store_true")
+    p.add_argument("--patch", action="store_true")
     p.add_argument("--allow-live-inference", action="store_true")
     p.add_argument("--estimated-call-microusd", type=int)
     args = p.parse_args()
     if not args.run:
         print(json.dumps({"status": "NOT_RUN", "reason": "Explicit --run required"}))
         return 2
+    inference_mode = args.triage or args.patch
     if (
-        args.triage != args.allow_live_inference
+        args.triage
+        and args.patch
+        or inference_mode != args.allow_live_inference
         or (
-            args.triage
+            inference_mode
             and not (
                 args.estimated_call_microusd is not None
                 and 1 <= args.estimated_call_microusd <= 2_000_000
             )
         )
-        or (not args.triage and args.estimated_call_microusd is not None)
+        or (not inference_mode and args.estimated_call_microusd is not None)
     ):
-        p.error("triage requires explicit inference opt-in and estimate 1..2000000")
+        p.error("exactly one inference mode requires opt-in and estimate 1..2000000")
     try:
         path = args.env_file
         if path.is_symlink() or path.stat().st_size > 8192:
@@ -64,7 +68,7 @@ def main() -> int:
                 continue
             key, value = line.split("=", 1)
             if (
-                key not in (ALLOWED | (MODEL_KEYS if args.triage else set()))
+                key not in (ALLOWED | (MODEL_KEYS if inference_mode else set()))
                 or key in values
             ):
                 raise ValueError
@@ -72,7 +76,7 @@ def main() -> int:
         BrokerWorkerConfig.from_env(
             {k: v for k, v in values.items() if k not in MODEL_KEYS}
         )
-        if args.triage:
+        if inference_mode:
             NebiusConfig.from_env(values)
         child = {k: v for k, v in os.environ.items() if k.upper() in SYSTEM}
         child.update(values)
@@ -85,9 +89,9 @@ def main() -> int:
             "--max-ticks",
             str(args.max_ticks),
         ]
-        if args.triage:
+        if inference_mode:
             command += [
-                "--triage",
+                "--patch" if args.patch else "--triage",
                 "--allow-live-inference",
                 "--estimated-call-microusd",
                 str(args.estimated_call_microusd),

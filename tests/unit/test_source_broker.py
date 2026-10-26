@@ -1,6 +1,7 @@
 """Worker client never receives GitHub credentials and never retries POST."""
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -142,8 +143,6 @@ def test_worker_configuration_masks_credentials_and_uses_broker_only():
 
 
 def test_launcher_excludes_inherited_provider_secrets(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-
     from scripts import launch_authenticated_worker as launch
 
     config = tmp_path / ".env.worker"
@@ -183,6 +182,15 @@ def test_launcher_default_never_reads_private_config(monkeypatch, capsys):
     "flags",
     [
         ["--triage"],
+        ["--patch"],
+        ["--patch", "--allow-live-inference"],
+        [
+            "--patch",
+            "--triage",
+            "--allow-live-inference",
+            "--estimated-call-microusd",
+            "1",
+        ],
         ["--allow-live-inference"],
         ["--triage", "--allow-live-inference"],
         ["--estimated-call-microusd", "1"],
@@ -213,3 +221,47 @@ def test_triage_admission_is_bound_to_exact_run_and_version():
         ) as c:
             with pytest.raises(BrokerError, match="UNCONFIRMED"):
                 c.authorize_triage(claimed, 3)
+
+
+def test_patch_launcher_passes_explicit_mode_and_only_worker_model_credentials(
+    tmp_path, monkeypatch
+):
+    from scripts import launch_authenticated_worker as launch
+
+    path = tmp_path / ".env.worker"
+    path.write_text(
+        (
+            "REPLAYFORGE_DATABASE_URL=host=127.0.0.1 dbname=demo "
+            "user=worker password=synthetic\n"
+        )
+        + "REPLAYFORGE_COLLECTION_WORKER_KEY="
+        + "s" * 43
+        + "\nNEBIUS_API_KEY=synthetic-only\n"
+    )
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "not-forwarded")
+    captured = []
+
+    def start(command, **kwargs):
+        captured.append((command, kwargs["env"]))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(launch.subprocess, "run", start)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "launch",
+            "--run",
+            "--env-file",
+            str(path),
+            "--patch",
+            "--allow-live-inference",
+            "--estimated-call-microusd",
+            "1",
+        ],
+    )
+    assert launch.main() == 0
+    command, env = captured[0]
+    assert "--patch" in command and "--triage" not in command
+    assert (
+        env["NEBIUS_API_KEY"] == "synthetic-only" and "GITHUB_CLIENT_SECRET" not in env
+    )

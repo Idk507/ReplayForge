@@ -86,6 +86,7 @@ def run_patch(
     *,
     transport: httpx.BaseTransport | None = None,
     cost_policy: ModelCostPolicy | None = None,
+    queue_verification: bool = False,
 ) -> RunState:
     """Generate from retained context/baseline once; never apply generated code.
 
@@ -169,7 +170,13 @@ def run_patch(
     )
     if version is None:
         raise StoreError("MODEL_RESERVATION_REQUIRED")
-    return journal.retain(lease, owner, proposal, expected_version=version)
+    return journal.retain(
+        lease,
+        owner,
+        proposal,
+        expected_version=version,
+        queue_verification=queue_verification,
+    )
 
 
 def run_triage(
