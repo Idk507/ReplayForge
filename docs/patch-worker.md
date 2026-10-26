@@ -43,8 +43,17 @@ source/test identity, lease, current grant and `VERIFYING` stage. The two phase
 operations are distinct, while a known operation/result can be recovered without
 a repeated POST. A sibling phase's durable version increment does not invalidate
 the other phase's known operation; stage, consent and exact patch identity are
-rechecked on every recovery. It is still not wired to a provider POST in this
-slice, so it remains local durable custody rather than remote execution evidence.
+rechecked on every recovery. The journal itself does not submit a provider POST,
+so retaining it alone remains local durable custody rather than remote execution
+evidence.
+
+`materialize_patched_once` now composes that journal with the fixed remote
+materializer. It accepts only a validated `CandidateWorkspace`, rejects a wrong
+configured image, commits the phase intent before its one upload POST, stores the
+provider operation before returning, and rechecks access plus the phase journal
+before every POST/GET/result write. A pending known operation returns `None`; a
+restart collects it rather than posting again. The local fake-provider test is a
+transport contract only, not a Nebius measurement or execution claim.
 
 ## Local acceptance
 
@@ -54,6 +63,8 @@ baseline-to-patch-to-verification handoff, fresh broker authorization denial,
 and sticky uncertain inference. Unit/contract acceptance ran 1,037 cases with
 exit 0 (`docs/evidence/patch-worker-unit-contract.xml`); candidate and launcher
 focus ran 39 cases with exit 0 (`docs/evidence/patch-launcher-candidate-unit.xml`).
+The phase-custody/provider-composition focus ran three cases with exit 0 in 7.25s
+(`docs/evidence/patched-materialization-focused.xml`).
 Ruff check/format passed over 278 files and mypy passed over the ten changed core
 modules. These use fake model/provider transport and are not a live inference,
 sandbox execution, signed gate result, VERIFIED repair, approval, or PR.

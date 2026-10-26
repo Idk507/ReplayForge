@@ -37,8 +37,9 @@ execute it, generate gates, verify a repair, or close M3/M4.
 separates immutable candidate and clean upload intents, known operations and
 measurements under the current patch, consent, lease and VERIFYING fence. Local
 focused disposable-PostgreSQL acceptance: two tests passed with exit 0 in 6.04s
-(`docs/evidence/patched-materialization-focused.xml`). Provider POST wiring and
-remote measurements remain explicitly pending.
+(`docs/evidence/patched-materialization-focused.xml`); the three-case rerun also
+exercised one-POST known-operation recovery through the fixed materializer.
+Remote measurements remain explicitly pending.
 
 ## Historical durable live materialization, 2026-10-25
 

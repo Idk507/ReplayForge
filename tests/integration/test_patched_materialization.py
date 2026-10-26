@@ -8,15 +8,18 @@ import pytest
 from psycopg.types.json import Jsonb
 
 from packages.contracts.run import Stage
+from services.orchestrator.patched_materialization import materialize_patched_once
 from services.persistence.patched_materialization import (
     PatchedMaterializationIntent,
     PatchedMaterializationJournal,
 )
 from services.persistence.store import Store, StoreError
+from services.runner.candidate_workspace import CandidateWorkspace
 from services.runner.materialization import MaterializationResult
 from services.runner.workspace import WorkspaceMeasurement
+from tests.contract.test_sandbox_smoke import config
 from tests.integration import test_postgres
-from tests.integration.test_materialization import setup
+from tests.integration.test_materialization import provider, setup
 
 store = test_postgres.store
 
@@ -107,3 +110,52 @@ def test_patched_materialization_rejects_stale_patch_before_intent(store):
             ),
             expected_version=run.version,
         )
+
+
+def test_remote_candidate_materialization_is_one_shot_and_recoverable(store):
+    # The provider fixture only echoes stdin; the backend validates the returned
+    # archive identity, so use a valid candidate archive from the original setup.
+    owner, run, lease, _files, source_upload = setup(store)
+    patch_ref = "sha256:" + "e" * 64
+    run = run.model_copy(
+        update={"current_stage": Stage.VERIFYING, "patch_attempt_refs": (patch_ref,)}
+    )
+    with Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"])._connection() as db:
+        db.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(run.model_dump(mode="json")), run.run_id),
+        )
+    workspace = CandidateWorkspace(
+        original=source_upload.plan,
+        upload=source_upload,
+        patch_ref=patch_ref,
+    )
+    calls, ready, transport = provider(source_upload, pending=True)
+    assert (
+        materialize_patched_once(
+            store,
+            lease,
+            owner,
+            workspace,
+            "CANDIDATE",
+            config(),
+            lambda: None,
+            expected_version=run.version,
+            transport=transport,
+        )
+        is None
+    )
+    ready[0] = True
+    current = store.get(run.run_id, owner)
+    received = materialize_patched_once(
+        Store(store.dsn),
+        lease,
+        owner,
+        workspace,
+        "CANDIDATE",
+        config(),
+        lambda: None,
+        expected_version=current.version,
+        transport=transport,
+    )
+    assert received is not None and sum(r.method == "POST" for r in calls) == 1
