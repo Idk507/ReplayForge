@@ -177,3 +177,11 @@ The M3 milestone remains open.
 ## Current M3/M4 demo status
 
 For a truthful local walkthrough, see [demo narration](docs/submission/demo-narration.md), [final local demo evidence](docs/submission/final-demo-evidence.md), [submission checklist](docs/submission/hackathon-submission-checklist.md), [known limitations](docs/submission/known-limitations.md), [M4 evaluation status](docs/evidence/m4-evaluation-status.md), and the [M3 acceptance record](docs/evidence/m3-checkout-end-to-end-acceptance.md). No live checkout verification or benchmark attempt is currently evidenced; the evaluation inventory is explicitly unauthenticated and the missing fixtures/runtime are documented. Do not present local synthetic tests as live provider results.
+
+## License
+
+Original ReplayForge source code and project-authored materials are licensed
+under Apache-2.0. Copyright 2026 Dhanushkumar R. See [LICENSE](LICENSE) and
+[NOTICE](NOTICE). Third-party dependencies, fixtures, model weights, and
+external services remain subject to their own licenses and terms; the project
+license does not relicense them.

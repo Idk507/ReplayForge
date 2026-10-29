@@ -2,3 +2,6 @@
 docs/evidence/** -text whitespace=cr-at-eol
 # The fixed fixture is admitted by its exact source-byte SHA256 on Windows too.
 benchmarks/fixtures/checkout_retry/app/checkout.py text eol=lf
+
+# Keep the official Apache text byte-for-byte with Windows autocrlf enabled.
+/LICENSE -text

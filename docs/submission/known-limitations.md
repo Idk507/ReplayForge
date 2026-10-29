@@ -39,4 +39,9 @@ static evidence; it is not one live checkout repair.
 - A retained provider operation is not a trusted receipt or a verification gate. A displayed patch is inert text and still requires human review.
 - The browser approval/PR demonstration uses mocked transport; it does not create a GitHub PR. The checkout POC expressly does not request one.
 - No intended application database migration, Nebius image preparation/diagnostic, paid inference, public deployment, or GitHub write was performed for this submission preparation.
-- The GitHub repository is public, but GitHub reports no selected license. Local `LICENSE.proposed` is an unapproved Apache-2.0 review copy, not a project license. The owner must confirm ownership and approve it before it is renamed to root `LICENSE` or published.
+- GitHub `main` at the checked public SHA still has no selected license. The owner approved Apache-2.0 on 2026-10-29; the curated local release branch now includes the official `LICENSE`, `NOTICE`, README identification, and package metadata in a follow-up to `7eff51d758aee783c1c527844d94849abaea8bb9`. That follow-up is not pushed, so the public requirement remains unmet.
+
+
+## Apache-2.0 owner approval — 2026-10-29
+
+The owner approved Apache-2.0 for original ReplayForge source code. The local curated candidate contains the unmodified official text and a separate attribution NOTICE. No GitHub write or publication occurred; the public branch remains unchanged. Third-party license obligations remain separate, and a full SBOM review is outstanding.

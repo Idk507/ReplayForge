@@ -8,7 +8,7 @@ Checked against the official [Nebius x NVIDIA Global AI Hackathon rules](https:/
 - **Track:** Coding and Agentic Engineering
 - **Short description:** ReplayForge turns a consented, pinned repository incident into a reviewable repair trail. It separates incident intake, source provenance, baseline failure, candidate patch, independent replay, evidence validation, and human review. Its verifier consumes durable, authenticated evidence instead of accepting a model's claim that a patch works.
 - **Demo URL:** Not ready. The current acceptance is local-only; there is no hosted demo or publicly reachable test build. Do not submit a loopback URL as a working public demo.
-- **Public code repository:** https://github.com/Idk507/ReplayForge (read-only GitHub check on 2026-10-29: public, default branch `main`; README fetch succeeds; tree listing has only `.env.example` and no PEM/private-key filename; `LICENSE` fetch returns 404). The owner must select and add a license before claiming this submission requirement is met. The local tree is dirty on `codex/m2-checkout-closure` at `977197bdef3f896a5f53295e8fc6b9a09db97cf5`; those changes are not the public `main` revision.
+- **Public code repository:** https://github.com/Idk507/ReplayForge (read-only check: public `main` at the recorded SHA still has no LICENSE). The locally curated release branch now contains owner-approved Apache-2.0 text and metadata, but the license remains absent from the public revision until separately authorized publication. The local tree is dirty on `codex/m2-checkout-closure` at `977197bdef3f896a5f53295e8fc6b9a09db97cf5`; those changes are not the public `main` revision.
 - **Demo video:** Pending. The timed narration is in `docs/submission/demo-narration.md` (2:45). Record and owner-review a public YouTube video under 3 minutes. Do not use copyrighted music or third-party marks without permission.
 - **Built with:** Python, FastAPI, PostgreSQL, Next.js, Nebius Token Factory, NVIDIA Nemotron. Historical retained records show a Token Factory request on 2026-10-15 and a fixed-fixture remote Nemotron repair on 2026-10-19. The current four-phase production-worker acceptance uses synthetic test trust and is not a live Nebius checkout run.
 
@@ -50,7 +50,7 @@ was chosen or added by this work.
   `artifacts/` are generated/ignored and are not release inputs.
 - The proposed release scope is the application/source changes, migrations,
   tests, public-facing README/setup/docs, and `docs/submission/`; not retained
-  JUnit/raw operational evidence, the local `LICENSE.proposed`, `.env`, PEM,
+  JUnit/raw operational evidence, `.env`, PEM,
   ignored build outputs, or internal prompt files. The source changes can be
   prepared on a branch based on the fetched public `main` without changing the
   original dirty workspace. Push/deployment, paid inference, and final license
@@ -96,8 +96,7 @@ The rules request specific feedback on the Nebius and NVIDIA tools used. Do not 
 
 ## Required final checks
 
-- [ ] Owner chooses and adds a public open-source license; use
-      `docs/submission/license-selection-guide.md`, then check GitHub displays it.
+- [x] Owner approved Apache-2.0; unmodified root `LICENSE`, attribution `NOTICE`, README identification, and package metadata are present in the local curated candidate. Still publish only after separate authorization and verify GitHub detects the license.
 - [ ] Provide a working demo/test-build URL available to judges without charge through the judging period; complete public access review first.
 - [ ] Record and publish a sub-three-minute English YouTube demo showing the application modules actually working. State the live/synthetic/historical boundaries aloud.
 - [ ] Confirm public repository has all required setup/data/evidence instructions; inspect the exact pushed revision after authorized publication.
@@ -108,7 +107,7 @@ Latest local checks (2026-10-29): API + workbench passed 15 Playwright tests on
 disposable PostgreSQL; evaluation-specific browser tests passed 2/2; production
 build, lint and typecheck passed. JUnit is
 `docs/evidence/m5-final-api-workbench-20261029.xml`. This does not supply the
-missing public demo host, license, video or completed submission fields.
+missing public demo host, public video or completed submission fields. The approved license is local and unpublished.
 
 ## Reproducible local demonstration commands
 

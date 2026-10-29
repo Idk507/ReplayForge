@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "replayforge"
 version = "0.1.0"
 description = "Evidence-backed incident reproduction and repair"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "alembic==1.17.0",

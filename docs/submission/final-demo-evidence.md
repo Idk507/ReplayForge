@@ -135,14 +135,10 @@ against sensitive values from the protected `.env` and process environment
 found 0 matches; values were not emitted. Evidence:
 `docs/evidence/m5-secret-exposure-final-20261029.json`. This does not replace a
 full entropy/pattern scanner; no dedicated Gitleaks executable was installed.
-No public deployment, repository write, license addition, video upload or
-Devpost submission occurred.
+No public deployment, repository write, video upload, or Devpost submission occurred. The owner approved Apache-2.0 on 2026-10-29; the local curated release candidate now contains the official root `LICENSE` and `NOTICE`. Public GitHub `main` remains unchanged.
 
 The timed 2:45 recording script is `docs/submission/demo-narration.md`;
-copy-ready text is `docs/submission/devpost-answers.md`, and owner-only license
-selection steps are `docs/submission/license-selection-guide.md`. Submission
-is still blocked on a public demo/test-build URL, owner-selected/published
-license, reviewed/published source revision, public video, and owner feedback.
+copy-ready text is `docs/submission/devpost-answers.md`, and license status is recorded in `docs/submission/license-selection-guide.md`. Submission remains blocked on a public demo/test-build URL, authorized publication of the reviewed source revision, public video, and owner-completed feedback/fields.
 
 ## Public release artifact boundary
 
