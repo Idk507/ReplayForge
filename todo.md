@@ -624,14 +624,14 @@ physical deletion guarantees are documented in docs/prepared-nebius-backend.md.
 - [ ] Trace, token cost, error dashboards. Acceptance: single trace correlates incident to artifact.
 **Gate:** one fully approved PR and evaluation report; at least one unsuccessful/inconclusive case shown honestly.
 
-## M5 — Oct 27–29: Submission
+## M5 — Oct 27–30: Submission
 
 - [ ] Deploy with public stable URL and demo-only safe accounts. Acceptance: independent browser can complete approved demo flow.
-- [ ] Public repository with license, reproducible setup, architecture and limitations. Acceptance: clean-clone test.
+- [~] Public repository with license, reproducible setup, architecture and limitations. Owner-approved Apache-2.0 was published to `main` at `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`; GitHub reports SPDX `Apache-2.0`. Clean-clone acceptance remains pending.
 - [ ] Record sub-3-minute public YouTube demo with authentic evidence. Acceptance: playback and visibility verified in anonymous browser.
 - [ ] Draft Devpost description: inspiration, what it does, how built, challenges, accomplishments, learned, future work, NVIDIA/Nebius/Tavily usage. Acceptance: all required fields complete.
 - [ ] Verify track, working hosted URL, open-source repo, NVIDIA runtime call, feedback and YouTube URL. Acceptance: checklist screenshot or documented manual audit.
-- [ ] Submit by Oct 29 with one-day margin. Acceptance: Devpost submission shows completed status and public project.
+- [ ] Submit by Oct 30, 2026, 10:30 PM IST (confirm the displayed Devpost cutoff). Acceptance: Devpost submission shows completed status and public project.
 - [ ] Establish health checks and budget to remain online through Dec 15 judging. Acceptance: uptime/credit watchdog configured.
 **Gate:** publicly accessible, compliant, tested submission.
 
