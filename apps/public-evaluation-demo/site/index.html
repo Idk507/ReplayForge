@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="ReplayForge evaluation inventory and attempt accounting. This page is not a trusted verification result.">
+  <title>Evaluation status · ReplayForge</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="ReplayForge evaluation home"><span class="brand-mark" aria-hidden="true">R</span><span>ReplayForge</span></a>
+    <span class="header-label">Public evaluation snapshot</span>
+  </header>
+  <main id="main" class="page-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Evaluation inventory</p>
+      <div class="title-row">
+        <div>
+          <h1 id="page-title">Evaluation status</h1>
+          <p class="lede">A transparent view of available fixtures and recorded attempts.</p>
+        </div>
+        <span class="trust-badge">Unauthenticated aggregate</span>
+      </div>
+      <div class="notice" role="note">
+        <strong>Read this as accounting, not proof.</strong>
+        <span>This report does not authenticate execution, oracle results, or verification gates. A zero-attempt inventory is not a successful benchmark.</span>
+      </div>
+    </section>
+
+    <section id="loading" class="loading" role="status" aria-live="polite">Loading the published evaluation report…</section>
+    <section id="failure" class="failure" role="alert" hidden>
+      <h2>Report unavailable</h2>
+      <p>The local evaluation report could not be loaded or did not match the expected format.</p>
+    </section>
+    <div id="report" hidden>
+      <section class="summary-grid" aria-label="Evaluation totals">
+        <article class="summary-card summary-primary"><span class="card-label">Recorded attempts</span><strong id="attempted">—</strong><span id="live-label" class="card-foot">— live</span></article>
+        <article class="summary-card"><span class="card-label">Available fixtures</span><strong id="available">—</strong><span id="unavailable-label" class="card-foot">— unavailable</span></article>
+        <article class="summary-card"><span class="card-label">Oracle-correct verified</span><strong id="correct">—</strong><span class="card-foot">Requires eligible evidence</span></article>
+        <article class="summary-card"><span class="card-label">False-verified</span><strong id="false-verified">—</strong><span class="card-foot">Reported as recorded</span></article>
+      </section>
+
+      <section id="no-attempts" class="empty-state" hidden>
+        <span class="empty-icon" aria-hidden="true">0</span>
+        <div><h2>No execution outcomes recorded</h2><p>Rates and cost remain unavailable because there are no eligible attempts.</p></div>
+      </section>
+
+      <section class="content-card" aria-labelledby="fixtures-title">
+        <div class="section-heading"><div><p class="eyebrow">Coverage</p><h2 id="fixtures-title">Fixture inventory</h2></div><span id="case-count" class="count-pill">— cases</span></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">Case</th><th scope="col">Fixture</th><th scope="col">Availability</th><th scope="col">Attempts</th><th scope="col">Notes</th></tr></thead><tbody id="cases"></tbody></table></div>
+      </section>
+
+      <section id="attempt-section" class="content-card" aria-labelledby="attempts-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">Recorded evidence</p><h2 id="attempts-title">Attempt details</h2></div></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">Case / trace</th><th scope="col">Origin</th><th scope="col">Status</th><th scope="col">Failure category</th><th scope="col">Cost estimate</th><th scope="col">Latency</th></tr></thead><tbody id="attempts"></tbody></table></div>
+      </section>
+
+      <section class="footnote"><strong>Verification boundary</strong><p>Only separately validated durable receipts can support production verification. This static snapshot cannot authorize a repair or change a run status.</p></section>
+    </div>
+  </main>
+  <footer class="site-footer"><span>ReplayForge · Evidence-backed repair workflow</span><a href="https://github.com/Idk507/ReplayForge" rel="noopener noreferrer" target="_blank">Source repository</a></footer>
+</body>
+</html>

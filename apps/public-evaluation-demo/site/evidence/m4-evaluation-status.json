@@ -1,0 +1,83 @@
+{
+  "schema_version": "replayforge.m4-evaluation-report.v2",
+  "evidence_authority": "UNAUTHENTICATED_AGGREGATE",
+  "cases": [
+    {
+      "case_id": "checkout-idempotency",
+      "fixture_id": "checkout_retry",
+      "available": true,
+      "unavailable_reason": null,
+      "attempted_cases": 0,
+      "live_attempts": 0,
+      "test_transport_attempts": 0,
+      "local_static_attempts": 0,
+      "verified_oracle_correct": 0,
+      "false_verified_count": 0,
+      "inconclusive_count": 0,
+      "failure_categories": {}
+    },
+    {
+      "case_id": "etl-aggregation-drift",
+      "fixture_id": "etl_aggregation_drift",
+      "available": false,
+      "unavailable_reason": "No fixture directory or pinned source is present under benchmarks/fixtures.",
+      "attempted_cases": 0,
+      "live_attempts": 0,
+      "test_transport_attempts": 0,
+      "local_static_attempts": 0,
+      "verified_oracle_correct": 0,
+      "false_verified_count": 0,
+      "inconclusive_count": 0,
+      "failure_categories": {}
+    },
+    {
+      "case_id": "concurrency-race",
+      "fixture_id": "concurrency_race",
+      "available": false,
+      "unavailable_reason": "No fixture directory or pinned source is present under benchmarks/fixtures.",
+      "attempted_cases": 0,
+      "live_attempts": 0,
+      "test_transport_attempts": 0,
+      "local_static_attempts": 0,
+      "verified_oracle_correct": 0,
+      "false_verified_count": 0,
+      "inconclusive_count": 0,
+      "failure_categories": {}
+    },
+    {
+      "case_id": "hidden-variation-sample",
+      "fixture_id": "checkout_retry_holdout",
+      "available": false,
+      "unavailable_reason": "No approved seeded holdout set is present; no variation was invented.",
+      "attempted_cases": 0,
+      "live_attempts": 0,
+      "test_transport_attempts": 0,
+      "local_static_attempts": 0,
+      "verified_oracle_correct": 0,
+      "false_verified_count": 0,
+      "inconclusive_count": 0,
+      "failure_categories": {}
+    }
+  ],
+  "attempts": [],
+  "totals": {
+    "available_cases": 1,
+    "unavailable_cases": 3,
+    "attempted_cases": 0,
+    "live_attempts": 0,
+    "test_transport_attempts": 0,
+    "local_static_attempts": 0,
+    "reproduced_baselines": 0,
+    "verified_oracle_correct": 0,
+    "false_verified_count": 0,
+    "inconclusive_count": 0,
+    "patch_scope_rejections": 0,
+    "reproduction_validity_rate": null,
+    "verified_patch_rate": null,
+    "inconclusive_rate": null,
+    "total_provider_estimated_cost_usd": null,
+    "median_latency_seconds": null,
+    "p95_latency_seconds": null,
+    "latency_sample_count": 0
+  }
+}
