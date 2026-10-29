@@ -123,7 +123,7 @@ US Central endpoint. `scripts.check_nebius` was not run with `--live`; no new
 inference was sent. The exact fixed-request plan and scoped approval boundary
 are in `docs/submission/nebius-inference-preflight.md`.
 
-Read-only GitHub connector checks on 2026-10-29 found
+Read-only GitHub connector checks earlier on 2026-10-29, before the release push, found
 `https://github.com/Idk507/ReplayForge` public with default branch `main` and a
 readable README; fetching root `LICENSE` returned 404. A read-only GitHub tree
 listing showed `.env.example` only and no PEM/private-key filename. The local source tree is
@@ -135,10 +135,10 @@ against sensitive values from the protected `.env` and process environment
 found 0 matches; values were not emitted. Evidence:
 `docs/evidence/m5-secret-exposure-final-20261029.json`. This does not replace a
 full entropy/pattern scanner; no dedicated Gitleaks executable was installed.
-No public deployment, repository write, video upload, or Devpost submission occurred. The owner approved Apache-2.0 on 2026-10-29; the local curated release candidate now contains the official root `LICENSE` and `NOTICE`. Public GitHub `main` remains unchanged.
+The owner-approved Apache-2.0 `LICENSE` and `NOTICE` were pushed to GitHub `main` in release commit `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`; GitHub confirmed SPDX `Apache-2.0`. No public deployment, video upload, or Devpost submission occurred.
 
 The timed 2:45 recording script is `docs/submission/demo-narration.md`;
-copy-ready text is `docs/submission/devpost-answers.md`, and license status is recorded in `docs/submission/license-selection-guide.md`. Submission remains blocked on a public demo/test-build URL, authorized publication of the reviewed source revision, public video, and owner-completed feedback/fields.
+copy-ready text is `docs/submission/devpost-answers.md`, and license status is recorded in `docs/submission/license-selection-guide.md`. Submission remains blocked on a public demo/test-build URL, public video, and owner-completed feedback/fields.
 
 ## Public release artifact boundary
 

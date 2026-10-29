@@ -28,11 +28,10 @@ Before distributing a binary or container, prepare the full third-party notices
 and review each applicable redistribution obligation. Preserve upstream notices
 when redistributing dependency artifacts.
 
-The public GitHub `main` checked at
-`6404fd6c0c3a5df3973238fdecc5ca90d9a5a112` still has no root LICENSE because
-no publication has been authorized. The locally curated
-`codex/public-submission-release` branch now carries the approved license in a
-follow-up to release-candidate commit `7eff51d758aee783c1c527844d94849abaea8bb9`.
-That earlier commit is immutable and does not itself contain LICENSE. The
-follow-up remains local and unpushed; GitHub license detection must be checked
-after separately authorized publication.
+On 2026-10-29, the owner-authorized release was pushed to public `main`.
+GitHub's repository license endpoint reports root `LICENSE` with SPDX
+identifier `Apache-2.0`: https://github.com/Idk507/ReplayForge/blob/main/LICENSE.
+The license commit is `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`, following
+release-candidate commit `7eff51d758aee783c1c527844d94849abaea8bb9`. The
+latter is immutable and does not contain the license; its published follow-up
+does.

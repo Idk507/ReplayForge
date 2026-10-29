@@ -8,14 +8,13 @@ Checked against the official [Nebius x NVIDIA Global AI Hackathon rules](https:/
 - **Track:** Coding and Agentic Engineering
 - **Short description:** ReplayForge turns a consented, pinned repository incident into a reviewable repair trail. It separates incident intake, source provenance, baseline failure, candidate patch, independent replay, evidence validation, and human review. Its verifier consumes durable, authenticated evidence instead of accepting a model's claim that a patch works.
 - **Demo URL:** Not ready. The current acceptance is local-only; there is no hosted demo or publicly reachable test build. Do not submit a loopback URL as a working public demo.
-- **Public code repository:** https://github.com/Idk507/ReplayForge (read-only check: public `main` at the recorded SHA still has no LICENSE). The locally curated release branch now contains owner-approved Apache-2.0 text and metadata, but the license remains absent from the public revision until separately authorized publication. The local tree is dirty on `codex/m2-checkout-closure` at `977197bdef3f896a5f53295e8fc6b9a09db97cf5`; those changes are not the public `main` revision.
+- **Public code repository:** https://github.com/Idk507/ReplayForge. Owner-approved Apache-2.0 is published at root `LICENSE`; GitHub reports SPDX `Apache-2.0`. The release commit is `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`. The separate original workspace remains dirty on `codex/m2-checkout-closure` at `977197bdef3f896a5f53295e8fc6b9a09db97cf5` and is not the published tree.
 - **Demo video:** Pending. The timed narration is in `docs/submission/demo-narration.md` (2:45). Record and owner-review a public YouTube video under 3 minutes. Do not use copyrighted music or third-party marks without permission.
 - **Built with:** Python, FastAPI, PostgreSQL, Next.js, Nebius Token Factory, NVIDIA Nemotron. Historical retained records show a Token Factory request on 2026-10-15 and a fixed-fixture remote Nemotron repair on 2026-10-19. The current four-phase production-worker acceptance uses synthetic test trust and is not a live Nebius checkout run.
 
 The copy-ready project description, truthful provider-use statement, limitations,
 and owner-feedback prompts are in `docs/submission/devpost-answers.md`. License
-selection steps are in `docs/submission/license-selection-guide.md`; no license
-was chosen or added by this work.
+Apache-2.0 has been approved and published; see `docs/submission/license-selection-guide.md`.
 
 ## Public release diff review — 2026-10-29
 
@@ -42,7 +41,7 @@ was chosen or added by this work.
   prompt. It excludes the copied `replayforge_checkout_poc/` tree, including its
   three bytecode files, until the fixture's separate licensing/ownership terms
   are confirmed. The source remains in its separate repository; no fixture
-  code was executed. The original workspace and public `main` remain unchanged.
+  code was executed. At the time of this review snapshot, the original workspace and public `main` were unchanged. The later publication status is recorded below.
 - `.env` and the PEM key are ignored; `.env.example` contains configuration
   names/placeholders only. The prior exact-value source scan found zero matches
   for protected local values in tracked and nonignored files. The scan was not
@@ -53,8 +52,8 @@ was chosen or added by this work.
   JUnit/raw operational evidence, `.env`, PEM,
   ignored build outputs, or internal prompt files. The source changes can be
   prepared on a branch based on the fetched public `main` without changing the
-  original dirty workspace. Push/deployment, paid inference, and final license
-  selection remain separate owner actions.
+  original dirty workspace. The public release was later pushed with owner
+  authorization; deployment and paid inference remain separate actions.
 
 ## Public demo deployment boundary
 
@@ -96,10 +95,10 @@ The rules request specific feedback on the Nebius and NVIDIA tools used. Do not 
 
 ## Required final checks
 
-- [x] Owner approved Apache-2.0; unmodified root `LICENSE`, attribution `NOTICE`, README identification, and package metadata are present in the local curated candidate. Still publish only after separate authorization and verify GitHub detects the license.
+- [x] Owner-approved Apache-2.0 is published with root `LICENSE`, attribution `NOTICE`, README identification, and package metadata; GitHub reports SPDX `Apache-2.0`.
 - [ ] Provide a working demo/test-build URL available to judges without charge through the judging period; complete public access review first.
 - [ ] Record and publish a sub-three-minute English YouTube demo showing the application modules actually working. State the live/synthetic/historical boundaries aloud.
-- [ ] Confirm public repository has all required setup/data/evidence instructions; inspect the exact pushed revision after authorized publication.
+- [ ] Confirm the published revision has all required setup/data/evidence instructions; review it at the public repository URL.
 - [ ] Complete every Devpost field, including track, project description, demo URL, repository URL, Built With, video URL, required-tool feedback, and the significant-updates explanation.
 - [ ] Verify the current deadline and submit through Devpost before its displayed cutoff.
 
@@ -107,7 +106,7 @@ Latest local checks (2026-10-29): API + workbench passed 15 Playwright tests on
 disposable PostgreSQL; evaluation-specific browser tests passed 2/2; production
 build, lint and typecheck passed. JUnit is
 `docs/evidence/m5-final-api-workbench-20261029.xml`. This does not supply the
-missing public demo host, public video or completed submission fields. The approved license is local and unpublished.
+missing public demo host, public video or completed submission fields. The license is published.
 
 ## Reproducible local demonstration commands
 

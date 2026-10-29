@@ -22,7 +22,7 @@ static evidence; it is not one live checkout repair.
 
 - **M3:** Open. The production verification pipeline passes synthetic disposable-PostgreSQL acceptance, but production signer/collector/assessor identities and worker DB role are not provisioned; intended database remains at 0031 while reviewed local head is 0036; no derived pytest image or qualified runtime exists; the target checkout has not completed the four trusted phases and seven live gates.
 - **M4:** Open. Exact human-review and publication code has local tests, and mocked GitHub transport proves lost-response discovery. No actual PR is created for this checkout POC. The benchmark inventory has zero attempts, three unavailable cases, and no hidden oracle run. Evaluation results are labeled unauthenticated; they cannot authorize gates. Report v2 retains trace/cost/error metadata if supplied by future attempts, but none is currently present.
-- **M5/submission:** Not ready to submit until the owner supplies a public demo URL, selects and adds the required license, records and publishes the video, and completes the Devpost fields/tool feedback.
+- **M5/submission:** Not ready to submit until a public demo URL and video are available and the owner completes the Devpost fields/tool feedback. Apache-2.0 is published.
 
 ## Evidence categories
 
@@ -38,10 +38,10 @@ static evidence; it is not one live checkout repair.
 - Consent, approved paths, pinned commits, lease fences, budgets and durable uncertain-operation guards remain required.
 - A retained provider operation is not a trusted receipt or a verification gate. A displayed patch is inert text and still requires human review.
 - The browser approval/PR demonstration uses mocked transport; it does not create a GitHub PR. The checkout POC expressly does not request one.
-- No intended application database migration, Nebius image preparation/diagnostic, paid inference, public deployment, or GitHub write was performed for this submission preparation.
-- GitHub `main` at the checked public SHA still has no selected license. The owner approved Apache-2.0 on 2026-10-29; the curated local release branch now includes the official `LICENSE`, `NOTICE`, README identification, and package metadata in a follow-up to `7eff51d758aee783c1c527844d94849abaea8bb9`. That follow-up is not pushed, so the public requirement remains unmet.
+- No intended application database migration, Nebius image preparation/diagnostic, paid inference, or public deployment was performed. The only GitHub write was the authorized source release to `main`; no checkout POC PR was created.
+- GitHub `main` now contains the owner-approved Apache-2.0 root `LICENSE` (release commit `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`); GitHub reports SPDX `Apache-2.0`. Third-party dependencies remain separately licensed, and a complete SBOM review is outstanding.
 
 
 ## Apache-2.0 owner approval — 2026-10-29
 
-The owner approved Apache-2.0 for original ReplayForge source code. The local curated candidate contains the unmodified official text and a separate attribution NOTICE. No GitHub write or publication occurred; the public branch remains unchanged. Third-party license obligations remain separate, and a full SBOM review is outstanding.
+The owner approved Apache-2.0 for original ReplayForge source code. The published candidate contains the unmodified official text and separate attribution NOTICE. GitHub confirmed the license after the 2026-10-29 push. Third-party license obligations remain separate, and a full SBOM review is outstanding.
