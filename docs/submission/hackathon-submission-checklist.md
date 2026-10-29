@@ -7,7 +7,7 @@ Checked against the official [Nebius x NVIDIA Global AI Hackathon rules](https:/
 - **Project name:** ReplayForge — Evidence-backed repair for checkout incidents
 - **Track:** Coding and Agentic Engineering
 - **Short description:** ReplayForge turns a consented, pinned repository incident into a reviewable repair trail. It separates incident intake, source provenance, baseline failure, candidate patch, independent replay, evidence validation, and human review. Its verifier consumes durable, authenticated evidence instead of accepting a model's claim that a patch works.
-- **Demo URL:** Not ready. The current acceptance is local-only; there is no hosted demo or publicly reachable test build. Do not submit a loopback URL as a working public demo.
+- **Demo URL:** https://agreeable-flower-0846a9300.4.azurestaticapps.net — hosted, read-only public evaluation snapshot on Azure Static Web Apps Free. It is not the interactive repair workbench and reports zero benchmark attempts. See `docs/submission/public-demo-deployment.md`.
 - **Public code repository:** https://github.com/Idk507/ReplayForge. Owner-approved Apache-2.0 is published at root `LICENSE`; GitHub reports SPDX `Apache-2.0`. The release commit is `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`. The separate original workspace remains dirty on `codex/m2-checkout-closure` at `977197bdef3f896a5f53295e8fc6b9a09db97cf5` and is not the published tree.
 - **Demo video:** Pending. The timed narration is in `docs/submission/demo-narration.md` (2:45). Record and owner-review a public YouTube video under 3 minutes. Do not use copyrighted music or third-party marks without permission.
 - **Built with:** Python, FastAPI, PostgreSQL, Next.js, Nebius Token Factory, NVIDIA Nemotron. Historical retained records show a Token Factory request on 2026-10-15 and a fixed-fixture remote Nemotron repair on 2026-10-19. The current four-phase production-worker acceptance uses synthetic test trust and is not a live Nebius checkout run.
@@ -63,13 +63,13 @@ request. The ordinary workbench uses a loopback-only BFF and server-side local
 bearer; those checks reject non-loopback hosts. Do not deploy the full local API,
 database, local bearer, Azure/Nebius credentials, or signer/collector trust.
 
-The bounded public test-build should route only `/evaluation`, its required
-`/_next/static/*` assets, and `/evidence/m4-evaluation-status.json`; deny
-`/api/*`, every write route, and unrelated internal endpoints. It should set
-no backend or trust environment variables. This is a read-only status-page demo,
-not a public interactive repair workbench. No public host was selected or
-deployed. Owner must choose/authorize a Next-compatible host, confirm its cost
-and domain, then review the exact public URL before it is entered in Devpost.
+The deployed bounded test-build contains only static HTML, CSS, JavaScript, and
+the sanitized aggregate `/evidence/m4-evaluation-status.json`; it has no API,
+backend, database, credentials, or signing trust. `/api/v1/runs` returns 404.
+This is a read-only status-page demo, not a public interactive repair workbench.
+The app is on the Azure Static Web Apps Free tier in East Asia; no custom domain
+or paid compute was provisioned. Validate the public URL and claims before
+entering it in Devpost.
 
 ## Project description draft
 

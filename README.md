@@ -8,8 +8,10 @@ for the Nebius x NVIDIA Global AI Hackathon 2026. Implemented local components
 include the PostgreSQL run API/event ledger, Next.js workbench, durable worker
 recovery, scoped advisory repair memory and a bounded collection/triage harness.
 A fixed checkout fixture has retained real Nemotron/remote fail-then-pass replay
-evidence. The general live seven-gate repair pipeline, approval-to-PR flow and
-public deployment remain incomplete. Local test success is not production readiness.
+evidence. The general live seven-gate repair pipeline and approval-to-PR flow
+remain incomplete. The [public evaluation snapshot](https://agreeable-flower-0846a9300.4.azurestaticapps.net)
+is a static, unauthenticated aggregate, not the interactive workbench or proof
+of a live repair. Local test success is not production readiness.
 
 Current work and acceptance evidence: [delivery tracker](todo.md),
 [M3 acceptance](docs/m3-acceptance.md), [implementation log](docs/implementation-log.md).
@@ -176,7 +178,7 @@ The M3 milestone remains open.
 
 ## Current M3/M4 demo status
 
-For a truthful local walkthrough, see [demo narration](docs/submission/demo-narration.md), [final local demo evidence](docs/submission/final-demo-evidence.md), [submission checklist](docs/submission/hackathon-submission-checklist.md), [known limitations](docs/submission/known-limitations.md), [M4 evaluation status](docs/evidence/m4-evaluation-status.md), and the [M3 acceptance record](docs/evidence/m3-checkout-end-to-end-acceptance.md). No live checkout verification or benchmark attempt is currently evidenced; the evaluation inventory is explicitly unauthenticated and the missing fixtures/runtime are documented. Do not present local synthetic tests as live provider results.
+For a truthful walkthrough, see the [public static evaluation snapshot](https://agreeable-flower-0846a9300.4.azurestaticapps.net), [demo narration](docs/submission/demo-narration.md), [final demo evidence](docs/submission/final-demo-evidence.md), [submission checklist](docs/submission/hackathon-submission-checklist.md), [known limitations](docs/submission/known-limitations.md), [M4 evaluation status](docs/evidence/m4-evaluation-status.md), and the [M3 acceptance record](docs/evidence/m3-checkout-end-to-end-acceptance.md). No live checkout verification or benchmark attempt is currently evidenced; the evaluation inventory is explicitly unauthenticated and the missing fixtures/runtime are documented. Do not present local synthetic tests as live provider results.
 
 ## License
 

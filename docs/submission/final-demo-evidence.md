@@ -135,10 +135,10 @@ against sensitive values from the protected `.env` and process environment
 found 0 matches; values were not emitted. Evidence:
 `docs/evidence/m5-secret-exposure-final-20261029.json`. This does not replace a
 full entropy/pattern scanner; no dedicated Gitleaks executable was installed.
-The owner-approved Apache-2.0 `LICENSE` and `NOTICE` were pushed to GitHub `main` in release commit `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`; GitHub confirmed SPDX `Apache-2.0`. No public deployment, video upload, or Devpost submission occurred.
+The owner-approved Apache-2.0 `LICENSE` and `NOTICE` were pushed to GitHub `main` in release commit `ce9f8cfa1ea2c8c04d460876ed923c9e95e24eed`; GitHub confirmed SPDX `Apache-2.0`. The static, read-only evaluation demo was deployed to Azure Static Web Apps Free on 2026-10-29; deployment details and live checks are in `docs/submission/public-demo-deployment.md`. No video upload or Devpost submission occurred.
 
 The timed 2:45 recording script is `docs/submission/demo-narration.md`;
-copy-ready text is `docs/submission/devpost-answers.md`, and license status is recorded in `docs/submission/license-selection-guide.md`. Submission remains blocked on a public demo/test-build URL, public video, and owner-completed feedback/fields.
+copy-ready text is `docs/submission/devpost-answers.md`, and license status is recorded in `docs/submission/license-selection-guide.md`. The public demo URL is now available. Submission remains blocked on a public video and owner-completed feedback/fields.
 
 ## Public release artifact boundary
 

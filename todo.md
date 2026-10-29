@@ -648,7 +648,7 @@ If runner isolation is not ready by Oct 17, reduce scope to a *trusted synthetic
 | Baseline reproduced | original failure signature | Pending | — | — |
 | Patched clean replay | regression and existing suite | Pending | — | — |
 | Approval-gated PR | exact digest + PR URL | Pending | — | — |
-| Deployment accessible | public health/demo screenshot | Pending | — | — |
+| Deployment accessible | public health/demo screenshot | Static evaluation demo returns 200; API path returns 404 | https://agreeable-flower-0846a9300.4.azurestaticapps.net | 2026-10-29 |
 | Devpost submission | public submission URL | Pending | — | — |
 
 ## GitHub authentication workstream — planned 2026-10-23
