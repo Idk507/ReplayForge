@@ -56,3 +56,15 @@ Live scoped README acquisition has since passed for the user-authorized reposito
 through the REST adapter; see github-live-smoke.md. Content admission is unchanged:
 portable metadata for excluded regular secret files may be skipped without reading
 their blobs. Metadata portability alone never authorizes content access.
+
+## Checkout source root (2026-10-27)
+
+The fixed approved-path vocabulary now includes `checkout/`. Authenticated
+repository connection adds that root only when the user selects the separate
+`include_checkout` consent on the repository form; the default remains off.
+The grant still binds the selected repository and exact source commit. No
+model-provided path prefix is accepted. The path root permits bounded source
+acquisition, while patch policy separately admits only Python sources outside
+test-named paths. Existing traversal, secret, workflow, symlink and file-mode
+checks remain in force. Local unit and synthetic browser checks cover the
+selection flow; they do not prove live authenticated source access.

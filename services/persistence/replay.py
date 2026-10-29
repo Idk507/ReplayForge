@@ -1,6 +1,7 @@
 """Sticky replay pair reservations; no submission or execution authority."""
 
 import hashlib
+from typing import Literal
 from uuid import UUID
 
 from psycopg.types.json import Jsonb
@@ -13,7 +14,7 @@ from services.persistence.baseline import BaselineJournal
 from services.persistence.model_budget import debit_replays, reservation_transaction
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.receipts import canonical
-from services.verifier.replay import ReplayActions
+from services.verifier.replay import ReplayActions, canonical_actions
 
 
 def _decode(payload: object, digest: object) -> ReplayActions:
@@ -24,7 +25,7 @@ def _decode(payload: object, digest: object) -> ReplayActions:
         raise StoreError("REPLAY_RESERVATION_INTEGRITY")
     try:
         actions = ReplayActions.model_validate_json(body)
-        if canonical(actions) != body:
+        if canonical_actions(actions) != body:
             raise StoreError("REPLAY_RESERVATION_INTEGRITY")
         return actions
     except (ValidationError, ValueError):
@@ -52,6 +53,45 @@ class ReplayJournal:
             raise StoreError("REPLAY_RESERVATION_INTEGRITY")
         return actions
 
+    def operation_id(
+        self,
+        run_id: UUID,
+        owner: UUID,
+        phase: Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"],
+    ) -> UUID:
+        """Return only the known remote operation bound to the retained plan."""
+        if phase not in {"CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"}:
+            raise StoreError("REPLAY_PHASE_INVALID")
+        actions = self.load(run_id, owner)
+        plan = {
+            "CANDIDATE": actions.candidate_plan,
+            "EXISTING_SUITE": actions.suite_plan,
+            "CLEAN_REPLAY": actions.clean_plan,
+        }[phase]
+        if plan is None:
+            raise StoreError("REPLAY_SUITE_ACTION_REQUIRED")
+        from services.runner.receipts import plan_ref
+
+        with self._store._connection() as conn:
+            row = conn.execute(
+                "SELECT s.plan_ref,s.origin,r.operation_id FROM replay_submissions s "
+                "LEFT JOIN replay_submission_results r USING(run_id,phase) "
+                "JOIN runs u ON u.id=s.run_id WHERE s.run_id=%s AND u.owner_id=%s "
+                "AND s.phase=%s",
+                (run_id, owner, phase),
+            ).fetchone()
+        if (
+            row is None
+            or row["plan_ref"] != plan_ref(plan)
+            or row["origin"] != "REMOTE_SERVICE"
+            or row["operation_id"] is None
+        ):
+            raise StoreError("REPLAY_KNOWN_OPERATION_REQUIRED")
+        try:
+            return UUID(str(row["operation_id"]))
+        except (TypeError, ValueError):
+            raise StoreError("REPLAY_OPERATION_INTEGRITY") from None
+
     def reserve(
         self,
         lease: Lease,
@@ -68,7 +108,7 @@ class ReplayJournal:
         """
         lease = Lease.model_validate(lease.model_dump())
         actions = ReplayActions.model_validate(actions.model_dump())
-        body = canonical(actions)
+        body = canonical_actions(actions)
         if len(body) > 32768:
             raise StoreError("REPLAY_RESERVATION_LIMIT")
         if type(expected_version) is not int or expected_version < 0:
@@ -113,14 +153,6 @@ class ReplayJournal:
                 or before.source_manifest_ref != run.source_manifest_ref
                 or before.reproduction_test_ref != run.reproduction_test_ref
                 or before.patch_ref != run.patch_attempt_refs[-1]
-                or len(
-                    {
-                        actions.baseline_execution_id,
-                        actions.candidate_execution_id,
-                        actions.clean_execution_id,
-                    }
-                )
-                != 3
                 or baseline.signed.payload.run_id != run.run_id
                 or baseline.signed.payload.origin != "REMOTE_SERVICE"
                 or baseline.result.status != "MATCHED_SIGNED_REPORT"
@@ -132,13 +164,37 @@ class ReplayJournal:
                 != before.reproduction_test_ref
             ):
                 raise StoreError("REPLAY_RESERVATION_BINDING_DENIED")
+            if actions.suite_plan is not None:
+                suite = actions.suite_plan
+                if (
+                    actions.suite_execution_id is None
+                    or suite.request.phase != "EXISTING_SUITE"
+                    or suite.request.run_id != run.run_id
+                    or suite.request.repository_id != run.repository_id
+                    or suite.request.source_commit != run.source_commit
+                    or suite.request.source_manifest_ref != run.source_manifest_ref
+                    or suite.request.reproduction_test_ref != run.reproduction_test_ref
+                    or suite.request.patch_ref != run.patch_attempt_refs[-1]
+                    or suite.command_id != actions.candidate_plan.command_id
+                    or suite.request.model_dump(exclude={"phase", "test_paths"})
+                    != before.model_dump(exclude={"phase", "test_paths"})
+                ):
+                    raise StoreError("REPLAY_SUITE_BINDING_DENIED")
             if consent is None:
                 raise StoreError("REPLAY_SCOPE_DENIED")
             grant = RepositoryGrant.model_validate(consent["grant_json"])
             if not admit(
                 grant, owner, run.repository_id, run.source_commit
             ).allowed or any(
-                not allowed_entry(grant, p, "100644") for p in before.test_paths
+                not allowed_entry(grant, p, "100644")
+                for p in (
+                    *before.test_paths,
+                    *(
+                        actions.suite_plan.request.test_paths
+                        if actions.suite_plan is not None
+                        else ()
+                    ),
+                )
             ):
                 raise StoreError("REPLAY_SCOPE_DENIED")
             prior = conn.execute(
@@ -159,7 +215,12 @@ class ReplayJournal:
             if run.version != expected_version or run.evidence_manifest_ref is not None:
                 raise StoreError("STALE_VERSION")
             remaining = debit_replays(
-                self._store, conn, run, actions.candidate_plan, actions.clean_plan
+                self._store,
+                conn,
+                run,
+                actions.candidate_plan,
+                actions.clean_plan,
+                actions.suite_plan,
             )
             updated = RunState.model_validate(
                 {

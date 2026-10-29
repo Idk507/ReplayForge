@@ -289,3 +289,37 @@ class CapabilityVerifier:
             reasons=tuple(reasons),
             artifacts=(reference,),
         )
+
+
+def recheck_retained_capability(
+    payload: bytes,
+    reference: ArtifactID,
+    plan: TestCommandPlan,
+    verifier: CapabilityVerifier,
+    *,
+    now: datetime,
+) -> tuple[CapabilityAttestation, CapabilityDecision]:
+    """Revalidate exact retained assessor bytes before gate derivation.
+
+    A digest alone is not an attestation. This requires canonical signed bytes,
+    a matching immutable reference, the configured assessor key, the exact
+    phase plan and a fresh trusted clock.
+    """
+    if (
+        not isinstance(payload, bytes)
+        or not 1 <= len(payload) <= 16384
+        or not isinstance(reference, str)
+        or not re.fullmatch(r"sha256:[a-f0-9]{64}", reference)
+        or hashlib.sha256(payload).hexdigest() != reference[7:]
+    ):
+        raise AdmissionDenied("CAPABILITY_RETAINED_BYTES_INVALID")
+    try:
+        attestation = CapabilityAttestation.model_validate_json(payload)
+        if canonical(attestation) != payload:
+            raise AdmissionDenied("CAPABILITY_RETAINED_BYTES_INVALID")
+    except (ValidationError, ValueError):
+        raise AdmissionDenied("CAPABILITY_RETAINED_BYTES_INVALID") from None
+    decision = verifier.assess(attestation, plan, now=now)
+    if decision.status != "CAPABILITY_REQUIREMENTS_MET":
+        raise AdmissionDenied("CAPABILITY_RECHECK_DENIED")
+    return attestation, decision

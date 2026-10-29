@@ -32,6 +32,9 @@ def terminal(request_body: dict[str, object]) -> dict[str, object]:
     output = json.dumps(
         {
             "python_version": "Python 3.12.12",
+            "python_compatible": True,
+            "pytest_available": True,
+            "fixed_check_passed": True,
             "uid": 1000,
             "gid": 1000,
             "interfaces": ["lo"],
@@ -108,6 +111,10 @@ def test_fixed_probe_uses_least_privilege_and_records_safe_evidence() -> None:
             assert body["disposable"] is True
             assert body["uid"] == body["gid"] == 1000
             assert body["image"] == IMAGE
+            assert body["args"][:2] == ["-I", "-c"]
+            assert "-S" not in body["args"]
+            assert body["timeout"] == 15
+            assert body["truncate_output_at"] == 4096
             assert SECRET not in request.content.decode()
             return httpx.Response(201, json={"uuid": OPERATION})
         return httpx.Response(200, json=terminal(body))
@@ -132,6 +139,9 @@ def test_fixed_probe_uses_least_privilege_and_records_safe_evidence() -> None:
     assert report.artifacts[0].sha256 == hashlib.sha256(canonical).hexdigest()
     assert report.artifacts[0].size_bytes == len(canonical)
     assert report.python_version == "Python 3.12.12"
+    assert report.observation.python_compatible is True
+    assert report.observation.pytest_available is True
+    assert report.observation.fixed_check_passed is True
     assert SECRET not in report.model_dump_json()
     assert report.policy_decision == "ALLOW_M0_SYNTHETIC_PROBE"
 
@@ -155,6 +165,9 @@ def test_fixed_probe_uses_least_privilege_and_records_safe_evidence() -> None:
         ("missing-disposable-evidence", "S_SCHEMA_INVALID"),
         ("injected-files", "S_POLICY_DENIED"),
         ("docker-socket", "S_ISOLATION_FAILED"),
+        ("pytest-missing", "S_PYTEST_MISSING"),
+        ("python-incompatible", "S_PYTHON_VERSION_UNSUPPORTED"),
+        ("fixed-check", "S_FIXED_CHECK_FAILED"),
     ],
 )
 def test_operation_success_is_not_process_or_isolation_success(
@@ -182,6 +195,9 @@ def test_operation_success_is_not_process_or_isolation_success(
         elif mutation in {"network", "root", "secret", "docker-socket"}:
             output = {
                 "python_version": "Python 3.12.12",
+                "python_compatible": True,
+                "pytest_available": True,
+                "fixed_check_passed": True,
                 "uid": 1000,
                 "gid": 1000,
                 "interfaces": ["lo"],
@@ -201,6 +217,19 @@ def test_operation_success_is_not_process_or_isolation_success(
                 "secret": True,
                 "docker-socket": True,
             }[mutation]
+            result["stdout"] = {
+                "value": json.dumps(output),
+                "encoding": "ascii",
+                "truncated": False,
+            }
+        elif mutation in {"pytest-missing", "python-incompatible", "fixed-check"}:
+            key = {
+                "pytest-missing": "pytest_available",
+                "python-incompatible": "python_compatible",
+                "fixed-check": "fixed_check_passed",
+            }[mutation]
+            output = json.loads(base64.b64decode(result["stdout"]["value"]))
+            output[key] = False
             result["stdout"] = {
                 "value": json.dumps(output),
                 "encoding": "ascii",

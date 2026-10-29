@@ -67,7 +67,7 @@ def test_roundtrip_is_inert_and_bound_to_checkpoint() -> None:
         {"context_refs": ("sha256:" + "e" * 64,)},
         {"source_manifest_ref": "sha256:" + "f" * 64},
         {"cancellation_requested": True},
-        {"current_stage": Stage.PATCHING},
+        {"current_stage": Stage.CREATED},
     ],
 )
 def test_rejects_checkpoint_mutation(change: dict[str, object]) -> None:
@@ -84,6 +84,37 @@ def test_rejects_checkpoint_mutation(change: dict[str, object]) -> None:
             grant,
             grant.owner_id,
         )
+
+
+@pytest.mark.parametrize(
+    "stage",
+    [
+        Stage.PATCHING,
+        Stage.VERIFYING,
+        Stage.VERIFIED,
+        Stage.NOT_VERIFIED,
+        Stage.INCONCLUSIVE,
+    ],
+)
+def test_retained_reproduction_remains_readable_during_repair(stage: Stage) -> None:
+    run, grant, proposal = fixture()
+    artifact = bind_reproduction(proposal, run, grant, grant.owner_id)
+    retained = run.model_copy(
+        update={
+            "current_stage": stage,
+            "reproduction_test_ref": artifact.artifact_ref(),
+        }
+    )
+    assert (
+        load_reproduction(
+            artifact.canonical_bytes(),
+            artifact.artifact_ref(),
+            retained,
+            grant,
+            grant.owner_id,
+        )
+        == artifact
+    )
 
 
 def test_rejects_tampering_wrong_owner_and_unbound_reference() -> None:

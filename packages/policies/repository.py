@@ -45,6 +45,18 @@ def allowed_entry(grant: RepositoryGrant, path: str, mode: str) -> bool:
     )
 
 
+def patchable_source(grant: RepositoryGrant, path: str) -> bool:
+    """Admit only consented Python sources outside test and secret paths."""
+    grant = RepositoryGrant.model_validate(grant.model_dump())
+    components = path.split("/")
+    return (
+        path.endswith(".py")
+        and any(path.startswith(root) for root in ("src/", "app/", "checkout/"))
+        and not any(part.lower().startswith("test") for part in components)
+        and allowed_entry(grant, path, "100644")
+    )
+
+
 def safe_tree_path(path: str) -> bool:
     """Admission requires both portable syntax and absence of prohibited names."""
     if not portable_tree_path(path):

@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "case_id": "checkout-idempotency",
+      "fixture_id": "checkout_retry",
+      "availability": "AVAILABLE"
+    },
+    {
+      "case_id": "etl-aggregation-drift",
+      "fixture_id": "etl_aggregation_drift",
+      "availability": "UNAVAILABLE",
+      "unavailable_reason": "No fixture directory or pinned source is present under benchmarks/fixtures."
+    },
+    {
+      "case_id": "concurrency-race",
+      "fixture_id": "concurrency_race",
+      "availability": "UNAVAILABLE",
+      "unavailable_reason": "No fixture directory or pinned source is present under benchmarks/fixtures."
+    },
+    {
+      "case_id": "hidden-variation-sample",
+      "fixture_id": "checkout_retry_holdout",
+      "availability": "UNAVAILABLE",
+      "unavailable_reason": "No approved seeded holdout set is present; no variation was invented."
+    }
+  ],
+  "attempts": []
+}

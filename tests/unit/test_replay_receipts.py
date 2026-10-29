@@ -4,7 +4,12 @@ import hashlib
 
 import pytest
 
-from services.runner.receipts import ReceiptDenied, SignedReplayReceipt, canonical
+from services.runner.receipts import (
+    ReceiptDenied,
+    SignedReplayReceipt,
+    canonical,
+    plan_ref,
+)
 from tests.unit.test_runner_receipts import fixture
 
 XML = (
@@ -46,6 +51,94 @@ def replay_inputs(phase="CANDIDATE", body=XML, **updates):
         now=now,
     )
     return verifier, signed, plan, args
+
+
+def suite_inputs(body=XML, **updates):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from packages.contracts.execution import pytest_argv
+    from services.runner.receipts import ReceiptVerifier
+
+    verifier, signed, plan, args = replay_inputs(body=body, **updates)
+    request = plan.request.model_copy(
+        update={
+            "phase": "EXISTING_SUITE",
+            "test_paths": ("tests/test_regression.py", "tests/test_payments.py"),
+        }
+    )
+    plan = plan.model_copy(update={"request": request, "argv": pytest_argv(request)})
+    receipt = signed.payload.model_copy(
+        update={
+            "plan_ref": plan_ref(plan),
+            "junit_ref": "sha256:" + hashlib.sha256(body).hexdigest(),
+            **updates,
+        }
+    )
+    signed = SignedReplayReceipt(key_id="test", payload=receipt, signature="0" * 128)
+    # The test helper's verifier key is deliberately inaccessible here; create a
+    # new ephemeral signer so suite coverage remains a clear test-only contract.
+    key = Ed25519PrivateKey.generate()
+    signed = signed.model_copy(
+        update={"signature": key.sign(canonical(signed, unsigned=True)).hex()}
+    )
+    verifier = ReceiptVerifier({"test": key.public_key()}, origin="TEST_TRANSPORT")
+    args = {
+        "execution_id": receipt.execution_id,
+        "source_tree_ref": receipt.source_tree_ref,
+        "now": args["now"],
+        "test_paths": request.test_paths,
+    }
+    return verifier, signed, plan, args
+
+
+SUITE_XML = (
+    b'<testsuite tests="2" failures="0" errors="0" skipped="0">'
+    b'<testcase classname="tests.test_regression" name="test_duplicate"/>'
+    b'<testcase classname="tests.test_payments" name="test_payment"/>'
+    b"</testsuite>"
+)
+
+
+def test_full_existing_suite_is_authenticated_and_remains_test_origin():
+    verifier, signed, plan, args = suite_inputs(SUITE_XML)
+    result = verifier.inspect_existing_suite(signed, plan, SUITE_XML, **args)
+    assert result.status == "MATCHED_SIGNED_REPORT"
+    assert result.tests == 2
+    assert result.receipt.origin == "TEST_TRANSPORT"
+    assert result.can_authorize_verification is False
+
+
+def test_existing_suite_requires_every_declared_test_file():
+    partial = SUITE_XML.replace(
+        b'<testcase classname="tests.test_payments" name="test_payment"/>', b""
+    ).replace(b'tests="2"', b'tests="1"')
+    verifier, signed, plan, args = suite_inputs(partial)
+    result = verifier.inspect_existing_suite(signed, plan, partial, **args)
+    assert result.status == "REJECTED_SIGNED_REPORT"
+    assert result.reason == "INCOMPLETE_SUITE"
+
+
+def test_existing_suite_rejects_any_failed_or_skipped_test():
+    failed = SUITE_XML.replace(b'failures="0"', b'failures="1"').replace(
+        b'name="test_payment"/>', b'name="test_payment"><failure/></testcase>'
+    )
+    verifier, signed, plan, args = suite_inputs(failed)
+    result = verifier.inspect_existing_suite(signed, plan, failed, **args)
+    assert result.status == "REJECTED_SIGNED_REPORT"
+    assert result.reason == "INVALID_REPORT"
+
+
+def test_existing_suite_rejects_altered_report_and_wrong_declared_paths():
+    verifier, signed, plan, args = suite_inputs(SUITE_XML)
+    with pytest.raises(ReceiptDenied):
+        verifier.inspect_existing_suite(signed, plan, SUITE_XML + b" ", **args)
+    with pytest.raises(ReceiptDenied):
+        verifier.inspect_existing_suite(
+            signed,
+            plan,
+            SUITE_XML,
+            **{**args, "test_paths": ("tests/test_regression.py",)},
+        )
 
 
 @pytest.mark.parametrize("phase", ["CANDIDATE", "CLEAN_REPLAY"])

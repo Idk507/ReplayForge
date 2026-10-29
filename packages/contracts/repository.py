@@ -42,6 +42,7 @@ class RepositoryGrant(BaseModel):
         registered = {
             "src/",
             "app/",
+            "checkout/",
             "tests/",
             "pyproject.toml",
             "requirements.txt",

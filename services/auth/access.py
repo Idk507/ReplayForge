@@ -25,9 +25,24 @@ from services.auth.repositories import (
     RepositoryClient,
 )
 from services.auth.settings import GitHubAuthSettings
-from services.persistence.store import Store
+from services.persistence.store import Store, lock_repository_consent
 
 ProtocolNumber = Annotated[int, Field(ge=1, le=9223372036854775807)]
+
+
+def approved_repository_paths(include_checkout: bool) -> tuple[str, ...]:
+    """Return the fixed consented path set; checkout requires a separate opt-in."""
+    if type(include_checkout) is not bool:
+        raise ValueError("AUTH_PATH_CONSENT_INVALID")
+    base = (
+        "src/",
+        "app/",
+        "tests/",
+        "README.md",
+        "pyproject.toml",
+        "requirements.txt",
+    )
+    return base + (("checkout/",) if include_checkout else ())
 
 
 class ConnectRepository(BaseModel):
@@ -37,6 +52,7 @@ class ConnectRepository(BaseModel):
     source_commit: CommitSHA
     consent: bool = Field(strict=True)
     private_access_approved: bool = Field(default=False, strict=True)
+    include_checkout: bool = Field(default=False, strict=True)
     repository_page: int | None = Field(default=None, strict=True, ge=1, le=20000)
 
 
@@ -141,14 +157,7 @@ class AuthAccess:
                 owner_id=user.id,
                 remote_url="https://github.com/" + repo.full_name,
                 commits=(payload.source_commit,),
-                approved_paths=(
-                    "src/",
-                    "app/",
-                    "tests/",
-                    "README.md",
-                    "pyproject.toml",
-                    "requirements.txt",
-                ),
+                approved_paths=approved_repository_paths(payload.include_checkout),
                 consent=True,
                 private=repo.private,
                 private_access_approved=payload.private_access_approved,
@@ -221,6 +230,7 @@ class AuthAccess:
         observe the same grant; reconnect creates a new immutable identity.
         """
         with self.journal.store._connection() as c:
+            lock_repository_consent(c, repository_id)
             row = c.execute(
                 "SELECT repository_id FROM auth_repository_connections "
                 "WHERE repository_id=%s AND user_id=%s FOR UPDATE",

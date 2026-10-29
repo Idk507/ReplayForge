@@ -51,7 +51,16 @@ def bind_reproduction(
     if not admit(grant, caller, run.repository_id, run.source_commit).allowed:
         raise ReproductionHandoffError("REPRODUCTION_SCOPE_DENIED")
     if (
-        run.current_stage not in {Stage.TRIAGING, Stage.REPRODUCING}
+        run.current_stage
+        not in {
+            Stage.TRIAGING,
+            Stage.REPRODUCING,
+            Stage.PATCHING,
+            Stage.VERIFYING,
+            Stage.VERIFIED,
+            Stage.NOT_VERIFIED,
+            Stage.INCONCLUSIVE,
+        }
         or run.cancellation_requested
         or not run.context_refs
         or run.source_manifest_ref is None

@@ -21,6 +21,10 @@ from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
 from services.orchestrator.research import ResearchBroker, RetainedResearch
 from services.persistence.evidence import EvidenceStore
+from services.persistence.execution_status import (
+    ExecutionStatusSnapshot,
+    execution_status,
+)
 from services.persistence.patch import PatchJournal, RetainedPatch
 from services.persistence.store import Store, StoreError
 from services.persistence.verification import VerificationJournal
@@ -249,6 +253,12 @@ def create_app(
     @app.get("/api/v1/runs/{run_id}")
     def get(run_id: UUID, owner: Annotated[UUID, Depends(identity)]) -> RunState:
         return store.get(run_id, owner)
+
+    @app.get("/api/v1/runs/{run_id}/executions")
+    def executions(
+        run_id: UUID, owner: Annotated[UUID, Depends(identity)]
+    ) -> ExecutionStatusSnapshot:
+        return execution_status(store, run_id, owner)
 
     @app.get("/api/v1/runs/{run_id}/artifacts/{artifact_id}")
     def artifact(

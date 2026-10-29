@@ -127,7 +127,6 @@ def test_remote_candidate_materialization_is_one_shot_and_recoverable(store):
         )
     workspace = CandidateWorkspace(
         original=source_upload.plan,
-        clean_upload=source_upload,
         upload=source_upload,
         patch_ref=patch_ref,
     )

@@ -122,7 +122,7 @@ class RunMemory:
             if not admit(grant, owner, run.repository_id, run.source_commit).allowed:
                 raise StoreError("MEMORY_SCOPE_DENIED")
             rows = conn.execute(
-                "SELECT v.payload,v.digest,"
+                "SELECT v.payload,v.digest,v.envelope_version,v.envelope_bytes,"
                 "LEAST(v.expires_at,b.expires_at) AS expires_at,r.checkpoint "
                 "FROM verification_results v JOIN runs r ON r.id=v.run_id "
                 "JOIN evidence_bundles b ON b.run_id=r.id "

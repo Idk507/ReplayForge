@@ -22,10 +22,16 @@ MAX_RESPONSE_BYTES = 65536
 
 # Trusted application-owned template. This string is sent only to remote guest
 # Python via literal argv with shell=false. No caller text is interpolated.
-SMOKE_PROGRAM = """import json, os, pathlib, subprocess, sys
+SMOKE_PROGRAM = """import importlib.util, json, os, pathlib, subprocess, sys
 version = subprocess.check_output([sys.executable, '-V'], text=True).strip()
+fixed = subprocess.run([sys.executable, '-I', '-c', 'assert 6 * 7 == 42'],
+    capture_output=True, timeout=3, check=False)
 print(json.dumps({
     'python_version': version,
+    'python_compatible': sys.version_info >= (3, 11),
+    'pytest_available': importlib.util.find_spec('pytest') is not None,
+    'fixed_check_passed': (fixed.returncode == 0 and not fixed.stdout
+                           and not fixed.stderr),
     'uid': os.getuid(), 'gid': os.getgid(),
     'interfaces': sorted(p.name for p in pathlib.Path('/sys/class/net').iterdir()),
     'docker_socket_present': any(pathlib.Path(p).exists() for p in
@@ -94,7 +100,7 @@ def probe_request(image_uuid: UUID) -> dict[str, object]:
     return {
         "image": str(image_uuid),
         "command": "/usr/local/bin/python",
-        "args": ["-I", "-S", "-c", SMOKE_PROGRAM],
+        "args": ["-I", "-c", SMOKE_PROGRAM],
         "shell": False,
         "env": {},
         "preserve_env": False,

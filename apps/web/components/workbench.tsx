@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { createSchema, researchSchema, type Research, gateNames, manifestSchema, parseEvents, patchSchema, runSchema, summarySchema, uuid, type Manifest, type Patch, type Run, type RunEvent, type Summary } from "../lib/contracts";
+import { createSchema, executionStatusSchema, researchSchema, type ExecutionStatus, type Research, gateNames, manifestSchema, parseEvents, patchSchema, runSchema, sourceManifestSchema, summarySchema, uuid, type Manifest, type Patch, type Run, type RunEvent, type SourceManifest, type Summary } from "../lib/contracts";
 import { ApiError, errorMessage, request } from "../lib/client";
 import ReviewPanel from "./review-panel";
 
@@ -15,8 +15,9 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
   const [runs, setRuns] = useState<Run[]>([]), [run, setRun] = useState<Run | null>(null);
   const [selected, setSelected] = useState(""), [view, setView] = useState("timeline");
   const [events, setEvents] = useState<RunEvent[]>([]), [connection, setConnection] = useState("Not connected");
+  const [executionStatus, setExecutionStatus] = useState<ExecutionStatus | null>(null);
   const [research, setResearch] = useState<Research>([]);
-  const [summary, setSummary] = useState<Summary | null>(null), [manifest, setManifest] = useState<Manifest | null>(null), [patch, setPatch] = useState<Patch | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null), [manifest, setManifest] = useState<Manifest | null>(null), [sourceManifest, setSourceManifest] = useState<SourceManifest | null>(null), [patch, setPatch] = useState<Patch | null>(null);
   const [error, setError] = useState(""), [detailError, setDetailError] = useState("");
   const [loading, setLoading] = useState(true), [intake, setIntake] = useState(Boolean(initialRepository && initialCommit)), [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{name: string; content: string} | null>(null);
@@ -43,12 +44,14 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
     async function poll() {
       try {
         const current = await request(`runs/${selected}`, runSchema, {signal: abort.signal});
+        const executions = await request(`runs/${selected}/executions`, executionStatusSchema, {signal: abort.signal});
         const response = await fetch(`/api/backend/runs/${selected}/events?after=${cursor}`, {signal: abort.signal, cache: "no-store"});
         if (!response.ok) throw new ApiError(response.status);
         const page = parseEvents(await response.text(), cursor);
         if (stopped) return;
         setRun(previous => previous?.run_id === current.run_id && previous.version >= current.version ? previous : current); setRuns(items => items.map(item => item.run_id === current.run_id && item.version <= current.version ? current : item));
         setEvents(items => [...items, ...page].slice(-500));
+        setExecutionStatus(executions);
         if (page.length) cursor = page[page.length - 1].sequence;
         setConnection("Connected"); setDetailError(""); failures = 0;
         timer = setTimeout(poll, page.length === 100 ? 50 : terminal.has(current.current_stage) || sessionMode ? 10000 : 2500);
@@ -70,6 +73,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
         const citations = await request(`runs/${current.run_id}/research`, researchSchema); if (!stopped) setResearch(citations);
         if (current.verification_ref) {const value = await request(`runs/${current.run_id}/verification`, summarySchema); if (!stopped) setSummary(value);}
         if (current.evidence_manifest_ref) {const value = await request(`runs/${current.run_id}/evidence/${current.evidence_manifest_ref}`, manifestSchema); if (!stopped) setManifest(value);}
+        if (current.source_manifest_ref) {const value = await request(`runs/${current.run_id}/source-manifests/${current.source_manifest_ref}`, sourceManifestSchema); if (!stopped) setSourceManifest(value);}
         try {const value = await request(`runs/${current.run_id}/patch`, patchSchema); if (!stopped) setPatch(value);}
         catch (e) {if (!(e instanceof ApiError && e.status === 404)) throw e;}
       } catch (e) {if (!stopped) setDetailError(errorMessage(e));}
@@ -80,8 +84,8 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
 
   function choose(id: string) {
     activeRun.current = id; setSelected(id); setIntake(false); setView("timeline");
-    setRun(null); setEvents([]); setSummary(null); setManifest(null);
-    setPatch(null); setResearch([]); setPreview(null); setDetailError(""); setConnection("Connecting");
+    setRun(null); setEvents([]); setSummary(null); setManifest(null); setSourceManifest(null);
+    setPatch(null); setResearch([]); setExecutionStatus(null); setPreview(null); setDetailError(""); setConnection("Connecting");
   }
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
@@ -116,8 +120,17 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
     } catch (e) {setDetailError(errorMessage(e));}
   }
 
+  const sourceSection = <section aria-labelledby="source-acquisition-heading">
+    <div className="panel-heading"><h2 id="source-acquisition-heading">Source acquisition</h2><span className="muted">{sourceManifest?.evidence_origin ?? (run?.source_manifest_ref ? "Loading manifest" : "Not collected")}</span></div>
+    {!sourceManifest ? <div className="blank-panel" role="status">{run?.source_manifest_ref ? "The source manifest is not available yet." : "No acquired source manifest is recorded for this run."}</div> : <>
+      <dl className="source-facts"><dt>Observed</dt><dd><time dateTime={sourceManifest.observed_at}>{new Date(sourceManifest.observed_at).toLocaleString()}</time></dd><dt>Commit identity</dt><dd>{sourceManifest.commit_identity} · raw commit signature not verified</dd><dt>Root tree</dt><dd><code>{sourceManifest.root_tree}</code></dd></dl>
+      <p className="muted">This manifest binds fetched paths to Git blob IDs and content hashes. It does not prove execution, runtime trust, or a repair.</p>
+      <div className="artifacts">{sourceManifest.files.map(file => <article className="artifact" key={file.path}><strong>{file.path}</strong><span>{file.size_bytes.toLocaleString()} bytes</span><code>SHA-256 {file.sha256}</code><code>Git blob {file.blob_id}</code></article>)}</div>
+    </>}
+  </section>;
+
   return <div className="shell">
-    <header className="topbar"><a className="brand" href="/"><span className="mark">R↻</span>ReplayForge</a><span className="workspace-name">Investigation workbench</span><span className="local"><span />LOCAL DEVELOPMENT</span></header>
+    <header className="topbar"><a className="brand" href="/"><span className="mark">R↻</span>ReplayForge</a><span className="workspace-name">Investigation workbench</span><a className="text-button" href="/evaluation">Evaluation status</a><span className="local"><span />LOCAL DEVELOPMENT</span></header>
     <div className="workspace">
       <aside className="sidebar" aria-label="Run navigation"><div className="sidebar-top"><span className="eyebrow">WORKSPACE / RUNS</span><button className="primary" onClick={() => {setIntake(true); setError("");}}>＋ New investigation</button></div>
         <div className="section-label"><h2>Recent runs</h2><button className="text-button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh runs">↻</button></div>
@@ -141,7 +154,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
           <div className="tabs" role="tablist" aria-label="Investigation views">{["timeline", "evidence", "patch"].map(tab => <button role="tab" aria-selected={view === tab} aria-controls={`panel-${tab}`} id={`tab-${tab}`} key={tab} onClick={() => setView(tab)}>{tab === "patch" ? "Patch & risk" : label(tab)}{tab === "timeline" && <small>{events.length}</small>}</button>)}</div>
           <div role="tabpanel" id={`panel-${view}`} aria-labelledby={`tab-${view}`}>
           {view === "timeline" && <div className="timeline-layout"><div><div className="panel-heading"><h2>Investigation timeline</h2><span className="muted">Persisted events · last 500</span></div>{!events.length && <div className="blank-panel">Waiting for recorded events. No steps are assumed complete.</div>}<ol className="timeline">{events.map(event => <li key={event.sequence}><span className="event-number">{String(event.sequence).padStart(2,"0")}</span><div><strong>{label(event.stage)}</strong><p>{label(event.event_type)} <span>· Version {event.version}</span></p></div><time dateTime={event.observed_at}>{new Date(event.observed_at).toLocaleTimeString()}</time></li>)}</ol><section className="citations"><div className="panel-heading"><h2>Documentation research</h2><span className="muted">Advisory evidence</span></div>{!research.length && <p className="muted">No retained documentation search for this run.</p>}{research.map((record,i) => <div key={i}>{record.report.sources.map(source => <article key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a><p>{source.snippet}</p><small>{record.report.evidence_origin} · <time dateTime={source.retrieved_at}>{new Date(source.retrieved_at).toLocaleString()}</time></small><code>{source.url}</code></article>)}</div>)}<p className="muted">External content is untrusted and cannot authorize tools or execution.</p></section></div><aside className="run-facts"><p className="eyebrow">RUN CONTRACT</p><h3>Bounded by design</h3><dl><dt>Model calls remaining</dt><dd>{run?.remaining_budget.model_calls ?? "—"}</dd><dt>Sandbox commands</dt><dd>{run?.remaining_budget.sandbox_commands ?? "—"}</dd><dt>Research searches</dt><dd>{run?.remaining_budget.research_searches ?? "—"}</dd><dt>Reserved time remaining</dt><dd>{run?.remaining_budget.execution_seconds ?? "—"} s</dd></dl><p className="muted">Remaining budgets are limits, not measured costs or usage.</p><p className="eyebrow">TRACE ID</p><code>{run?.trace_id ?? "—"}</code>{run && !terminal.has(run.current_stage) && <button className="danger" disabled={busy} onClick={() => void cancel()}>Cancel investigation</button>}</aside></div>}
-          {view === "evidence" && <><div className="panel-heading"><h2>Verification matrix</h2><span className="muted">{summary ? label(summary.verdict.status) : "No retained verdict"}</span></div><div className="gate-list">{gateNames.slice(0,7).map(gate => {const record = summary?.gates.find(g => g.gate === gate); return <div className="gate-row" key={gate}><span>{label(gate)}</span><span className={`badge ${tone(record?.status ?? "MISSING")}`}>{record?.status ?? "MISSING"}</span></div>;})}</div><p className="muted">Evidence is not publication approval. Each gate must have authenticated backing before a run can be verified.</p><div className="panel-heading"><h2>Retained artifacts</h2><span className="muted">Integrity-checked previews</span></div>{!manifest && <div className="blank-panel">No retained manifest is available for this run.</div>}<div className="artifacts">{manifest?.entries.map(entry => <button className="artifact" key={entry.name} onClick={() => void inspect(entry.name, entry.artifact_id)}><strong>{entry.name} ↗</strong><span>{entry.size} bytes</span><code>{entry.artifact_id}</code></button>)}</div>{preview && <section className="preview"><div className="panel-heading"><h3>{preview.name}</h3><button className="text-button" onClick={() => setPreview(null)}>Close preview</button></div><pre>{preview.content}</pre></section>}</>}
+          {view === "evidence" && <>{sourceSection}<div className="panel-heading"><h2>Execution phases</h2><span className="muted">Journal state · read only</span></div><p className="muted">A known operation or retained receipt does not establish a verified result. Only the signed verification record below can satisfy gates.</p><div className="gate-list">{(executionStatus?.phases ?? []).map(phase => <div className="gate-row" key={phase.phase}><span>{label(phase.phase)}</span><span className={`badge ${tone(phase.status)}`}>{label(phase.status)}</span><details className="gate-evidence"><summary>Operation details</summary><dl><dt>Execution</dt><dd><code>{phase.execution_id ?? "Not assigned"}</code></dd><dt>Provider operation</dt><dd><code>{phase.operation_id ?? "Not submitted or unknown"}</code></dd><dt>Plan</dt><dd><code>{phase.plan_ref ?? "Unavailable"}</code></dd><dt>Origin</dt><dd>{phase.origin ?? "Not submitted"}</dd><dt>Last observation</dt><dd>{phase.observed_at ? new Date(phase.observed_at).toLocaleString() : "None"}</dd><dt>Can authorize verification</dt><dd>No</dd></dl></details></div>)}</div><div className="panel-heading"><h2>Verification matrix</h2><span className="muted">{summary ? label(summary.verdict.status) : "No retained verdict"}</span></div>{summary?.verdict.missing?.length ? <p className="muted" role="status">Missing evidence: {summary.verdict.missing.map(label).join(", ")}</p> : null}{summary?.verdict.failed?.length ? <p className="error" role="status">Failed gates: {summary.verdict.failed.map(label).join(", ")}</p> : null}<div className="gate-list">{gateNames.slice(0,7).map(gate => {const record = summary?.gates.find(g => g.gate === gate); return <div className="gate-row" key={gate}><span>{label(gate)}</span><span className={`badge ${tone(record?.status ?? "MISSING")}`}>{record?.status ?? "MISSING"}</span>{record && <details className="gate-evidence"><summary>Evidence details</summary><dl><dt>Phase</dt><dd>{record.phase ? label(record.phase) : "Unavailable"}</dd><dt>Execution</dt><dd><code>{record.execution_id ?? record.execution_ref}</code></dd><dt>Provider operation</dt><dd><code>{record.operation_id ?? "Unavailable"}</code></dd><dt>Image UUID</dt><dd><code>{record.image_uuid ?? "Unavailable"}</code></dd><dt>Image digest</dt><dd><code>{record.image_digest ?? "Unavailable"}</code></dd><dt>Configuration</dt><dd><code>{record.configuration_ref ?? "Unavailable"}</code></dd><dt>Workspace SHA256</dt><dd><code>{record.workspace_sha256 ?? "Unavailable"}</code></dd></dl></details>}</div>;})}</div><p className="muted">Evidence is not publication approval. Each gate must have authenticated backing before a run can be verified.</p><div className="panel-heading"><h2>Retained artifacts</h2><span className="muted">Integrity-checked previews</span></div>{!manifest && <div className="blank-panel">No retained manifest is available for this run.</div>}<div className="artifacts">{manifest?.entries.map(entry => <button className="artifact" key={entry.name} onClick={() => void inspect(entry.name, entry.artifact_id)}><strong>{entry.name} ↗</strong><span>{entry.size} bytes</span><code>{entry.artifact_id}</code></button>)}</div>{preview && <section className="preview"><div className="panel-heading"><h3>{preview.name}</h3><button className="text-button" onClick={() => setPreview(null)}>Close preview</button></div><pre>{preview.content}</pre></section>}</>}
           {view === "patch" && <><div className="panel-heading"><h2>Candidate patch</h2><span className="muted">Retained proposal · not execution proof</span></div>{!patch ? <div className="blank-panel">No candidate patch is retained or available for this run.</div> : <><p className="lede small">{patch.proposal.justification}</p><pre className="diff">{patch.proposal.unified_diff.split("\n").map((line,i) => <span key={i} className={line.startsWith("+") ? "added" : line.startsWith("-") ? "removed" : ""}>{line}{"\n"}</span>)}</pre><h3>Remaining risk</h3><p>{patch.proposal.risk_notes}</p>{sessionMode && run && ["VERIFIED","AWAITING_APPROVAL","PR_CREATING"].includes(run.current_stage) && <ReviewPanel key={run.run_id+run.verification_ref} run={run} diff={patch.proposal.unified_diff}/>}</>}</>}
           </div>
         </section>}

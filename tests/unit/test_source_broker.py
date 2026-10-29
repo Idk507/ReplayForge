@@ -63,6 +63,54 @@ def test_broker_client_correlates_result_and_keeps_uncertain_post_single():
     assert len(count) == 1
 
 
+def test_worker_restart_after_uncertain_collection_keeps_post_single():
+    claimed = lease()
+    calls = []
+
+    def handle(request):
+        calls.append(request.method)
+        if request.method == "GET":
+            return httpx.Response(200, json={"enabled": True})
+        raise httpx.ReadTimeout("synthetic lost collection response")
+
+    class StickyLeaseStore:
+        """Model the durable lease remaining held after an unknown POST result."""
+
+        def __init__(self):
+            self.claim_attempts = 0
+
+        def claim(self, *_args, **_kwargs):
+            self.claim_attempts += 1
+            return claimed if self.claim_attempts == 1 else None
+
+        def claimed_run(self, _lease):
+            return uuid4(), SimpleNamespace(version=0)
+
+    store = StickyLeaseStore()
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(handle),
+    ) as first_worker:
+        with pytest.raises(BrokerError, match="UNCONFIRMED"):
+            dispatch_once(store, claimed.worker_id, first_worker, ("README.md",))
+
+    # A restarted worker may check readiness, but cannot reclaim the live lease
+    # or repeat the collection POST whose outcome is unknown.
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(handle),
+    ) as restarted_worker:
+        assert (
+            dispatch_once(store, uuid4(), restarted_worker, ("README.md",)).status
+            == "IDLE"
+        )
+
+    assert store.claim_attempts == 2
+    assert calls == ["GET", "POST", "GET"]
+
+
 @pytest.mark.parametrize(
     "url",
     [

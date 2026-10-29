@@ -153,6 +153,32 @@ def test_collection_broker_denies_before_source_fetch(store, fault):
     assert not fetched
 
 
+def test_collection_rechecks_consent_after_admission_before_source_io(store):
+    c, _journal, _session, broker, payload, fetched = prepared(store)
+    original_authorize = broker.access.authorize
+    authorization_checks = 0
+
+    def revoke_after_first_check(owner, repository_id, *, write=False):
+        nonlocal authorization_checks
+        authorization_checks += 1
+        if authorization_checks == 2:
+            # Simulate disconnect at the fresh check immediately before source
+            # I/O, after request admission and graph scope checks have passed.
+            broker.access.disconnect(owner, repository_id)
+        original_authorize(owner, repository_id, write=write)
+
+    broker.access.authorize = revoke_after_first_check
+    response = c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+
+    assert response.status_code == 403
+    assert authorization_checks == 2
+    assert fetched == []
+
+
 def test_worker_claim_http_broker_and_persisted_stage_agree(store):
     import httpx
     from fastapi.testclient import TestClient

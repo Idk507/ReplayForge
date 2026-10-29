@@ -50,6 +50,89 @@ def test_valid_diff_has_actual_hash_and_no_execution_permission() -> None:
     assert "x=2" not in result.model_dump_json()
 
 
+def test_checkout_source_can_be_patched_only_when_granted() -> None:
+    from packages.contracts.repository import RepositoryGrant
+
+    run, original, owner = context()
+    grant = RepositoryGrant.model_validate(
+        original.model_copy(update={"approved_paths": ("checkout/",)}).model_dump()
+    )
+    diff = DIFF.replace("src/a.py", "checkout/payments.py")
+    result = admit_patch(
+        diff,
+        run,
+        grant,
+        owner,
+        source_commit=run.source_commit,
+        source_manifest_ref=run.source_manifest_ref,
+        baseline_result_ref=run.baseline_result_ref,
+        reproduction_test_ref=run.reproduction_test_ref,
+    )
+    assert result.files_changed == ("checkout/payments.py",)
+
+
+@pytest.mark.parametrize("denial", ["no_grant", "revoked", "wrong_commit"])
+def test_checkout_patch_requires_current_exact_commit_consent(denial: str) -> None:
+    from packages.contracts.repository import RepositoryGrant
+
+    run, original, owner = context()
+    consented = RepositoryGrant.model_validate(
+        original.model_copy(update={"approved_paths": ("checkout/",)}).model_dump()
+    )
+    if denial == "no_grant":
+        grant = original
+        commit = run.source_commit
+    elif denial == "revoked":
+        grant = consented.model_copy(update={"consent": False})
+        commit = run.source_commit
+    else:
+        grant = consented
+        commit = "b" * 40
+    with pytest.raises(PatchDenied):
+        admit_patch(
+            DIFF.replace("src/a.py", "checkout/payments.py"),
+            run,
+            grant,
+            owner,
+            source_commit=commit,
+            source_manifest_ref=run.source_manifest_ref,
+            baseline_result_ref=run.baseline_result_ref,
+            reproduction_test_ref=run.reproduction_test_ref,
+        )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "checkout/tests/test_a.py",
+        "checkout/test-payments.py",
+        "checkout-other/payments.py",
+        "checkout/../payments.py",
+        "checkout/.github/workflows/build.py",
+        "checkout/.env",
+        "checkout/private.key",
+    ],
+)
+def test_checkout_tests_are_never_patchable(path):
+    from packages.contracts.repository import RepositoryGrant
+
+    run, original, owner = context()
+    grant = RepositoryGrant.model_validate(
+        original.model_copy(update={"approved_paths": ("checkout/",)}).model_dump()
+    )
+    with pytest.raises(PatchDenied):
+        admit_patch(
+            DIFF.replace("src/a.py", path),
+            run,
+            grant,
+            owner,
+            source_commit=run.source_commit,
+            source_manifest_ref=run.source_manifest_ref,
+            baseline_result_ref=run.baseline_result_ref,
+            reproduction_test_ref=run.reproduction_test_ref,
+        )
+
+
 @pytest.mark.parametrize(
     "path",
     [

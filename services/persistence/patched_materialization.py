@@ -24,7 +24,7 @@ class PatchedMaterializationIntent(BaseModel):
     """One exact candidate/clean archive admission; never execution authority."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
-    phase: Literal["CANDIDATE", "CLEAN_REPLAY"]
+    phase: Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"]
     plan: MaterializationPlan
     patch_ref: ArtifactID
 
@@ -40,11 +40,15 @@ class PatchedMaterializationJournal:
     def __init__(
         self,
         store: Store,
-        phase: Literal["CANDIDATE", "CLEAN_REPLAY"],
+        phase: Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"],
         *,
         origin: Literal["TEST_TRANSPORT", "REMOTE_SERVICE"],
     ) -> None:
-        if phase not in {"CANDIDATE", "CLEAN_REPLAY"} or origin not in {
+        if phase not in {
+            "CANDIDATE",
+            "EXISTING_SUITE",
+            "CLEAN_REPLAY",
+        } or origin not in {
             "TEST_TRANSPORT",
             "REMOTE_SERVICE",
         }:

@@ -1,6 +1,8 @@
 """Durable verdict contracts with small synthetic signed evidence, not live proof."""
 
 import os
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from uuid import uuid4
@@ -11,7 +13,11 @@ from psycopg.types.json import Jsonb
 
 from packages.contracts.run import Stage
 from services.persistence.evidence import EvidenceStore
-from services.persistence.store import Store, StoreError
+from services.persistence.store import (
+    Store,
+    StoreError,
+    lock_repository_consent,
+)
 from services.runner.receipts import canonical
 from services.verifier.authenticated import GateDenied, GateVerifier
 from tests.integration import test_postgres
@@ -99,6 +105,7 @@ def test_verification_journal_atomic_restart_and_duplicate(store, outcome):
             verifier,
             image_digest=context.image_digest,
             configuration_ref=context.configuration_ref,
+            phase_bindings=context.phase_bindings,
             expected_version=run.version,
         )
 
@@ -111,6 +118,15 @@ def test_verification_journal_atomic_restart_and_duplicate(store, outcome):
     assert retained.signed == signed
     assert retained.verdict.status == outcome
     assert not retained.verdict.can_authorize_publication
+    independently_checked = VerificationJournal(Store(store.dsn)).get_verified(
+        run.run_id,
+        owner,
+        verifier,
+        image_digest=context.image_digest,
+        configuration_ref=context.configuration_ref,
+        phase_bindings=context.phase_bindings,
+    )
+    assert independently_checked == retained
     assert store.events(run.run_id, owner)[-1].event_type == "STAGE_CHANGED"
     with store._connection() as conn:
         assert conn.execute(
@@ -125,6 +141,188 @@ def test_verification_journal_atomic_restart_and_duplicate(store, outcome):
         )
 
 
+def test_consent_revocation_is_serialized_with_final_gate_acceptance(
+    store, monkeypatch
+):
+    """An overlapping revocation waits for an acceptance already in progress."""
+    from services.persistence.verification import VerificationJournal
+
+    lease, owner, run, signed, verifier, context = prepared(store)
+    entered_verifier = threading.Event()
+    release_verifier = threading.Event()
+    revocation_locked = threading.Event()
+    original = GateVerifier.verify
+
+    def pause_after_consent(self, *args, **kwargs):
+        result = original(self, *args, **kwargs)
+        entered_verifier.set()
+        if not release_verifier.wait(5):
+            raise AssertionError("verification test barrier timed out")
+        return result
+
+    monkeypatch.setattr(GateVerifier, "verify", pause_after_consent)
+
+    def revoke():
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            lock_repository_consent(conn, run.repository_id)
+            revocation_locked.set()
+            conn.execute(
+                "UPDATE repository_grants SET grant_json="
+                "jsonb_set(grant_json,'{consent}','false'::jsonb) WHERE id=%s",
+                (run.repository_id,),
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        accepting = pool.submit(
+            VerificationJournal(store).accept,
+            lease,
+            owner,
+            signed,
+            verifier,
+            image_digest=context.image_digest,
+            configuration_ref=context.configuration_ref,
+            phase_bindings=context.phase_bindings,
+            expected_version=run.version,
+        )
+        assert entered_verifier.wait(5)
+        revoking = pool.submit(revoke)
+        time.sleep(0.1)
+        assert not revocation_locked.is_set()
+        release_verifier.set()
+        assert accepting.result(timeout=5).current_stage == Stage.VERIFIED
+        revoking.result(timeout=5)
+    assert not store.repository(run.repository_id, owner).consent
+
+
+def test_revocation_committed_first_blocks_final_gate_acceptance(store):
+    """A finalizer waiting behind revocation observes withdrawn consent."""
+    from services.persistence.verification import VerificationJournal
+
+    lease, owner, run, signed, verifier, context = prepared(store)
+    revocation_locked = threading.Event()
+    release_revocation = threading.Event()
+
+    def revoke_and_hold():
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            lock_repository_consent(conn, run.repository_id)
+            conn.execute(
+                "UPDATE repository_grants SET grant_json="
+                "jsonb_set(grant_json,'{consent}','false'::jsonb) WHERE id=%s",
+                (run.repository_id,),
+            )
+            revocation_locked.set()
+            if not release_revocation.wait(5):
+                raise AssertionError("revocation test barrier timed out")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        revoking = pool.submit(revoke_and_hold)
+        assert revocation_locked.wait(5)
+        accepting = pool.submit(
+            VerificationJournal(store).accept,
+            lease,
+            owner,
+            signed,
+            verifier,
+            image_digest=context.image_digest,
+            configuration_ref=context.configuration_ref,
+            phase_bindings=context.phase_bindings,
+            expected_version=run.version,
+        )
+        time.sleep(0.1)
+        assert not accepting.done()
+        release_revocation.set()
+        revoking.result(timeout=5)
+        with pytest.raises(StoreError, match="EVIDENCE_SCOPE_DENIED"):
+            accepting.result(timeout=5)
+    assert store.get(run.run_id, owner).current_stage == Stage.VERIFYING
+
+
+def test_external_signer_is_wired_to_durable_acceptance(store):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from services.persistence.verification import VerificationJournal
+    from services.verifier.signing import ProductionGateSigner
+
+    lease, owner, run, payload_signed, _, context = prepared(store)
+    key = Ed25519PrivateKey.generate()
+    verifier = GateVerifier({payload_signed.key_id: key.public_key()})
+    signer = ProductionGateSigner(payload_signed.key_id, key.sign)
+    result = VerificationJournal(Store(store.dsn)).sign_and_accept(
+        lease,
+        owner,
+        payload_signed.payload,
+        signer,
+        verifier,
+        image_digest=context.image_digest,
+        configuration_ref=context.configuration_ref,
+        phase_bindings=context.phase_bindings,
+        expected_version=run.version,
+    )
+
+    assert result.current_stage == Stage.VERIFIED
+    assert (
+        VerificationJournal(Store(store.dsn))
+        .get_verified(
+            run.run_id,
+            owner,
+            verifier,
+            image_digest=context.image_digest,
+            configuration_ref=context.configuration_ref,
+            phase_bindings=context.phase_bindings,
+        )
+        .signed.key_id
+        == signer.key_id
+    )
+
+
+def test_persisted_recomputed_digest_cannot_hide_invalid_gate_signature(store):
+    import hashlib
+
+    from services.persistence.verification import (
+        RetainedVerification,
+        VerificationJournal,
+    )
+
+    lease, owner, run, signed, verifier, context = prepared(store)
+    accepted = accept(
+        VerificationJournal(store),
+        (lease, owner, run, signed, verifier, context),
+    )
+    journal = VerificationJournal(Store(store.dsn))
+    record = journal.get(accepted.run_id, owner)
+    invalid_signed = record.signed.model_copy(update={"signature": "0" * 128})
+    invalid_ref = "sha256:" + hashlib.sha256(canonical(invalid_signed)).hexdigest()
+    invalid_verdict = record.verdict.model_copy(update={"attestation_ref": invalid_ref})
+    invalid_record = RetainedVerification(
+        signed=invalid_signed, verdict=invalid_verdict
+    )
+    body = canonical(invalid_record)
+    digest = hashlib.sha256(body).hexdigest()
+    updated_run = store.get(accepted.run_id, owner).model_copy(
+        update={"verification_ref": "sha256:" + digest}
+    )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE verification_results SET payload=%s,digest=%s,envelope_bytes=%s "
+            "WHERE run_id=%s",
+            (body, digest, canonical(invalid_signed), accepted.run_id),
+        )
+        conn.execute(
+            "UPDATE runs SET checkpoint=%s WHERE id=%s",
+            (Jsonb(updated_run.model_dump(mode="json")), accepted.run_id),
+        )
+
+    with pytest.raises(StoreError, match="^VERIFICATION_SIGNATURE_INVALID$"):
+        journal.get_verified(
+            accepted.run_id,
+            owner,
+            verifier,
+            image_digest=context.image_digest,
+            configuration_ref=context.configuration_ref,
+            phase_bindings=context.phase_bindings,
+        )
+
+
 def accept(journal, setup):
     lease, owner, run, signed, verifier, context = setup
     return journal.accept(
@@ -134,6 +332,7 @@ def accept(journal, setup):
         verifier,
         image_digest=context.image_digest,
         configuration_ref=context.configuration_ref,
+        phase_bindings=context.phase_bindings,
         expected_version=run.version,
     )
 

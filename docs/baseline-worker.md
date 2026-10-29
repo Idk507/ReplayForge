@@ -1,5 +1,13 @@
 # Durable baseline worker
 
+Current implementation and remaining acceptance are mapped in
+[the Terra completion plan](m3-m4-terra-completion-plan.md). The new
+`ConfinedBaselineProvider`, `advance_confined_baseline` and
+`deliver_produced_baseline` compose admitted one-shot dispatch, protected
+collection and journal-backed delivery. Four mocked-provider PostgreSQL cases
+pass; they do not establish a complete launcher, live execution or M3 acceptance.
+The older ordinary provider remains unable to execute measured plans.
+
 Implementation e78ea60 connects authenticated reproduction retention to a baseline
 queue and admitted one-shot dispatch. Follow-up a061648 requires saved/measured
 JUnit output and exercises the actual REST serializer with mocked HTTP.
@@ -31,6 +39,23 @@ PreparedImageBinding, capability attestation, trusted public-key verifier and
 SandboxConfig from privileged deployment configuration. No browser/model
 payload supplies these inputs. Construction validates exact plan/execution/tree,
 image, runner and configuration bindings without network I/O.
+
+As of 2026-10-27, this concrete provider rejects `PYTEST_FILES_MEASURED_V1`:
+it constructs an ordinary prepared backend, which does not durably record the
+premeasurement or run the confined measured collector. The dispatcher port
+still accepts measured plans from a correctly composed backend. A durable
+baseline-specific measured/confined provider remains to be implemented; this
+restriction does not establish a capability assessment or complete M3.
+
+The internal `BaselineProducerJournal` now retains an actual premeasurement
+under the baseline submission, action, consent, current lease and version, and
+restores it only with the journaled operation ID. It checks the collector key
+and signed receipt contents before retaining or recovering a private carrier;
+the operation ID is correlated through the durable journal, not a field in the
+signed receipt. The existing durable confined backend accepts this journal for
+internal composition. Fake-transport PostgreSQL tests include cached recovery
+without provider I/O. This does not yet provide a baseline worker factory,
+live qualification, evidence delivery or an application database migration.
 
 Its run_id is derived from the immutable action. The baseline worker filters the
 database claim by both REPRODUCING and that run ID, leaving other queued incidents
@@ -139,3 +164,24 @@ saved-image measurement and independent capability/collector bindings remain the
 trusted controller's responsibilities. The returned bytes are private source data;
 do not put them into public events, logs or model memory. No execution authority
 or VERIFIED status follows from successful packaging.
+
+## T1/L1 baseline driver update (27 October 2026)
+
+`run_confined_baseline` in `services/orchestrator/confined_baseline_driver.py`
+claims one selected REPRODUCING job, renews its lease while performing bounded
+polls, and returns pending or uncertain work without a second submission. Stop
+or timeout of the driver does not establish remote compute termination. The
+driver checks its elapsed budget before beginning another poll after a wait;
+it does not interrupt a provider request already in flight. The local regression
+is `docs/evidence/m3-t2-deadline-green.xml` (6 passed).
+The
+controller reloads the retained reproduction and requires its path, test name,
+assertion message and failure signature to match the action. Older tests without
+the explicit marker are refused; they are not rewritten automatically. After a
+terminal result is collected, its operation journal is updated before delivery.
+Local synthetic evidence: `docs/evidence/m3-l1-baseline-adversarial.xml` (36
+database-backed tests), `docs/evidence/m3-l1-baseline-dispatch.xml` (14
+database-backed tests), and `docs/evidence/m3-t1-driver-unit.xml` (27 passing
+unit tests). This function is a worker entry point; end-to-end launcher/source
+composition and live runtime qualification remain open. See the active handoff
+for the scoped Terra T2 next step.

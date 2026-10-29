@@ -13,9 +13,9 @@ from packages.policies.repository import admit, allowed_entry
 from services.persistence.replay import ReplayJournal
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.admission import CapabilityAttestation, CapabilityVerifier
-from services.runner.receipts import plan_ref
+from services.runner.receipts import canonical, plan_ref
 
-Phase = Literal["CANDIDATE", "CLEAN_REPLAY"]
+Phase = Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"]
 Origin = Literal["TEST_TRANSPORT", "REMOTE_SERVICE"]
 
 
@@ -80,19 +80,28 @@ def dispatch_replay(
     backend is a trusted deployment dependency, never passed by browser/model.
     No HTTP client, credentials, local execution or automatic adapter discovery.
     """
-    if phase not in {"CANDIDATE", "CLEAN_REPLAY"} or type(expected_version) is not int:
+    if (
+        phase not in {"CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"}
+        or type(expected_version) is not int
+    ):
         raise StoreError("REPLAY_DISPATCH_INVALID")
     if backend.origin not in {"TEST_TRANSPORT", "REMOTE_SERVICE"}:
         raise StoreError("REPLAY_BACKEND_INVALID")
     if backend.origin == "REMOTE_SERVICE" and allow_live is not True:
         raise StoreError("REPLAY_LIVE_NOT_AUTHORIZED")
     actions = ReplayJournal(store).load(lease.run_id, owner)
-    plan = actions.candidate_plan if phase == "CANDIDATE" else actions.clean_plan
-    execution_id = (
-        actions.candidate_execution_id
-        if phase == "CANDIDATE"
-        else actions.clean_execution_id
-    )
+    plan = {
+        "CANDIDATE": actions.candidate_plan,
+        "EXISTING_SUITE": actions.suite_plan,
+        "CLEAN_REPLAY": actions.clean_plan,
+    }[phase]
+    execution_id = {
+        "CANDIDATE": actions.candidate_execution_id,
+        "EXISTING_SUITE": actions.suite_execution_id,
+        "CLEAN_REPLAY": actions.clean_execution_id,
+    }[phase]
+    if plan is None or execution_id is None:
+        raise StoreError("REPLAY_SUITE_ACTION_REQUIRED")
     reference = plan_ref(plan)
 
     def result(
@@ -137,6 +146,7 @@ def dispatch_replay(
             or request.source_commit != run.source_commit
             or request.source_manifest_ref != run.source_manifest_ref
             or request.reproduction_test_ref != run.reproduction_test_ref
+            or request.phase != phase
             or request.patch_ref != run.patch_attempt_refs[-1]
             or run.evidence_manifest_ref is not None
         ):
@@ -183,9 +193,16 @@ def dispatch_replay(
             )
         conn.execute(
             "INSERT INTO replay_submissions"
-            "(run_id,phase,plan_ref,capability_ref,origin) "
-            "VALUES (%s,%s,%s,%s,%s)",
-            (run.run_id, phase, reference, assessment.attestation_ref, backend.origin),
+            "(run_id,phase,plan_ref,capability_ref,origin,capability_payload) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            (
+                run.run_id,
+                phase,
+                reference,
+                assessment.attestation_ref,
+                backend.origin,
+                canonical(attestation),
+            ),
         )
         store._event(conn, run, "REPLAY_SUBMISSION_CLAIMED")
     # The intent has committed: a crash/fault from here must never repeat I/O.

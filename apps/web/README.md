@@ -2,18 +2,22 @@
 
 Next.js App Router UI for actual owner-scoped run state, intake, cancel, finite
 SSE replay, candidate diff, verdict/gate matrix, integrity-checked artifact previews
-and advisory documentation citations. Missing evidence is explicitly MISSING.
+and advisory documentation citations. A read-only `/evaluation` page shows the
+declared benchmark inventory and denominators; it is explicitly unauthenticated
+and cannot authorize gates. Missing evidence is explicitly MISSING.
 No mock data ships in the application; synthetic HTTP exists only in test files.
 
 ## Start locally on Windows
 
 Use Node.js 22 and the repository's Python development environment.
 
-1. Provision a local PostgreSQL database with the existing migrations through
-   0018. Use the migration role for `uv run alembic upgrade head`, then a separate
-   runtime role for the API. Grant the runtime role SELECT/INSERT on private
-   artifacts, research_intents/research_reports and verification_results, alongside
-   its existing run/event/job privileges. Do not grant repository registration,
+1. Use a separate local development or disposable PostgreSQL database. Never
+   point this setup at the intended application database. Apply the repository's
+   current Alembic head (0036) with a dedicated migration role, then use a
+   separate least-privilege runtime role for the API. Grant the runtime role
+   SELECT/INSERT on private artifacts, research_intents/research_reports and
+   verification_results, alongside its existing run/event/job privileges. Do
+   not grant repository registration,
    artifact UPDATE/DELETE, superuser, createdb or createrole. Operator-owned
    repository grants must already bind the owner and immutable source commits.
 2. Configure the Python process environment: REPLAYFORGE_DATABASE_URL (runtime
@@ -40,7 +44,7 @@ same-origin write checks, response/request limits and no retry of writes.
 
 `npm run lint`, `npm run typecheck`, `npm run build`, `npm audit`.
 From the repository root, `uv run python -m scripts.test_postgres --web` creates
-task-owned DB/runtime roles, runs seven Playwright checks against real local API
+task-owned DB/runtime roles, runs fourteen Playwright checks against real local API
 and browser processes, then removes its database/roles and stops the API/web
 servers. A local PostgreSQL administrator password is prompted securely; no
 provider credentials or cloud calls are used. The browser tests currently use

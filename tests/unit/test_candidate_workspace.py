@@ -19,11 +19,13 @@ from tests.unit.test_source_archive import source
 from tests.unit.test_source_manifest import manifest
 
 
-def inputs(body=b"x=1\n", diff=DIFF):
+def inputs(body=b"x=1\n", diff=DIFF, source_path="src/a.py"):
     run, grant, owner = context()
+    if source_path.startswith("checkout/"):
+        grant = grant.model_copy(update={"approved_paths": ("checkout/",)})
     run = run.model_copy(update={"context_refs": ("sha256:" + "b" * 64,)})
-    files = {"src/a.py": body}
-    proof = manifest(files=(source("src/a.py", body),)).model_copy(
+    files = {source_path: body}
+    proof = manifest(files=(source(source_path, body),)).model_copy(
         update={"repository_id": run.repository_id, "source_commit": run.source_commit}
     )
     reproduction = ReproductionArtifact(
@@ -58,7 +60,7 @@ def inputs(body=b"x=1\n", diff=DIFF):
     patch = RetainedPatch(
         proposal=PatchProposal(
             unified_diff=diff,
-            files_changed=("src/a.py",),
+            files_changed=(source_path,),
             justification="fixture",
             expected_test_delta="pass",
             risk_notes="not executed",
@@ -74,10 +76,10 @@ def inputs(body=b"x=1\n", diff=DIFF):
     return proof, files, reproduction, patch, run, grant, owner
 
 
-def call(values):
+def call(values, image_uuid=None):
     proof, files, reproduction, patch, run, grant, owner = values
     return prepare_candidate(
-        uuid4(),
+        image_uuid or uuid4(),
         proof,
         files,
         reproduction,
@@ -98,26 +100,59 @@ def test_candidate_contains_actual_patch_and_byte_identical_reproduction():
             == values[2].proposal.test_source.encode()
         )
     assert candidate.original.workspace_ref != candidate.upload.plan.workspace_ref
-    with tarfile.open(
-        fileobj=io.BytesIO(candidate.clean_upload.archive), mode="r:"
-    ) as tree:
-        assert tree.extractfile("src/a.py").read() == b"x=1\n"
+    clean = workspace_for_phase(candidate, "CLEAN_REPLAY")
+    with tarfile.open(fileobj=io.BytesIO(clean.upload.archive), mode="r:") as tree:
+        assert tree.extractfile("src/a.py").read() == b"x=2\n"
         assert (
             tree.extractfile("tests/test_a.py").read()
             == values[2].proposal.test_source.encode()
         )
-    assert candidate.clean_upload.plan.workspace_ref == candidate.original.workspace_ref
+    assert clean.upload.plan.workspace_ref == candidate.upload.plan.workspace_ref
+    assert clean.upload.plan.workspace_ref != candidate.original.workspace_ref
     assert candidate.patch_ref == values[3].admission.patch_ref
     assert not candidate.can_authorize_execution
     assert "x=2" not in repr(candidate)
 
 
-def test_replay_phase_selects_independent_candidate_and_pristine_uploads():
-    prepared = call(inputs())
-    candidate = workspace_for_phase(prepared, "CANDIDATE")
-    clean = workspace_for_phase(prepared, "CLEAN_REPLAY")
-    assert candidate.upload.plan.workspace_ref != clean.upload.plan.workspace_ref
-    assert candidate.upload.archive != clean.upload.archive
+def test_candidate_materializes_explicit_checkout_source_and_unchanged_test():
+    path = "checkout/payments.py"
+    diff = DIFF.replace("src/a.py", path)
+    values = list(inputs(diff=diff, source_path=path))
+    values[5] = values[5].model_copy(update={"approved_paths": ("checkout/",)})
+    candidate = call(tuple(values))
+    with tarfile.open(fileobj=io.BytesIO(candidate.upload.archive), mode="r:") as tree:
+        assert tree.extractfile(path).read() == b"x=2\n"
+        assert (
+            tree.extractfile("tests/test_a.py").read()
+            == values[2].proposal.test_source.encode()
+        )
+
+
+@pytest.mark.parametrize("path", ["checkout/tests/test_a.py", "checkout-other/a.py"])
+def test_candidate_rejects_checkout_test_or_neighbor_root(path):
+    original = "checkout/payments.py"
+    diff = DIFF.replace("src/a.py", original).replace(original, path)
+    values = list(inputs(diff=DIFF.replace("src/a.py", original), source_path=original))
+    values[5] = values[5].model_copy(update={"approved_paths": ("checkout/",)})
+    values[3] = values[3].model_copy(
+        update={
+            "proposal": values[3].proposal.model_copy(update={"unified_diff": diff})
+        }
+    )
+    with pytest.raises(PatchDenied):
+        call(tuple(values))
+
+
+def test_replay_phases_use_same_patched_bytes_for_separate_fresh_runs():
+    values = inputs()
+    first_build = call(values)
+    second_build = call(values, image_uuid=first_build.original.image_uuid)
+    candidate = workspace_for_phase(first_build, "CANDIDATE")
+    clean = workspace_for_phase(second_build, "CLEAN_REPLAY")
+    assert candidate is not clean
+    assert candidate.upload is not clean.upload
+    assert candidate.upload.plan.workspace_ref == clean.upload.plan.workspace_ref
+    assert candidate.upload.archive == clean.upload.archive
     assert candidate.patch_ref == clean.patch_ref
     assert candidate.original == clean.original
 

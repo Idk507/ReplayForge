@@ -59,7 +59,7 @@ class ProducerJournal:
         store: Store,
         lease: Lease,
         owner: UUID,
-        phase: Literal["CANDIDATE", "CLEAN_REPLAY"],
+        phase: Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"],
         binding: PreparedImageBinding,
         *,
         receipt_key_id: str,
@@ -68,7 +68,7 @@ class ProducerJournal:
         expected_version: int,
     ) -> None:
         if (
-            phase not in {"CANDIDATE", "CLEAN_REPLAY"}
+            phase not in {"CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"}
             or origin not in {"TEST_TRANSPORT", "REMOTE_SERVICE"}
             or type(expected_version) is not int
             or not isinstance(receipt_public_key, Ed25519PublicKey)
@@ -119,14 +119,18 @@ class ProducerJournal:
         from services.persistence.replay import _decode as decode_actions
 
         actions = decode_actions(reservation["payload"], reservation["digest"])
-        plan = (
-            actions.candidate_plan if self.phase == "CANDIDATE" else actions.clean_plan
-        )
-        execution = (
-            actions.candidate_execution_id
-            if self.phase == "CANDIDATE"
-            else actions.clean_execution_id
-        )
+        plan = {
+            "CANDIDATE": actions.candidate_plan,
+            "EXISTING_SUITE": actions.suite_plan,
+            "CLEAN_REPLAY": actions.clean_plan,
+        }[self.phase]
+        execution = {
+            "CANDIDATE": actions.candidate_execution_id,
+            "EXISTING_SUITE": actions.suite_execution_id,
+            "CLEAN_REPLAY": actions.clean_execution_id,
+        }[self.phase]
+        if plan is None or execution is None:
+            raise StoreError("PRODUCER_SUITE_ACTION_REQUIRED")
         request = plan.request
         if (
             request.run_id != run.run_id

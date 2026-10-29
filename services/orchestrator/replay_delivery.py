@@ -2,6 +2,7 @@
 
 import hashlib
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from packages.contracts.run import RunState, Stage
@@ -11,7 +12,13 @@ from services.persistence.replay import ReplayJournal
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.receipts import ReceiptVerifier, canonical
 from services.verifier.manifest import ArtifactInput, build_manifest
-from services.verifier.replay import ReplayActions, ReplayReport, inspect_replay_pair
+from services.verifier.replay import (
+    ReplayActions,
+    ReplayReport,
+    canonical_actions,
+    inspect_existing_suite,
+    inspect_replay_pair,
+)
 
 
 def receive_replays(
@@ -26,6 +33,7 @@ def receive_replays(
     workspace_sha256: str,
     artifacts: tuple[ArtifactInput, ...] = (),
     expected_version: int,
+    suite: ReplayReport | None = None,
 ) -> RunState:
     """Authenticate and atomically retain exact reports, checkpoint and event.
 
@@ -35,12 +43,27 @@ def receive_replays(
     VERIFYING unchanged, including when an authentic test report fails.
     """
     actions = ReplayActions.model_validate(actions.model_dump())
-    if ReplayJournal(store).load(lease.run_id, owner) != actions:
-        raise StoreError("REPLAY_RESERVATION_CONFLICT")
     candidate = ReplayReport.model_validate(candidate.model_dump())
     clean = ReplayReport.model_validate(clean.model_dump())
+    if (actions.suite_plan is None) != (suite is None):
+        raise StoreError("REPLAY_SUITE_DELIVERY_REQUIRED")
+    if suite is not None:
+        suite = ReplayReport.model_validate(suite.model_dump())
+    replay_journal = ReplayJournal(store)
+    if replay_journal.load(lease.run_id, owner) != actions:
+        raise StoreError("REPLAY_RESERVATION_CONFLICT")
+    reports: list[
+        tuple[Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"], ReplayReport]
+    ] = [("CANDIDATE", candidate), ("CLEAN_REPLAY", clean)]
+    if suite is not None:
+        reports.append(("EXISTING_SUITE", suite))
+    if any(
+        report.operation_id != replay_journal.operation_id(lease.run_id, owner, phase)
+        for phase, report in reports
+    ):
+        raise StoreError("REPLAY_OPERATION_BINDING_DENIED")
     files = artifacts + (
-        ArtifactInput(name="replay-actions.json", content=canonical(actions)),
+        ArtifactInput(name="replay-actions.json", content=canonical_actions(actions)),
         ArtifactInput(
             name="candidate-receipt.json", content=canonical(candidate.signed)
         ),
@@ -48,6 +71,11 @@ def receive_replays(
         ArtifactInput(name="clean-receipt.json", content=canonical(clean.signed)),
         ArtifactInput(name="clean-junit.xml", content=clean.junit),
     )
+    if suite is not None:
+        files += (
+            ArtifactInput(name="suite-receipt.json", content=canonical(suite.signed)),
+            ArtifactInput(name="suite-junit.xml", content=suite.junit),
+        )
     manifest = build_manifest(workspace_sha256, files)
     run = store.get(lease.run_id, owner)
     request = actions.candidate_plan.request
@@ -101,6 +129,12 @@ def receive_replays(
     )
     if any(r.receipt.origin != "REMOTE_SERVICE" for r in inspections):
         raise StoreError("REPLAY_TEST_EVIDENCE_DENIED")
+    if suite is not None:
+        suite_inspection = inspect_existing_suite(
+            actions, suite, verifier, now=clock["now"]
+        )
+        if suite_inspection.receipt.origin != "REMOTE_SERVICE":
+            raise StoreError("REPLAY_TEST_EVIDENCE_DENIED")
     # The existing transaction rechecks owner, consent, lease, stage and CAS.
     return evidence.retain(
         lease, owner, workspace_sha256, files, expected_version=expected_version

@@ -1,5 +1,6 @@
 """Durable dispatch contracts with a fake port and ephemeral capability signer."""
 
+import hashlib
 import os
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
@@ -8,6 +9,8 @@ import psycopg
 import pytest
 
 from services.orchestrator.replay_dispatch import dispatch_replay
+from services.persistence.execution_status import execution_status
+from services.persistence.replay import ReplayJournal
 from services.persistence.store import Store, StoreError
 from services.runner.admission import AdmissionDenied
 from tests.integration import test_postgres
@@ -35,7 +38,10 @@ class FakeBackend:
 
 
 def inputs(store, callback=None):
-    lease, owner, run, actions, *_ = prepared(store)
+    lease, owner, run, actions, *_ = prepared(store, reserve=False)
+    run = ReplayJournal(store).reserve(
+        lease, owner, actions, expected_version=run.version
+    )
     _, profile, _, sign, verifier = capability_fixture("REMOTE_SERVICE")
     return (
         lease,
@@ -47,6 +53,31 @@ def inputs(store, callback=None):
         verifier,
         FakeBackend(profile, callback),
     )
+
+
+def suite_inputs(store):
+    lease, owner, run, actions, *_ = prepared(store, reserve=False)
+    suite_plan = actions.candidate_plan.model_copy(
+        update={
+            "request": actions.candidate_plan.request.model_copy(
+                update={"phase": "EXISTING_SUITE"}
+            )
+        }
+    )
+    from services.verifier.replay import ReplayActions
+
+    actions = ReplayActions.model_validate(
+        {
+            **actions.model_dump(),
+            "suite_plan": suite_plan.model_dump(),
+            "suite_execution_id": uuid4(),
+        }
+    )
+    run = ReplayJournal(store).reserve(
+        lease, owner, actions, expected_version=run.version
+    )
+    _, profile, _, sign, verifier = capability_fixture("REMOTE_SERVICE")
+    return lease, owner, run, actions, profile, sign, verifier, FakeBackend(profile)
 
 
 @pytest.mark.parametrize("phase", ["CANDIDATE", "CLEAN_REPLAY"])
@@ -80,6 +111,60 @@ def test_submit_once_and_restart_discovers_known_operation(store, phase):
     assert len(backend.calls) == 1
     assert backend.calls[0][2] == actions.patched_tree_ref
     assert store.get(run.run_id, owner) == run
+
+
+def test_existing_suite_dispatch_is_distinct_and_restart_safe(store):
+    lease, owner, run, actions, _, sign, verifier, backend = suite_inputs(store)
+    first = dispatch_replay(
+        store,
+        lease,
+        owner,
+        "EXISTING_SUITE",
+        sign(),
+        verifier,
+        backend,
+        expected_version=run.version,
+    )
+    recovered = dispatch_replay(
+        Store(store.dsn),
+        lease,
+        owner,
+        "EXISTING_SUITE",
+        sign(),
+        verifier,
+        backend,
+        expected_version=run.version,
+    )
+    assert first.status == "SUBMITTED"
+    assert recovered.status == "ALREADY_SUBMITTED"
+    assert first.execution_id == actions.suite_execution_id
+    assert first.operation_id == recovered.operation_id == backend.operation
+    assert backend.calls == [
+        (actions.suite_plan, actions.suite_execution_id, actions.patched_tree_ref)
+    ]
+    with store._connection() as conn:
+        saved = conn.execute(
+            "SELECT capability_ref,capability_payload FROM replay_submissions "
+            "WHERE run_id=%s AND phase='EXISTING_SUITE'",
+            (run.run_id,),
+        ).fetchone()
+    assert saved is not None
+    assert hashlib.sha256(bytes(saved["capability_payload"])).hexdigest() == (
+        saved["capability_ref"].removeprefix("sha256:")
+    )
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "UPDATE replay_submissions SET capability_payload=%s "
+                "WHERE run_id=%s AND phase='EXISTING_SUITE'",
+                (b"x" * 16385, run.run_id),
+            )
+    snapshot = execution_status(Store(store.dsn), run.run_id, owner)
+    suite = next(item for item in snapshot.phases if item.phase == "EXISTING_SUITE")
+    assert suite.status == "OPERATION_KNOWN"
+    assert suite.operation_id == backend.operation
+    assert suite.execution_id == actions.suite_execution_id
+    assert suite.can_authorize_verification is False
 
 
 def test_concurrent_claims_never_duplicate_external_call(store):

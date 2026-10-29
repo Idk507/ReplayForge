@@ -1,7 +1,15 @@
+from uuid import UUID
+
 import pytest
 from pydantic import ValidationError
 
-from services.verifier.gates import REQUIRED_GATES, GateEvidence, evaluate
+from services.verifier.gates import (
+    PHASE_BY_GATE,
+    REQUIRED_GATES,
+    GateEvidence,
+    evaluate,
+)
+from services.verifier.manifest import ArtifactInput, build_manifest, verify_manifest
 
 
 def evidence(
@@ -9,9 +17,15 @@ def evidence(
 ) -> GateEvidence:
     return GateEvidence(
         gate=gate,
+        phase=PHASE_BY_GATE[gate],
         status=status,
         evidence_origin="REMOTE_SERVICE",
         execution_ref="sha256:" + "b" * 64,
+        execution_id=None,
+        operation_id=None,
+        image_uuid=UUID(int=1),
+        image_digest="sha256:" + "c" * 64,
+        configuration_ref="sha256:" + "f" * 64,
         source_commit="d" * 40,
         patch_ref="sha256:" + "e" * 64,
         workspace_sha256=workspace,
@@ -36,7 +50,7 @@ def test_complete_unsigned_evidence_is_only_a_consistency_preview() -> None:
         evaluate(
             records[:-1] + (evidence(records[-1].gate, workspace="c" * 64),)
         ).status
-        == "INCONCLUSIVE"
+        == "GATES_SATISFIED"
     )
 
 
@@ -93,3 +107,14 @@ def test_missing_status_is_reported_by_name_and_invalid_copy_is_rejected():
     assert records[-1].gate in result.missing
     invalid = records[0].model_copy(update={"status": "invented"})
     assert evaluate((invalid, *records[1:])).status == "INCONCLUSIVE"
+
+
+def test_manifest_retains_bounded_patch_artifact_up_to_admission_limit():
+    patch = b"x" * 500000
+    artifact = ArtifactInput(name="patch.diff", content=patch)
+    manifest = build_manifest("a" * 64, (artifact,))
+
+    assert manifest.entries[0].size_bytes == 500000
+    assert verify_manifest(manifest, (artifact,))
+    with pytest.raises(ValidationError):
+        ArtifactInput(name="oversized.diff", content=b"x" * 500001)

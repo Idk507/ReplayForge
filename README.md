@@ -13,6 +13,13 @@ public deployment remain incomplete. Local test success is not production readin
 
 Current work and acceptance evidence: [delivery tracker](todo.md),
 [M3 acceptance](docs/m3-acceptance.md), [implementation log](docs/implementation-log.md).
+The current hackathon submission draft, timed narration, license-selection
+instructions and evidence limitations are collected in
+[docs/submission](docs/submission/hackathon-submission-checklist.md).
+For the current researched implementation order, external dependencies and
+shared technical handoff, use the [M3/M4 completion plan](docs/m3-m4-terra-completion-plan.md).
+For development with both models, use the [Terra/Luna routing and prompts](docs/m3-m4-model-routing.md)
+and [current work packet](docs/m3-m4-active-handoff.md).
 Runtime guides: [agent harness](docs/agent-harness.md), [memory](docs/memory.md),
 [prepared runner](docs/prepared-nebius-backend.md),
 [durable replay collection](docs/replay-collection.md),
@@ -63,6 +70,32 @@ authorized `--live` run submits potentially billable remote work. This client
 accepts an existing approved image UUID and one fixed synthetic probe; it cannot
 run arbitrary repository commands or patches. Required production isolation
 capabilities remain unverified.
+
+The internal [M3 image-import operator tool](docs/confined-runner.md) is also
+offline by default. `uv run python -m scripts.import_runner_image --source
+docker://registry.example/image@sha256:<64-hex-digest>` prints a `NOT_RUN`
+report without reading credentials or connecting to PostgreSQL. A deliberate
+`--live` invocation requires Nebius credentials and
+`REPLAYFORGE_IMAGE_IMPORT_DATABASE_URL`; it makes at most one import POST and
+uses GET-only recovery for a journaled operation. It imports an image only; it
+does not execute repository code or qualify sandbox isolation. Do not use `--live`
+until provider charges and operator database access are authorized.
+
+The separate pytest wheelhouse preparation command is also offline by default:
+`uv run --no-env-file python -m scripts.prepare_nebius_pytest_image` verifies
+the fixed local files and prints a sanitized `NOT_RUN` request summary. Its
+`--submit` mode performs five wheel-upload POSTs and one retained-image spawn;
+its `--recover` mode polls only an already journaled operation. Both require
+`NEBIUS_API_KEY`, `NEBIUS_PROJECT_ID`, and the dedicated
+`REPLAYFORGE_IMAGE_IMPORT_DATABASE_URL`. Do not use `--submit` until the exact
+operation is approved and the writer's least-privilege grants/history are
+verified. See [preparation evidence](docs/evidence/nebius-pytest-preparation.md).
+
+The latest authorized M3 image import was accepted but failed during the
+provider's registry pull with HTTP404. The source manifest was independently
+verified; no qualified runtime or repair gates resulted. The retained operation
+and [provider support packet](docs/m3-nebius-import-support.md) document this
+blocker. The attempt is durably guarded in the operator journal; do not retry it blindly.
 
 See [initial assessment](docs/implementation-assessment.md) and
 [implementation evidence](docs/implementation-log.md) for limitations and next work.
@@ -131,3 +164,16 @@ and hidden evaluation remain unfinished.
 [Durable source materialization](docs/materialization.md) includes one observed
 live inert upload/readback, durable no-repeat intents and GET-only recovery.
 This does not establish complete live repair or production runner admission.
+
+## Live source acquisition - 2026-10-26
+
+One consented GitHub source fetch now ran through the authenticated M3 collection
+worker and is inspectable in the workbench Evidence tab as manifest metadata.
+See [the retained run record](docs/evidence/m3-live-source-acquisition.json).
+That run deliberately stopped at TRIAGING: it was not an incident reproduction
+and it supplies no baseline, patch, replay, trusted receipt, or seven-gate result.
+The M3 milestone remains open.
+
+## Current M3/M4 demo status
+
+For a truthful local walkthrough, see [demo narration](docs/submission/demo-narration.md), [final local demo evidence](docs/submission/final-demo-evidence.md), [submission checklist](docs/submission/hackathon-submission-checklist.md), [known limitations](docs/submission/known-limitations.md), [M4 evaluation status](docs/evidence/m4-evaluation-status.md), and the [M3 acceptance record](docs/evidence/m3-checkout-end-to-end-acceptance.md). No live checkout verification or benchmark attempt is currently evidenced; the evaluation inventory is explicitly unauthenticated and the missing fixtures/runtime are documented. Do not present local synthetic tests as live provider results.

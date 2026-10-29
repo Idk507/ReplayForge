@@ -10,7 +10,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import ArtifactID, CommitSHA, RunState, Stage
-from packages.policies.repository import admit, allowed_entry
+from packages.policies.repository import admit, patchable_source
 
 
 class PatchDenied(Exception):
@@ -105,6 +105,12 @@ def _paths(diff: str) -> tuple[tuple[str, ...], int]:
                 if old > old_count or new > new_count:
                     raise PatchDenied("PATCH_HUNK")
                 i += 1
+                if i < len(lines) and lines[i] == r"\ No newline at end of file":
+                    # The producer normalizes replacement text to LF, so this
+                    # marker can describe only an original or context line.
+                    if prefix == "+" or old != old_count:
+                        raise PatchDenied("PATCH_HUNK")
+                    i += 1
             hunks += 1
         if not hunks or not file_changed:
             raise PatchDenied("PATCH_EMPTY")
@@ -145,12 +151,7 @@ def admit_patch(
     ):
         raise PatchDenied("PATCH_BINDING_DENIED")
     paths, changed = _paths(diff)
-    if any(
-        not p.startswith(("src/", "app/"))
-        or not p.endswith(".py")
-        or not allowed_entry(grant, p, "100644")
-        for p in paths
-    ):
+    if any(not patchable_source(grant, p) for p in paths):
         raise PatchDenied("PATCH_PATH_DENIED")
     return PatchAdmission(
         run_id=run.run_id,

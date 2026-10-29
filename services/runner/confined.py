@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from packages.contracts.execution import TestCommandPlan
 from packages.contracts.run import ArtifactID
 from packages.contracts.sandbox import RunnerError
+from services.persistence.baseline_producer import BaselineProducerJournal
 from services.persistence.producer import ProducerJournal
 from services.runner.admission import CapabilityAttestation, CapabilityVerifier
 from services.runner.confinement import (
@@ -182,7 +183,7 @@ class DurableConfinedBackend(DurableMeasuredBackend, ConfinedMeasuredBackend):
         *,
         receipt_key: Ed25519PrivateKey,
         receipt_key_id: str,
-        journal: ProducerJournal,
+        journal: ProducerJournal | BaselineProducerJournal,
         allow_privileged_setup: bool = False,
         allow_live: bool = False,
         transport: httpx.BaseTransport | None = None,

@@ -1,5 +1,6 @@
 """Ephemeral capability signer only; no live runner facts are asserted."""
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from services.runner.admission import (
     ControlEvidence,
     RunnerCapabilities,
     RunnerLimits,
+    recheck_retained_capability,
 )
 from services.runner.commands import plan_pytest
 from services.runner.receipts import canonical
@@ -82,6 +84,38 @@ def test_remote_claim_contract_only_satisfies_capability_gate() -> None:
     assert result.status == "CAPABILITY_REQUIREMENTS_MET"
     assert result.can_authorize_execution is False
     assert result.reasons == ()
+
+
+def test_retained_capability_is_rehashed_and_reverified():
+    from services.runner.receipts import canonical
+
+    plan, _, now, sign, verifier = fixture("REMOTE_SERVICE")
+    payload = canonical(sign())
+    reference = "sha256:" + hashlib.sha256(payload).hexdigest()
+    attestation, decision = recheck_retained_capability(
+        payload, reference, plan, verifier, now=now
+    )
+    assert attestation.payload.origin == "REMOTE_SERVICE"
+    assert decision.status == "CAPABILITY_REQUIREMENTS_MET"
+    assert decision.attestation_ref == reference
+
+
+@pytest.mark.parametrize("fault", ["digest", "signature", "test_origin"])
+def test_retained_capability_fails_closed(fault):
+    from services.runner.receipts import canonical
+
+    plan, _, now, sign, verifier = fixture(
+        "TEST_TRANSPORT" if fault == "test_origin" else "REMOTE_SERVICE"
+    )
+    attestation = sign()
+    if fault == "signature":
+        attestation = attestation.model_copy(update={"signature": "0" * 128})
+    payload = canonical(attestation)
+    reference = "sha256:" + hashlib.sha256(payload).hexdigest()
+    if fault == "digest":
+        reference = "sha256:" + "0" * 64
+    with pytest.raises(AdmissionDenied):
+        recheck_retained_capability(payload, reference, plan, verifier, now=now)
 
 
 @pytest.mark.parametrize("control", REQUIRED_CONTROLS)

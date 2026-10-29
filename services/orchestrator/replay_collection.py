@@ -53,16 +53,25 @@ def collect_replay(
     Operator config's image mapping remains independently assessed deployment
     input; collected provider UUIDs do not establish OCI/tree identity.
     """
-    if phase not in {"CANDIDATE", "CLEAN_REPLAY"} or type(expected_version) is not int:
+    if (
+        phase not in {"CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"}
+        or type(expected_version) is not int
+    ):
         raise StoreError("REPLAY_COLLECTION_INVALID")
     lease = Lease.model_validate(lease.model_dump())
     actions = ReplayJournal(store).load(lease.run_id, owner)
-    plan = actions.candidate_plan if phase == "CANDIDATE" else actions.clean_plan
-    execution_id = (
-        actions.candidate_execution_id
-        if phase == "CANDIDATE"
-        else actions.clean_execution_id
-    )
+    plan = {
+        "CANDIDATE": actions.candidate_plan,
+        "EXISTING_SUITE": actions.suite_plan,
+        "CLEAN_REPLAY": actions.clean_plan,
+    }[phase]
+    execution_id = {
+        "CANDIDATE": actions.candidate_execution_id,
+        "EXISTING_SUITE": actions.suite_execution_id,
+        "CLEAN_REPLAY": actions.clean_execution_id,
+    }[phase]
+    if plan is None or execution_id is None:
+        raise StoreError("REPLAY_SUITE_ACTION_REQUIRED")
     reference = plan_ref(plan)
     origin = "TEST_TRANSPORT" if transport is not None else "REMOTE_SERVICE"
 

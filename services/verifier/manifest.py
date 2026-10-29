@@ -13,14 +13,14 @@ class ArtifactInput(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]{0,80}$")
-    content: bytes = Field(max_length=65536, repr=False)
+    content: bytes = Field(max_length=500000, repr=False)
 
 
 class ManifestEntry(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     name: str
     artifact_id: ArtifactID
-    size_bytes: int = Field(strict=True, ge=0, le=65536)
+    size_bytes: int = Field(strict=True, ge=0, le=500000)
 
 
 class EvidenceManifest(BaseModel):

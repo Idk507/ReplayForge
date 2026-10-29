@@ -123,6 +123,7 @@ def test_checkpoint_bound_evidence_evaluation(store, fault):
             configuration_ref="sha256:" + "0" * 64
             if fault == "configuration"
             else context.configuration_ref,
+            phase_bindings=context.phase_bindings,
             expected_version=0 if fault == "version" else 1,
         )
 

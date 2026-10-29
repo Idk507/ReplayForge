@@ -3,7 +3,7 @@ import { createSchema } from "./contracts";
 
 const id = "[a-fA-F0-9-]{36}";
 const digest = "sha256:[a-f0-9]{64}";
-const readPath = new RegExp(`^runs(?:/${id}(?:/(?:events|verification|patch|research)|/evidence/${digest}(?:/artifacts/${digest})?)?)?$`);
+const readPath = new RegExp(`^runs(?:/${id}(?:/(?:events|verification|executions|patch|research)|/source-manifests/${digest}|/evidence/${digest}(?:/artifacts/${digest})?)?)?$`);
 
 /** Local-only BFF: fixed destination, closed paths, server-side bearer, no retries. */
 export async function bridge(request: Request, segments: string[]): Promise<Response> {

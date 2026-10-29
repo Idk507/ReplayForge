@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import ArtifactID, RunState, Stage
 from packages.contracts.source import SourceManifest
-from packages.policies.repository import admit, allowed_entry
+from packages.policies.repository import admit, allowed_entry, patchable_source
 from services.orchestrator.reproduction import ReproductionArtifact
 from services.persistence.patch import RetainedPatch
 from services.runner.materialization import (
@@ -30,24 +30,22 @@ from services.runner.workspace import archive_identity
 
 
 class CandidateWorkspace(BaseModel):
-    """Independent source and patched packages, never execution authority."""
+    """Original baseline identity and exact patched bytes, never execution authority."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     original: MaterializationPlan
-    clean_upload: MaterializationUpload
     upload: MaterializationUpload
     patch_ref: ArtifactID
     can_authorize_execution: Literal[False] = False
 
 
 def workspace_for_phase(
-    workspace: CandidateWorkspace, phase: Literal["CANDIDATE", "CLEAN_REPLAY"]
+    workspace: CandidateWorkspace,
+    phase: Literal["CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"],
 ) -> CandidateWorkspace:
-    """Select patched candidate or pristine source for a fresh remote replay."""
-    if phase == "CANDIDATE":
+    """Use the exact patched archive for either independently journaled replay."""
+    if phase in {"CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"}:
         return workspace
-    if phase == "CLEAN_REPLAY":
-        return workspace.model_copy(update={"upload": workspace.clean_upload})
     raise ValueError("PATCH_WORKSPACE_PHASE_INVALID")
 
 
@@ -92,15 +90,23 @@ def _apply(files: Mapping[str, bytes], diff: str) -> dict[str, bytes]:
             while old_used < old_count or new_used < new_count:
                 line = lines[index]
                 marker, text = line[0], line[1:]
+                no_newline = (
+                    index + 1 < len(lines)
+                    and lines[index + 1] == "\\ No newline at end of file\n"
+                )
+                if no_newline:
+                    text = text[:-1]
                 if marker != "+":
                     if cursor >= len(original) or original[cursor] != text:
+                        raise PatchDenied("PATCH_SOURCE_CONTEXT_MISMATCH")
+                    if no_newline and cursor != len(original) - 1:
                         raise PatchDenied("PATCH_SOURCE_CONTEXT_MISMATCH")
                     cursor += 1
                     old_used += 1
                 if marker != "-":
                     output.append(text)
                     new_used += 1
-                index += 1
+                index += 2 if no_newline else 1
             if len("".join(output).encode()) > 65536:
                 raise PatchDenied("PATCH_WORKSPACE_LIMIT")
         output.extend(original[cursor:])
@@ -160,12 +166,7 @@ def prepare_candidate(
         or patch.proposal.files_changed != paths
         or admission.changed_lines != changed
         or any(not allowed_entry(grant, p, "100644") for p in files)
-        or any(
-            not p.startswith(("src/", "app/"))
-            or not p.endswith(".py")
-            or not allowed_entry(grant, p, "100644")
-            for p in paths
-        )
+        or any(not patchable_source(grant, p) for p in paths)
     ):
         raise PatchDenied("PATCH_WORKSPACE_BINDING_DENIED")
     patched = _apply(files, diff)
@@ -196,7 +197,6 @@ def prepare_candidate(
     )
     return CandidateWorkspace(
         original=original.plan,
-        clean_upload=original,
         upload=upload,
         patch_ref=reference,
     )

@@ -47,6 +47,12 @@ def prepare_store() -> Store:
             sql.SQL("GRANT SELECT,INSERT ON baseline_submissions TO {}").format(role)
         )
         conn.execute(
+            sql.SQL(
+                "GRANT SELECT,INSERT ON baseline_preparations,"
+                "baseline_produced_receipts TO {}"
+            ).format(role)
+        )
+        conn.execute(
             sql.SQL("GRANT SELECT,INSERT ON replay_reservations TO {}").format(role)
         )
         conn.execute(
@@ -96,6 +102,18 @@ def prepare_store() -> Store:
                 "GRANT SELECT,INSERT ON materialization_intents,"
                 "materialization_operations,materialization_results TO {}"
             ).format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON image_import_attempts TO {}").format(role)
+        )
+        conn.execute(
+            sql.SQL(
+                "GRANT UPDATE(state,operation_id,result_status,result_image_uuid,"
+                "updated_at) ON image_import_attempts TO {}"
+            ).format(role)
+        )
+        conn.execute(
+            sql.SQL("GRANT SELECT,INSERT ON image_import_events TO {}").format(role)
         )
         conn.execute(
             sql.SQL(

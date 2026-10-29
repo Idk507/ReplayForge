@@ -12,7 +12,7 @@ from packages.contracts.inference import RequestIdentity
 from packages.contracts.repair import PatchProposal
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import RunState, Stage
-from packages.policies.repository import admit, allowed_entry
+from packages.policies.repository import admit, patchable_source
 from packages.providers.nebius import NebiusConfig, ProbeError
 from packages.providers.request_identity import prepare_request
 from packages.providers.triage import _completion_content
@@ -25,7 +25,7 @@ PATCH_SYSTEM_PROMPT = (
     "Python source), justification, expected_test_delta and risk_notes. "
     "The last three fields are strings. Return complete file content, not a diff; "
     "the application constructs the unified diff deterministically. "
-    "Modify only supplied app/ or src/ "
+    "Modify only supplied app/, src/ or checkout/ "
     "Python files. Do not modify tests, dependencies, workflows or configuration. "
     "Do not propose commands or access secrets. Do not claim tests passed."
 )
@@ -87,9 +87,10 @@ def request_patch(
     if any(
         not isinstance(path, str)
         or not isinstance(body, str)
-        or not path.startswith(("app/", "src/"))
-        or not path.endswith(".py")
-        or not allowed_entry(grant, path, "100644")
+        # CR and NUL cannot be represented by the admitted patch format.
+        or "\r" in body
+        or "\0" in body
+        or not patchable_source(grant, path)
         for path, body in sources.items()
     ):
         raise ProbeError("PATCH_CONTEXT_DENIED")
@@ -148,7 +149,10 @@ def request_patch(
             if len(replacement.encode()) > 12000:
                 raise ProbeError("PATCH_REPLACEMENT_LIMIT")
             delta = "".join(
-                difflib.unified_diff(
+                line
+                if line.endswith("\n")
+                else line + "\n\\ No newline at end of file\n"
+                for line in difflib.unified_diff(
                     sources[path].splitlines(keepends=True),
                     replacement.splitlines(keepends=True),
                     fromfile="a/" + path,

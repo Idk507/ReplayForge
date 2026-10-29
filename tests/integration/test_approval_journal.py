@@ -24,6 +24,7 @@ def setup(store, outcome="VERIFIED"):
         verifier,
         image_digest=context.image_digest,
         configuration_ref=context.configuration_ref,
+        phase_bindings=context.phase_bindings,
         expected_version=run.version,
     )
     expected = ApprovalBinding(

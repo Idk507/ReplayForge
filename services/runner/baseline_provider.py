@@ -44,6 +44,10 @@ class NebiusBaselineProvider:
         self._attestation = CapabilityAttestation.model_validate(
             attestation.model_dump()
         )
+        if self._action.plan.command_id == "PYTEST_FILES_MEASURED_V1":
+            # This provider creates PreparedNebiusBackend, which has neither a
+            # durable premeasurement nor the confined measured collector.
+            raise RunnerError("S_BASELINE_MEASURED_BACKEND_REQUIRED")
         if (
             action.plan.request.phase != "BASELINE"
             or action.plan.command_id

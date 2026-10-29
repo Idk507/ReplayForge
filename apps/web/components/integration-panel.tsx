@@ -59,7 +59,7 @@ export default function IntegrationPanel({installUrl}:{installUrl:string|null}) 
     event.preventDefault();if(!selected)return;
     const form = new FormData(event.currentTarget);setBusy(true);setError("");setConnected(null);
     try {
-      setConnected(await request(`repositories/${selected.id}/connect`,connectedSchema,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({installation_id:Number(installation),repository_id:selected.id,repository_page:page,source_commit:commit,consent:form.get("consent")==="on",private_access_approved:form.get("private")==="on"})}));
+      setConnected(await request(`repositories/${selected.id}/connect`,connectedSchema,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({installation_id:Number(installation),repository_id:selected.id,repository_page:page,source_commit:commit,consent:form.get("consent")==="on",private_access_approved:form.get("private")==="on",include_checkout:form.get("include-checkout")==="on"})}));
     } catch(e){setError(errorMessage(e));} finally{setBusy(false);}
   }
   return <main id="main" className="auth-panel integrations">
@@ -97,7 +97,8 @@ export default function IntegrationPanel({installUrl}:{installUrl:string|null}) 
       <details><summary>Advanced: choose an exact source commit</summary><label htmlFor="source-commit">Source commit</label><input id="source-commit" value={commit} onChange={e=>{setCommit(e.target.value);setConnected(null);}} minLength={40} maxLength={40} pattern="[a-f0-9]{40}" disabled={headLoading||busy}/></details>
       <label className="check-label"><input key={`consent-${repository}-${commit}`} type="checkbox" name="consent" required disabled={busy}/>I authorize ReplayForge to inspect this pinned commit and run bounded tests in its isolated remote runner.</label>
       {selected?.private&&<label className="check-label"><input key={`private-${repository}-${commit}`} type="checkbox" name="private" required disabled={busy}/>I explicitly approve access to this private repository.</label>}
-      <p className="muted">Scope: src/, app/, tests/, README and Python dependency manifests. No workflow edits, merge or deployment.</p>
+      <label className="check-label"><input key={`checkout-${repository}-${commit}`} type="checkbox" name="include-checkout" disabled={busy}/>I explicitly approve reading and repairing Python source under checkout/ for this repository.</label>
+      <p className="muted">Scope: src/, app/, tests/, README and Python dependency manifests. checkout/ is included only when selected. No workflow edits, merge or deployment.</p>
       <button className="primary" type="submit" disabled={busy||!selected||!selected.permissions.pull||selected.disabled||headLoading||!commit}>{busy?"Connecting repository...":"Connect repository"}</button>
     </form>
     {connected&&<section className="connection-result" aria-live="polite"><h2>Repository connected</h2><p>Ready. Continue to describe the incident; tests have not started.</p><label htmlFor="connected-id">Approved repository ID</label><input id="connected-id" readOnly value={connected.repository_id}/><a className="primary" href={`/?repository=${connected.repository_id}&commit=${connected.commits[0]}`}>Start an investigation</a></section>}

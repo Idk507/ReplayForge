@@ -8,7 +8,7 @@ from packages.policies.repository import allowed_entry
 REFERENCE = re.compile(
     r"(?<![A-Za-z0-9_./\\-])"
     r"([A-Za-z0-9_./\\-]+\.(?:py|toml|txt|md))"
-    r"(?![A-Za-z0-9_./\\-])"
+    r"(?=$|\.(?=\s|$)|[^A-Za-z0-9_./\\-])"
 )
 
 

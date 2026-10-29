@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from packages.contracts.inference import ModelCostPolicy, ModelDispatch, RequestIdentity
 from packages.contracts.run import RunState, Stage
+from packages.policies.repository import patchable_source
 from packages.providers.nebius import NebiusConfig, ProbeError
 from packages.providers.patch import request_patch
 from packages.providers.triage import request_triage
@@ -135,7 +136,8 @@ def run_patch(
         if bundle.source_commit != run.source_commit:
             raise StoreError("PATCH_CONTEXT_BINDING")
         for file in bundle.files:
-            if file.path.startswith(("app/", "src/")) and file.path.endswith(".py"):
+            grant = store.repository(run.repository_id, owner)
+            if patchable_source(grant, file.path):
                 if file.path in sources and sources[file.path] != file.content:
                     raise StoreError("PATCH_CONTEXT_BINDING")
                 sources[file.path] = file.content

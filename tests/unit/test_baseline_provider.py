@@ -153,3 +153,24 @@ def test_live_permission_and_exact_run_selection_before_claim():
             return None
 
     assert tick_prepared_baseline(Store(), uuid4(), provider) is None
+
+
+def test_measured_baseline_cannot_use_unmeasured_provider():
+    _, _, action, binding, signed, verifier = inputs()
+    plan = action.plan.model_copy(
+        update={
+            "command_id": "PYTEST_FILES_MEASURED_V1",
+            "argv": (action.plan.argv[0], "-B", *action.plan.argv[1:]),
+        }
+    )
+    action = action.model_copy(update={"plan": plan})
+    binding = binding.model_copy(update={"plan_ref": plan_ref(plan)})
+    with pytest.raises(RunnerError, match="S_BASELINE_MEASURED_BACKEND_REQUIRED"):
+        NebiusBaselineProvider(
+            config(),
+            action,
+            binding,
+            signed,
+            verifier,
+            transport=httpx.MockTransport(lambda _: pytest.fail("network I/O")),
+        )

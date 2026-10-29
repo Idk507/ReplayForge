@@ -17,3 +17,29 @@ Unit tests for model/tool state; integration for live adapters and isolated runn
 
 ## Reporting integrity
 No invented percentages or artificial '100%'. If only one fixture works, show one achieved and two incomplete. If live provider is unavailable, record blocked, not mocked. Include failure examples, hidden-oracle deviations and confidence intervals only when statistically meaningful. Publish script, fixture licenses, seeds and exact commands for independent reproduction.
+
+## Current M4 inventory and safe accounting
+
+`benchmarks/m4-evaluation-input.json` is the current declarative inventory.
+Only `checkout_retry` is present. ETL aggregation drift, concurrency race, and
+the seeded hidden-variation sample are explicitly unavailable because their
+fixture/source assets are absent. The attempt list is empty: this checkout
+cannot be executed on the Windows API host, and no qualified remote runtime is
+available. Therefore no fixture outcome, hidden-oracle result, success rate, or
+cost-per-case is reported.
+
+The bounded accounting utility validates rows without executing fixture code:
+
+```powershell
+uv run python scripts/report_m4_evaluation.py
+uv run pytest -q tests/unit/test_benchmark_evaluation.py
+```
+
+Its JSON has `evidence_authority=UNAUTHENTICATED_AGGREGATE`; it is transparent
+accounting input, not a trusted verifier, execution receipt, or production
+benchmark result. The current observed output is retained in
+`docs/evidence/m4-evaluation-status.json` and explained in
+`docs/evidence/m4-evaluation-status.md`. A synthetic PATCH_SCOPE rejection test
+is separately retained at `docs/evidence/m4-rejected-candidate-policy.xml`.
+That policy test proves only local admission behavior; it is not a live rejected
+repair demonstration.

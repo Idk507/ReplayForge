@@ -117,6 +117,17 @@ class SignedReplayInspection(BaseModel):
     can_authorize_verification: Literal[False] = False
 
 
+class SignedSuiteInspection(BaseModel):
+    """Authenticated complete-suite report; dispatch and runtime trust stay external."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    status: Literal["MATCHED_SIGNED_REPORT", "REJECTED_SIGNED_REPORT"]
+    reason: Literal["PASS", "PROCESS_FAILURE", "INVALID_REPORT", "INCOMPLETE_SUITE"]
+    receipt: VerifiedReceipt
+    tests: int = Field(strict=True, ge=0, le=256)
+    can_authorize_verification: Literal[False] = False
+
+
 class ReceiptVerifier:
     """Explicit trusted key registry; no discovery, persistence or fallback.
 
@@ -219,6 +230,78 @@ class ReceiptVerifier:
             return result("INVALID_REPORT", len(cases))
         return result("PASS", len(cases))
 
+    def inspect_existing_suite(
+        self,
+        signed: SignedReplayReceipt,
+        plan: TestCommandPlan,
+        junit: bytes,
+        *,
+        execution_id: UUID,
+        source_tree_ref: str,
+        test_paths: tuple[str, ...],
+        now: datetime,
+    ) -> SignedSuiteInspection:
+        """Authenticate a passing report covering every declared suite file.
+
+        The exact suite path list must come from a durable trusted dispatch
+        record. This method validates report identity and outcomes; it does not
+        dispatch work, attest isolation, or authorize a verification verdict.
+        """
+        if (
+            len(junit) > 131072
+            or plan.request.phase != "EXISTING_SUITE"
+            or test_paths != plan.request.test_paths
+            or not test_paths
+        ):
+            raise ReceiptDenied("RECEIPT_SUITE_CONTEXT_INVALID")
+        verified = self._authenticate(
+            signed,
+            plan,
+            execution_id=execution_id,
+            source_tree_ref=source_tree_ref,
+            junit_ref="sha256:" + hashlib.sha256(junit).hexdigest(),
+            now=now,
+            phase="EXISTING_SUITE",
+        )
+
+        def result(
+            reason: Literal[
+                "PASS", "PROCESS_FAILURE", "INVALID_REPORT", "INCOMPLETE_SUITE"
+            ],
+            tests: int = 0,
+        ) -> SignedSuiteInspection:
+            return SignedSuiteInspection(
+                status="MATCHED_SIGNED_REPORT"
+                if reason == "PASS"
+                else "REJECTED_SIGNED_REPORT",
+                reason=reason,
+                receipt=verified,
+                tests=tests,
+            )
+
+        if signed.payload.exit_code != 0:
+            return result("PROCESS_FAILURE")
+        try:
+            text = junit.decode("utf-8-sig")
+            if any(
+                marker in text.upper() for marker in ("<!DOCTYPE", "<!ENTITY", "\0")
+            ):
+                return result("INVALID_REPORT")
+            cases = junit_cases(ET.fromstring(text))
+        except (UnicodeError, ET.ParseError, ValueError, ReportInvalid):
+            return result("INVALID_REPORT")
+        expected_classes = {path[:-3].replace("/", ".") for path in test_paths}
+        observed_classes = {case.get("classname") for case in cases}
+        if observed_classes != expected_classes:
+            return result("INCOMPLETE_SUITE", len(cases))
+        if any(
+            case.find(tag) is not None
+            for case in cases
+            for tag in ("failure", "error", "skipped")
+        ):
+            return result("INVALID_REPORT", len(cases))
+        return result("PASS", len(cases))
+
     def inspect_baseline(
         self,
         signed: SignedReceipt,
@@ -291,7 +374,9 @@ class ReceiptVerifier:
         source_tree_ref: str,
         junit_ref: str,
         now: datetime,
-        phase: Literal["BASELINE", "CANDIDATE", "CLEAN_REPLAY"] = "BASELINE",
+        phase: Literal[
+            "BASELINE", "CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"
+        ] = "BASELINE",
     ) -> VerifiedReceipt:
         try:
             receipt_type = SignedReceipt if phase == "BASELINE" else SignedReplayReceipt

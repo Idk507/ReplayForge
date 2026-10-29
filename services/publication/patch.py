@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 
 from packages.contracts.repository import RepositoryGrant
-from packages.policies.repository import allowed_entry
+from packages.policies.repository import patchable_source
 from services.runner.patches import PatchDenied, _paths
 
 
@@ -35,12 +35,7 @@ def patch_paths(diff: str, grant: RepositoryGrant) -> tuple[str, ...]:
         paths, _ = _paths(diff)
     except PatchDenied:
         raise PublicationDenied("PUBLICATION_PATCH_INVALID") from None
-    if any(
-        not p.startswith(("src/", "app/"))
-        or not p.endswith(".py")
-        or not allowed_entry(grant, p, "100644")
-        for p in paths
-    ):
+    if any(not patchable_source(grant, p) for p in paths):
         raise PublicationDenied("PUBLICATION_PATCH_SCOPE")
     return paths
 
@@ -59,17 +54,15 @@ def apply_approved_patch(
     i = 0
     for path in paths:
         data = originals[path]
-        if (
-            len(data) > 65536
-            or b"\0" in data
-            or b"\r" in data
-            or (data and not data.endswith(b"\n"))
-        ):
+        if len(data) > 65536 or b"\0" in data or b"\r" in data:
             raise PublicationDenied("PUBLICATION_SOURCE_INVALID")
         try:
-            old = [line + "\n" for line in data.decode("utf-8").split("\n")[:-1]]
+            source_lines = data.decode("utf-8").split("\n")
         except UnicodeError:
             raise PublicationDenied("PUBLICATION_SOURCE_INVALID") from None
+        old = [line + "\n" for line in source_lines[:-1]]
+        if source_lines[-1]:
+            old.append(source_lines[-1])
         i += 1  # _paths has already validated exact headers, counts and ordering.
         if lines[i].startswith("index "):
             i += 1
@@ -95,7 +88,13 @@ def apply_approved_patch(
             consumed = added = 0
             while consumed < count or added < new_count:
                 line = lines[i]
-                text = line[1:] + "\n"
+                has_no_final_newline = (
+                    i + 1 < len(lines)
+                    and lines[i + 1] == r"\ No newline at end of file"
+                )
+                if has_no_final_newline and line[0] == "+":
+                    raise PublicationDenied("PUBLICATION_PATCH_INVALID")
+                text = line[1:] + ("" if has_no_final_newline else "\n")
                 if line[0] != "+":
                     if cursor >= len(old) or old[cursor] != text:
                         raise PublicationDenied("PUBLICATION_CONTEXT_MISMATCH")
@@ -105,6 +104,8 @@ def apply_approved_patch(
                     out.append(text)
                     added += 1
                 i += 1
+                if has_no_final_newline:
+                    i += 1
         out.extend(old[cursor:])
         content = "".join(out)
         if len(content.encode()) > 65536:

@@ -132,6 +132,12 @@ def run_smoke(
         )
         terminal = True
         observation = _observation(operation, config.image_uuid)
+        if not observation.python_compatible:
+            error = "S_PYTHON_VERSION_UNSUPPORTED"
+        elif not observation.pytest_available:
+            error = "S_PYTEST_MISSING"
+        elif not observation.fixed_check_passed:
+            error = "S_FIXED_CHECK_FAILED"
     except RunnerError as failure:
         error = str(failure)
     finally:

@@ -1,5 +1,6 @@
 """Baseline submission port uses fake transport and disposable PostgreSQL."""
 
+import hashlib
 import os
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
@@ -113,6 +114,16 @@ def test_baseline_submission_is_one_shot_across_restart(store, timeout):
     assert first.status == ("SUBMISSION_UNKNOWN" if timeout else "SUBMITTED")
     assert again.status == ("SUBMISSION_UNKNOWN" if timeout else "ALREADY_SUBMITTED")
     assert len(backend.calls) == 1
+    with store._connection() as conn:
+        saved = conn.execute(
+            "SELECT capability_ref,capability_payload FROM baseline_submissions "
+            "WHERE execution_id=%s",
+            (action.execution_id,),
+        ).fetchone()
+    assert saved is not None
+    assert hashlib.sha256(bytes(saved["capability_payload"])).hexdigest() == (
+        saved["capability_ref"].removeprefix("sha256:")
+    )
 
 
 @pytest.mark.parametrize("gap", ["reservation", "legacy", "raced"])

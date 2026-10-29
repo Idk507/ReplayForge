@@ -21,6 +21,10 @@ test("session bridge forwards only session identity and never the local bearer",
     expect(captured[0].get("cookie")).toBe(`rf_dev_session=${"s".repeat(43)}`);
     expect(captured[0].has("authorization")).toBeFalsy();
     const headers={host:"127.0.0.1:3000",cookie:`rf_dev_session=${"s".repeat(43)}`};
+    const sourcePath=["runs",id,"source-manifests","sha256:"+"d".repeat(64)];
+    expect((await sessionBridge(new Request("http://127.0.0.1:3000/api/backend",{headers}),sourcePath)).status).toBe(200);
+    expect(captured.at(-1)?.get("cookie")).toBe(`rf_dev_session=${"s".repeat(43)}`);
+    expect(captured.at(-1)?.has("authorization")).toBeFalsy();
     expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&page=2",{headers}),["github","repositories"])).status).toBe(200);
     expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&repository_id=42&page=1",{headers}),["github","head"])).status).toBe(200);
     expect((await sessionBridge(new Request("http://127.0.0.1:3000/api?installation_id=7&page=0",{headers}),["github","repositories"])).status).toBe(400);
@@ -54,7 +58,8 @@ test("synthetic session can connect an allowed repository and sign out", async (
     if(path.endsWith("github/head"))return r.fulfill({json:{sha:"a".repeat(40)}});
     if(path.endsWith("github/repositories"))return r.fulfill({json:[{id:42,full_name:"example/demo",private:false,permissions:{pull:true,push:false},archived:false,disabled:false}]});
     if(path.endsWith("repositories/42/connect")){
-      expect(r.request().headers()["x-csrf-token"]).toBe(csrf);connected=true;
+      expect(r.request().headers()["x-csrf-token"]).toBe(csrf);
+      expect(r.request().postDataJSON().include_checkout).toBe(false);connected=true;
       return r.fulfill({json:{repository_id:id,commits:["a".repeat(40)]}});
     }
     return r.fulfill({json:[]});
@@ -91,6 +96,7 @@ test("large-account pages and discovery failures preserve identity and allow ref
     if(path.endsWith("github/head"))return r.fulfill({json:{sha:"a".repeat(40)}});
     if(path.endsWith("repositories/51/connect")){
       expect(r.request().postDataJSON().repository_page).toBe(2);
+      expect(r.request().postDataJSON().include_checkout).toBe(true);
       return r.fulfill({json:{repository_id:id,commits:["a".repeat(40)]}});
     }
     if(path.endsWith("github/repositories")){
@@ -108,6 +114,7 @@ test("large-account pages and discovery failures preserve identity and allow ref
   await page.getByRole("radio",{name:"example/repo51",exact:true}).check();
   await expect(page.getByText("Source pinned to aaaaaaaaaaaa.")).toBeVisible();
   await page.getByLabel(/I authorize/).check();
+  await page.getByLabel(/I explicitly approve reading and repairing Python source under checkout\//).check();
   await page.getByRole("button",{name:"Connect repository",exact:true}).click();
   await expect(page.getByText("Repository connected",{exact:true})).toBeVisible();
   fail=true;

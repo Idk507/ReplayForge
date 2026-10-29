@@ -101,6 +101,38 @@ def test_paths_are_component_scoped() -> None:
     assert not allowed_entry(policy, "README.md", "100644")
 
 
+def test_checkout_root_is_an_explicit_registered_path() -> None:
+    policy = grant(approved_paths=("checkout/",))
+    assert allowed_entry(policy, "checkout/payments.py", "100644")
+    assert not allowed_entry(policy, "checkout-other/payments.py", "100644")
+    assert not allowed_entry(policy, "checkout/../payments.py", "100644")
+    with pytest.raises(ValidationError):
+        grant(approved_paths=("arbitrary/",))
+
+
+def test_authenticated_checkout_opt_in_is_strict_and_off_by_default() -> None:
+    from services.auth.access import ConnectRepository, approved_repository_paths
+
+    base = {
+        "installation_id": 7,
+        "repository_id": 42,
+        "source_commit": "a" * 40,
+        "consent": True,
+    }
+    assert ConnectRepository(**base).include_checkout is False
+    assert ConnectRepository(**base, include_checkout=True).include_checkout is True
+    assert "checkout/" not in approved_repository_paths(False)
+    assert approved_repository_paths(True).count("checkout/") == 1
+    with pytest.raises(ValidationError):
+        ConnectRepository(**base, include_checkout=1)
+
+
+@pytest.mark.parametrize("mode", ["120000", "160000", "040000", "unknown"])
+def test_checkout_symlinks_and_nonfiles_are_rejected(mode: str) -> None:
+    policy = grant(approved_paths=("checkout/",))
+    assert not allowed_entry(policy, "checkout/payments.py", mode)
+
+
 def test_construct_bypass_revalidated() -> None:
     policy = grant().model_copy(update={"remote_url": "file:///etc"})
     with pytest.raises(ValidationError):

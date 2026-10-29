@@ -29,11 +29,32 @@ def main() -> int:
         action="store_true",
         help="Run real local API/browser acceptance in the disposable DB",
     )
+    parser.add_argument(
+        "--pytest-target",
+        action="append",
+        default=[],
+        help="Run only this repository-relative pytest target (repeatable)",
+    )
     args = parser.parse_args()
     if not 30 <= args.timeout_seconds <= 1800:
         parser.error("timeout-seconds must be between 30 and 1800")
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}\.xml", args.evidence_name):
         parser.error("evidence-name must be a simple lowercase XML filename")
+    targets: list[str] = []
+    for value in args.pytest_target:
+        target = os.path.normpath(value).replace("\\", "/")
+        if (
+            not target.startswith("tests/")
+            or target.startswith("../")
+            or not target.endswith(".py")
+            or not os.path.isfile(target)
+        ):
+            parser.error(
+                "pytest targets must be existing repository files under tests/"
+            )
+        targets.append(target)
+    if args.web and targets:
+        parser.error("--pytest-target cannot be combined with --web")
     password = getpass.getpass("Local postgres administrator password: ")
     suffix = uuid4().hex
     role, database = f"rf_test_{suffix}", f"rf_test_{suffix}"
@@ -88,6 +109,7 @@ def main() -> int:
                             "-m",
                             "pytest",
                             "-q",
+                            *targets,
                             f"--junitxml=docs/evidence/{args.evidence_name}",
                         ]
                     )

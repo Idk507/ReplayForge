@@ -21,7 +21,7 @@ class TestCommandRequest(BaseModel):
     source_manifest_ref: ArtifactID
     reproduction_test_ref: ArtifactID
     image_digest: ArtifactID
-    phase: Literal["BASELINE", "CANDIDATE", "CLEAN_REPLAY"]
+    phase: Literal["BASELINE", "CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY"]
     patch_ref: ArtifactID | None = None
     reproduction_path: str = Field(max_length=240)
     test_paths: tuple[str, ...] = Field(min_length=1, max_length=16)

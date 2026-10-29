@@ -6,6 +6,7 @@ import httpx
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from packages.contracts.sandbox import RunnerError
+from services.persistence.baseline_producer import BaselineProducerJournal
 from services.persistence.producer import ProducerJournal
 from services.runner.admission import CapabilityAttestation, CapabilityVerifier
 from services.runner.prepared import PreparedImageBinding
@@ -31,7 +32,7 @@ class DurableMeasuredBackend(MeasuredPreparedBackend):
         *,
         receipt_key: Ed25519PrivateKey,
         receipt_key_id: str,
-        journal: ProducerJournal,
+        journal: ProducerJournal | BaselineProducerJournal,
         allow_live: bool = False,
         transport: httpx.BaseTransport | None = None,
     ) -> None:

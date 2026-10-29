@@ -28,6 +28,21 @@ class StoreError(Exception):
     """Safe code; database messages, SQL and credentials are never public."""
 
 
+def lock_repository_consent(
+    conn: psycopg.Connection[dict[str, object]], repository_id: UUID
+) -> None:
+    """Serialize consent revocation with a final evidence acceptance transaction.
+
+    PostgreSQL row locks require UPDATE privilege, which the runtime role must
+    not have on repository_grants. This transaction-scoped advisory lock is
+    shared by the consent revoker and verification acceptance instead.
+    """
+    conn.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
+        (f"replayforge-consent:{repository_id}",),
+    )
+
+
 class Lease(BaseModel):
     """Bearer fence for one worker claim; not an API authorization token."""
 

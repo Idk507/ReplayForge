@@ -1,5 +1,6 @@
 """Admitted baseline submission with a durable one-use claim before provider I/O."""
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -14,7 +15,7 @@ from services.persistence.operations import OperationJournal
 from services.persistence.store import Lease, Store, StoreError
 from services.runner.admission import CapabilityAttestation, CapabilityVerifier
 from services.runner.commands import plan_pytest
-from services.runner.receipts import plan_ref
+from services.runner.receipts import canonical, plan_ref
 
 
 class BaselineDispatchResult(BaseModel):
@@ -42,6 +43,7 @@ def dispatch_baseline(
     *,
     expected_version: int,
     allow_live: bool = False,
+    authorize: Callable[[Lease, int], None] | None = None,
 ) -> BaselineDispatchResult:
     """Submit a retained plan once; uncertainty never means permission to retry.
 
@@ -141,20 +143,27 @@ def dispatch_baseline(
             backend.configuration_ref,
             backend.origin,
         )
+        capability_payload = canonical(attestation)
         inserted = conn.execute(
             """INSERT INTO baseline_submissions
-            (execution_id,plan_ref,capability_ref,runner_id,configuration_ref,origin,expires_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
+            (execution_id,plan_ref,capability_ref,runner_id,configuration_ref,
+             origin,expires_at,capability_payload)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
             RETURNING execution_id""",
-            (execution_id, *binding, row["expires_at"]),
+            (execution_id, *binding, row["expires_at"], capability_payload),
         ).fetchone()
         saved = conn.execute(
-            "SELECT plan_ref,capability_ref,runner_id,configuration_ref,origin "
+            "SELECT plan_ref,capability_ref,runner_id,configuration_ref,origin,"
+            "capability_payload "
             "FROM baseline_submissions WHERE execution_id=%s "
             "AND expires_at>clock_timestamp()",
             (execution_id,),
         ).fetchone()
-        if saved is None or tuple(saved.values()) != binding:
+        if saved is None or tuple(saved.values())[:-1] != binding:
+            raise StoreError("BASELINE_SUBMISSION_CONFLICT")
+        if saved["capability_payload"] != capability_payload and not (
+            inserted is None and saved["capability_payload"] is None
+        ):
             raise StoreError("BASELINE_SUBMISSION_CONFLICT")
         if inserted is not None:
             if (
@@ -199,6 +208,8 @@ def dispatch_baseline(
             raise
         return result("SUBMISSION_UNKNOWN")
     try:
+        if authorize is not None:
+            authorize(lease, version)
         operation = backend.submit(action.plan, execution_id, action.source_tree_ref)
     except (TimeoutError, ConnectionError):
         return result("SUBMISSION_UNKNOWN")

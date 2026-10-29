@@ -8,6 +8,10 @@ The retained M2 checkout observations are historical remote fixture evidence,
 not a live general-repository repair or production VERIFIED verdict.
 Live GitHub onboarding and small-file collection are separately evidenced.
 Do not splice these into a claim that one fully integrated live run succeeded.
+The current synthetic four-phase PostgreSQL acceptance is a separate local test
+run; its signed result must be identified as test-only evidence. The local
+`/evaluation` workbench page is an unauthenticated inventory snapshot, not a
+benchmark attestation.
 
 ## Offline rehearsal (no cloud charges)
 
@@ -46,6 +50,11 @@ from the live read-only source acceptance artifact.
 3. Show the minimal checkout patch and captured candidate/clean replay results.
 4. State clearly which evidence is retained and which interaction is live.
 
+For the evaluation presentation, open `http://127.0.0.1:3000/evaluation` only
+while the disposable API/browser harness is running or after starting the web
+app using `apps/web/README.md`. The local acceptance harness exits after its
+browser run, so the captured report and screenshot are the reproducible record.
+
 Follow with the real onboarding/collection interaction, evidence identities and
 limitations. Show NVIDIA model identity and Tavily citations only from actual
 retained calls; do not make fresh calls merely for a recording. Never claim a
@@ -53,11 +62,14 @@ draft PR exists from an internal publication intent.
 
 ## Release blockers still open
 
-- Integrated incident-driven triage, baseline, patch and replay worker flow.
-- Authentic mandatory seven-gate verification with independently established
-  source/image/configuration and collector trust bindings.
-- Session-derived exact human approval and reduced installation-token brokerage.
-- Explicitly authorized live draft PR, retry discovery and hidden evaluation.
+- A single integrated live incident-to-trusted-seven-gate workflow remains open;
+  local synthetic worker acceptance does not establish it.
+- Production signer/collector/assessor trust, qualified execution runtime and
+  authentic checkout receipts remain open.
+- Exact-review UI and publication control have local browser tests; GitHub writes
+  are mocked, no PR was created, and the checkout POC excludes a real PR.
+- Fixture execution and hidden evaluation remain open; current inventory has
+  zero attempts and unavailable ETL/concurrency/holdout cases.
 - Public deployment, anonymous-access review, final video and submission links.
 
 These remain M3/M4/M5 acceptance requirements. This runbook is a rehearsal guide,

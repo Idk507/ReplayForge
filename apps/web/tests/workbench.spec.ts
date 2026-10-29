@@ -7,7 +7,7 @@ import {resolve} from "node:path";
 
 const runId = "12345678-1234-4234-8234-123456789abc";
 const repo = "12345678-1234-4234-8234-123456789abd";
-const synthetic = {run_id: runId, repository_id: repo, source_commit: "a".repeat(40), current_stage: "INCONCLUSIVE", version: 2, trace_id: repo, evidence_manifest_ref: null, verification_ref: null, cancellation_requested: false, failure_reason: "INVALID_REPRODUCTION", remaining_budget: {model_calls: 14, sandbox_commands: 20, research_searches: 2, execution_seconds: 900, estimated_spend_microusd: 2000000}};
+const synthetic = {run_id: runId, repository_id: repo, source_commit: "a".repeat(40), source_manifest_ref: null, current_stage: "INCONCLUSIVE", version: 2, trace_id: repo, evidence_manifest_ref: null, verification_ref: null, cancellation_requested: false, failure_reason: "INVALID_REPRODUCTION", remaining_budget: {model_calls: 14, sandbox_commands: 20, research_searches: 2, execution_seconds: 900, estimated_spend_microusd: 2000000}};
 
 test("bridge rejects foreign origin, host, path and malformed query before network", async () => {
   for (const [url, headers, path, status] of [
@@ -19,6 +19,35 @@ test("bridge rejects foreign origin, host, path and malformed query before netwo
     expect((await bridge(new Request(url, {headers}), [...path])).status).toBe(status);
   }
   expect((await bridge(new Request("http://127.0.0.1:3000/api", {method:"POST", body:"{}"}), ["runs"])).status).toBe(403);
+});
+
+test("local bridge allows only a digest-bound source-manifest read", async () => {
+  const originalFetch = globalThis.fetch;
+  const old = {
+    mode: process.env.REPLAYFORGE_WEB_AUTH_MODE,
+    url: process.env.REPLAYFORGE_API_URL,
+    token: process.env.REPLAYFORGE_API_TOKEN,
+  };
+  delete process.env.REPLAYFORGE_WEB_AUTH_MODE;
+  process.env.REPLAYFORGE_API_URL = "http://127.0.0.1:8109";
+  process.env.REPLAYFORGE_API_TOKEN = "t".repeat(43);
+  const calls: string[] = [];
+  globalThis.fetch = async input => {
+    calls.push(new URL(String(input)).pathname);
+    return Response.json({source_commit:"a".repeat(40)});
+  };
+  try {
+    const valid = await bridge(new Request("http://127.0.0.1:3000/api/backend"), ["runs",runId,"source-manifests","sha256:"+"b".repeat(64)]);
+    expect(valid.status).toBe(200);
+    const invalid = await bridge(new Request("http://127.0.0.1:3000/api/backend"), ["runs",runId,"source-manifests","sha256:"+"x".repeat(64)]);
+    expect(invalid.status).toBe(404);
+    expect(calls).toEqual([`/api/v1/runs/${runId}/source-manifests/sha256:${"b".repeat(64)}`]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (old.mode === undefined) delete process.env.REPLAYFORGE_WEB_AUTH_MODE; else process.env.REPLAYFORGE_WEB_AUTH_MODE = old.mode;
+    if (old.url === undefined) delete process.env.REPLAYFORGE_API_URL; else process.env.REPLAYFORGE_API_URL = old.url;
+    if (old.token === undefined) delete process.env.REPLAYFORGE_API_TOKEN; else process.env.REPLAYFORGE_API_TOKEN = old.token;
+  }
 });
 
 test("SSE cursor ignores replayed IDs and rejects ID/body mismatch", () => {
@@ -41,6 +70,7 @@ test("synthetic contract: reconnect preserves cursor, missing gates stay missing
     }
     if (url.pathname.endsWith("/research")) return route.fulfill({json:[]});
     if (url.pathname.endsWith("/patch")) return route.fulfill({status:404,body:"{}"});
+    if (url.pathname.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[]}});
     return route.fulfill({json:url.pathname.endsWith("/runs") ? [synthetic] : synthetic});
   });
   await page.goto("/");
@@ -54,6 +84,33 @@ test("synthetic contract: reconnect preserves cursor, missing gates stay missing
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole("heading",{name:"Verification matrix"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+});
+
+test("execution lifecycle labels known operations as unverified evidence", async ({page}) => {
+  const operation = "00000000-0000-4000-8000-000000000031";
+  await page.route("**/api/backend/**", async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[
+      {phase:"BASELINE",status:"PROVIDER_TERMINAL_UNVERIFIED",execution_id:"00000000-0000-4000-8000-000000000021",operation_id:"00000000-0000-4000-8000-000000000022",plan_ref:"sha256:"+"a".repeat(64),origin:"REMOTE_SERVICE",observed_at:"2026-10-28T10:00:00Z",can_authorize_execution:false,can_authorize_verification:false},
+      {phase:"CANDIDATE",status:"OPERATION_PENDING",execution_id:"00000000-0000-4000-8000-000000000023",operation_id:operation,plan_ref:"sha256:"+"b".repeat(64),origin:"REMOTE_SERVICE",observed_at:"2026-10-28T10:01:00Z",can_authorize_execution:false,can_authorize_verification:false},
+      {phase:"EXISTING_SUITE",status:"NOT_PLANNED",can_authorize_execution:false,can_authorize_verification:false},
+      {phase:"CLEAN_REPLAY",status:"SUBMISSION_UNKNOWN",execution_id:"00000000-0000-4000-8000-000000000024",can_authorize_execution:false,can_authorize_verification:false},
+    ]}});
+    if (path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:""});
+    if (path.endsWith("/research")) return route.fulfill({json:[]});
+    if (path.endsWith("/patch")) return route.fulfill({status:404,json:{}});
+    return route.fulfill({json:path.endsWith("/runs")?[synthetic]:synthetic});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:/Run 12345678/}).click();
+  await page.getByRole("tab",{name:"evidence"}).click();
+  await expect(page.getByRole("heading",{name:"Execution phases"})).toBeVisible();
+  await expect(page.getByText("OPERATION PENDING",{exact:true})).toBeVisible();
+  await expect(page.getByText("SUBMISSION UNKNOWN",{exact:true})).toBeVisible();
+  await expect(page.getByText(/A known operation or retained receipt does not establish a verified result/)).toBeVisible();
+  await page.getByText("Operation details").nth(1).click();
+  await expect(page.getByText(operation)).toBeVisible();
+  await expect(page.locator("details[open]").getByText("Can authorize verification")).toBeVisible();
 });
 
 test("synthetic contract: provider failure has a readable retry state", async ({page}) => {
@@ -100,7 +157,8 @@ test("synthetic contract: rejected gate, inert diff and hash-checked artifact pr
     if (path.endsWith("/research")) return route.fulfill({json:[]});
     if (path.includes("/artifacts/")) return route.fulfill({body:content, contentType:"application/octet-stream"});
     if (path.includes("/evidence/")) return route.fulfill({json:{manifest_id:manifest,entries:[{name:"test.log",artifact_id:artifact,size:content.length}]}});
-    if (path.endsWith("/verification")) return route.fulfill({json:{verification_ref:observed.verification_ref,verdict:{status:"NOT_VERIFIED",observed_at:"2026-10-20T10:00:00Z",can_authorize_publication:false},gates:names.map(gate=>({gate,status:gate==="SECURITY_GATE_PASS"?"FAIL":"PASS",execution_ref:artifact}))}});
+    if (path.endsWith("/executions")) return route.fulfill({json:{run_id:observed.run_id,phases:["BASELINE","CANDIDATE","EXISTING_SUITE","CLEAN_REPLAY"].map(phase=>({phase,status:"NOT_PLANNED",can_authorize_execution:false,can_authorize_verification:false}))}});
+    if (path.endsWith("/verification")) return route.fulfill({json:{verification_ref:observed.verification_ref,verdict:{status:"NOT_VERIFIED",observed_at:"2026-10-20T10:00:00Z",can_authorize_publication:false,missing:[],failed:["SECURITY_GATE_PASS"]},gates:names.map((gate,index)=>({gate,phase:["BASELINE","CANDIDATE","EXISTING_SUITE","CLEAN_REPLAY","PATCH_SCOPE","ARTIFACT_INTEGRITY","SECURITY"][index],status:gate==="SECURITY_GATE_PASS"?"FAIL":"PASS",execution_ref:artifact,...(index===0?{execution_id:"00000000-0000-4000-8000-000000000001",operation_id:"00000000-0000-4000-8000-000000000002",image_uuid:"00000000-0000-4000-8000-000000000003",image_digest:artifact,configuration_ref:artifact,workspace_sha256:"a".repeat(64)}:{})}))}});
     if (path.endsWith("/patch")) return route.fulfill({json:{proposal:{unified_diff:"--- a/src/tiny.py\n+++ b/src/tiny.py\n- old\n+ <script>untrusted</script>",justification:"Synthetic proposal for display testing.",risk_notes:"Requires human review."}}});
     if (path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:": replay-page-complete\n\n"});
     return route.fulfill({json:path.endsWith("/runs") ? [observed] : observed});
@@ -108,6 +166,12 @@ test("synthetic contract: rejected gate, inert diff and hash-checked artifact pr
   await page.goto("/"); await page.getByRole("button",{name:/Run 12345678/}).click();
   await page.getByRole("tab",{name:"evidence"}).click();
   await expect(page.getByText("FAIL",{exact:true})).toHaveCount(1);
+  await expect(page.getByText("Failed gates: SECURITY GATE PASS")).toBeVisible();
+  const baselineDetails = page.locator(".gate-list").nth(1).locator(".gate-evidence").first();
+  await baselineDetails.locator("summary").click();
+  await expect(baselineDetails.getByText("Provider operation")).toBeVisible();
+  await expect(page.getByText("00000000-0000-4000-8000-000000000002")).toBeVisible();
+  await expect(page.getByText("00000000-0000-4000-8000-000000000003")).toBeVisible();
   await page.getByRole("button",{name:/test.log/}).click();
   await expect(page.locator("pre")).toContainText("Small observed test log");
   await page.getByRole("tab",{name:"Patch & risk"}).click();
@@ -125,6 +189,7 @@ test("retained live research archive: timeline shows source, title and timestamp
   await page.route("**/api/backend/**", route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/research")) return route.fulfill({json:[archive]});
+    if (path.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[]}});
     if (path.endsWith("/patch")) return route.fulfill({status:404,body:"{}"});
     if (path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:": replay-page-complete\n\n"});
     return route.fulfill({json:path.endsWith("/runs") ? [synthetic] : synthetic});
@@ -143,6 +208,7 @@ test("queued incident explains worker handoff without claiming execution", async
   await page.route("**/api/backend/**",route=>{
     const path=new URL(route.request().url()).pathname;
     if(path.endsWith("/events"))return route.fulfill({contentType:"text/event-stream",body:""});
+    if(path.endsWith("/executions"))return route.fulfill({json:{run_id:runId,phases:[]}});
     if(path.endsWith("/research"))return route.fulfill({json:[]});
     if(path.endsWith("/verification")||path.endsWith("/patch"))return route.fulfill({status:404,json:{}});
     return route.fulfill({json:path.endsWith("/runs")?[queued]:queued});
@@ -151,6 +217,37 @@ test("queued incident explains worker handoff without claiming execution", async
   await page.getByRole("button",{name:/Run 12345678/}).click();
   await expect(page.getByText("Queued: waiting for a worker",{exact:true})).toBeVisible();
   await expect(page.getByText(/background worker must start collection/)).toBeVisible();
+});
+
+test("source acquisition is inspectable without exposing source bytes or changing missing gates", async ({page}) => {
+  const sourceRef = "sha256:"+"d".repeat(64);
+  const manifest = {
+    schema_version:"1.0", repository_id:repo, source_commit:"a".repeat(40), root_tree:"b".repeat(40),
+    evidence_origin:"REMOTE_SERVICE", commit_identity:"GITHUB_HTTPS_METADATA", raw_commit_verified:false,
+    observed_at:"2026-10-26T12:00:00Z", trace_id:repo, policy_version:"repository-v1",
+    files:[{path:"pyproject.toml",blob_id:"c".repeat(40),sha256:"e".repeat(64),size_bytes:2117}],
+  };
+  const collected = {...synthetic,current_stage:"TRIAGING",failure_reason:null,source_manifest_ref:sourceRef};
+  await page.route("**/api/backend/**", async route => {
+    const path = new URL(route.request().url()).pathname;
+    if(path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:""});
+    if(path.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[]}});
+    if(path.endsWith("/research")) return route.fulfill({json:[]});
+    if(path.endsWith("/patch")) return route.fulfill({status:404,json:{}});
+    if(path.includes("/source-manifests/")) return route.fulfill({json:manifest});
+    return route.fulfill({json:path.endsWith("/runs")?[collected]:collected});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:/Run 12345678/}).click();
+  await page.getByRole("tab",{name:"evidence"}).click();
+  await expect(page.getByRole("heading",{name:"Source acquisition"})).toBeVisible();
+  await expect(page.getByText("REMOTE_SERVICE",{exact:true})).toBeVisible();
+  await expect(page.getByText("pyproject.toml",{exact:true})).toBeVisible();
+  await expect(page.getByText("2,117 bytes",{exact:true})).toBeVisible();
+  await expect(page.locator("body")).toContainText("e".repeat(64));
+  await expect(page.getByText("No retained verdict",{exact:true})).toBeVisible();
+  await expect(page.getByText("MISSING",{exact:true})).toHaveCount(7);
+  await expect(page.locator("body")).not.toContainText("source file body");
 });
 
 for (const [stage, title] of [
@@ -162,6 +259,7 @@ for (const [stage, title] of [
     await page.route("**/api/backend/**", route => {
       const path = new URL(route.request().url()).pathname;
       if(path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:""});
+      if(path.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[]}});
       if(path.endsWith("/research")) return route.fulfill({json:[]});
       if(path.endsWith("/patch")) return route.fulfill({status:404,json:{}});
       return route.fulfill({json:path.endsWith("/runs")?[pending]:pending});

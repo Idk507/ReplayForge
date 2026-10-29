@@ -5,7 +5,7 @@ import binascii
 import hashlib
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 import psycopg
@@ -15,14 +15,21 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import CommitSHA, RunState, Stage
 from packages.policies.repository import admit
-from services.persistence.store import Lease, Store, StoreError
+from services.persistence.store import (
+    Lease,
+    Store,
+    StoreError,
+    lock_repository_consent,
+)
 from services.runner.receipts import canonical
 from services.verifier.authenticated import (
     AuthenticatedVerdict,
     GateContext,
-    GateVerifier,
+    GateDenied,
+    GatePhaseBinding,
     SignedGates,
 )
+from services.verifier.azure_es256 import AzureES256GateEnvelopeV5
 from services.verifier.manifest import (
     ArtifactInput,
     EvidenceManifest,
@@ -34,7 +41,7 @@ from services.verifier.manifest import (
 class EncodedArtifact(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]{0,80}$")
-    content_b64: str = Field(max_length=87384, repr=False)
+    content_b64: str = Field(max_length=666668, repr=False)
 
 
 class EvidenceBundle(BaseModel):
@@ -89,11 +96,12 @@ class EvidenceStore:
         self,
         lease: Lease,
         owner: UUID,
-        signed: SignedGates,
-        verifier: GateVerifier,
+        signed: SignedGates | AzureES256GateEnvelopeV5,
+        verifier: Any,
         *,
         image_digest: str,
         configuration_ref: str,
+        phase_bindings: tuple[GatePhaseBinding, ...],
         expected_version: int,
     ) -> AuthenticatedVerdict:
         """Authenticate gates against a fenced current checkpoint, without writes.
@@ -112,6 +120,7 @@ class EvidenceStore:
                 verifier,
                 image_digest=image_digest,
                 configuration_ref=configuration_ref,
+                phase_bindings=phase_bindings,
                 expected_version=expected_version,
             )
             return verdict
@@ -121,11 +130,12 @@ class EvidenceStore:
         conn: psycopg.Connection[dict[str, object]],
         lease: Lease,
         owner: UUID,
-        signed: SignedGates,
-        verifier: GateVerifier,
+        signed: SignedGates | AzureES256GateEnvelopeV5,
+        verifier: Any,
         *,
         image_digest: str,
         configuration_ref: str,
+        phase_bindings: tuple[GatePhaseBinding, ...],
         expected_version: int,
     ) -> tuple[RunState, AuthenticatedVerdict]:
         """Shared transactional boundary; caller owns commit and worker fencing."""
@@ -153,6 +163,7 @@ class EvidenceStore:
             or run.evidence_manifest_ref is None
         ):
             raise StoreError("EVIDENCE_STAGE_DENIED")
+        lock_repository_consent(conn, run.repository_id)
         consent = conn.execute(
             "SELECT grant_json FROM repository_grants WHERE id=%s AND owner_id=%s",
             (run.repository_id, owner),
@@ -178,18 +189,22 @@ class EvidenceStore:
         bundle, artifacts = _decode(stored)
         if bundle.run_id != run.run_id or bundle.source_commit != run.source_commit:
             raise StoreError("EVIDENCE_INTEGRITY")
-        expected = GateContext(
-            run_id=run.run_id,
-            repository_id=run.repository_id,
-            run_version=run.version,
-            source_commit=run.source_commit,
-            patch_ref=run.patch_attempt_refs[-1],
-            image_digest=image_digest,
-            configuration_ref=configuration_ref,
-            test_ref=run.reproduction_test_ref,
-            workspace_sha256=bundle.manifest.workspace_sha256,
-            manifest_ref=run.evidence_manifest_ref,
-        )
+        try:
+            expected = GateContext(
+                run_id=run.run_id,
+                repository_id=run.repository_id,
+                run_version=run.version,
+                source_commit=run.source_commit,
+                patch_ref=run.patch_attempt_refs[-1],
+                image_digest=image_digest,
+                configuration_ref=configuration_ref,
+                test_ref=run.reproduction_test_ref,
+                workspace_sha256=bundle.manifest.workspace_sha256,
+                manifest_ref=run.evidence_manifest_ref,
+                phase_bindings=phase_bindings,
+            )
+        except ValidationError:
+            raise GateDenied("GATE_CONTEXT_DENIED") from None
         clock = conn.execute("SELECT clock_timestamp() AS now").fetchone()
         if clock is None or not isinstance(clock["now"], datetime):
             raise StoreError("EVIDENCE_CLOCK_INVALID")

@@ -30,6 +30,9 @@ class GuestObservation(Contract):
     """Only allowlisted synthetic data may be exposed by the smoke report."""
 
     python_version: str = Field(pattern=r"^Python 3\.[0-9]{1,2}\.[0-9]{1,3}$")
+    python_compatible: bool = Field(strict=True)
+    pytest_available: bool = Field(strict=True)
+    fixed_check_passed: bool = Field(strict=True)
     uid: int = Field(strict=True, ge=0)
     gid: int = Field(strict=True, ge=0)
     interfaces: list[str] = Field(max_length=16)

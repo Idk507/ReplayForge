@@ -216,3 +216,98 @@ capability profile or enable default live execution. Digest-pinned image import
 failed HTTP404 after SDK URL normalization; actual full repair/replay, all seven
 gates, exact human-approved PR and hidden evaluation remain open. Original
 M3/M4 exits are unchanged.
+
+## Operator image-import lifecycle - 2026-10-26
+
+Migration0031's `image_import_attempts` and append-only
+`image_import_events` are an internal operator-side ledger, separate from a run
+verdict. A unique `(project_id, source_digest)` prevents resubmitting a digest
+after an uncertain or rejected POST. The exact request digest also binds the
+bounded timeout. The one-shot adapter must commit the intent before POST, commit
+the provider operation UUID immediately after a valid 201, and use only bounded
+GET polling for that known operation. Terminal provider image UUID/status and
+safe diagnostics are retained without response bodies or credentials.
+
+Recovery checks event sequence/checksums, source/project/request identity and
+lifecycle order. Event checksums detect accidental corruption, not a malicious
+database owner; they are not signatures or trusted runtime receipts. This
+operator journal is not currently wired to production admission/startup. Fake
+transport plus disposable PostgreSQL acceptance proves local composition only;
+it does not prove an import, OCI provenance, runtime capability, assessor or
+collector trust, remote execution, or any M3 gate. See `docs/confined-runner.md`
+and `docs/m3-luna-recovery-plan.md`.
+
+The adapter now consumes a typed `ImageImportLifecycle` exposing project, request,
+state and operation identity. It rejects mismatched project/request bindings
+before POST, and GET recovery requires the exact journal operation in
+`OPERATION_KNOWN`. This is a local API contract, not production admission.
+
+The operator command `scripts.import_runner_image` is offline by default and
+requires `--live` to create a provider operation. It requires the dedicated
+`REPLAYFORGE_IMAGE_IMPORT_DATABASE_URL` plus Nebius project credentials. On
+restart it reads the journal first: only an `OPERATION_KNOWN` entry may issue
+GET; INTENT/SUBMISSION_UNKNOWN/PROVIDER_REJECTED never cause a POST. This tool
+still does not check a qualified execution runtime or authorize sandbox code.
+
+The operator controller reports provider import lifecycle only (NOT_RUN, pending,
+uncertain, rejected or provider-terminal status); it never yields VERIFIED and
+never converts a provider image UUID into capability evidence. The CLI is
+explicitly gated by `--live`, and the qualified execution admission path remains
+an independent required control.
+
+
+Image-import terminal results may retain only a fixed failure code, upstream HTTP
+status and raw-error SHA256; raw provider errors are excluded. Old persisted
+terminal events remain readable with absent optional fields and are not rewritten.
+Cached terminal/uncertain reports preserve their original observation timestamp.
+Polling bounds (strict integer count/time and finite bounded interval) are
+validated before database access or POST. These facts still grant no sandbox
+execution or M3 verification authority.
+
+### Confined baseline controller continuation - 2026-10-27
+
+ConfinedBaselineProvider is an internal trusted factory for an exact measured
+BASELINE plan and confined configuration; its construction performs no provider
+I/O or trust discovery. advance_confined_baseline requires an existing owned
+lease and uses durable baseline dispatch/producer records, performs one bounded
+collection pass, and never repeats an unknown submission. TEST_TRANSPORT returns
+TEST_EVIDENCE_RETAINED without granting PATCHING. Produced baseline delivery
+accepts no caller-provided report/status/operation and rejects test-origin
+carriers; the existing reducer owns stage acceptance. Pending work requires a
+worker driver with safe heartbeats, not repeated lease acquisitions. Current
+acceptance is synthetic and does not establish qualified runtime or M3/M4 exits.
+
+## Signed gate payload schema 2
+
+Signed gate payload schema 2 (`replayforge.verification-gates.v2`) requires an
+explicit phase, image digest, configuration reference, operation UUID where the
+gate is an execution, content-addressed artifact reference, source commit, patch
+reference and workspace digest on each `GateEvidence`. Gate-to-phase mapping is
+fixed in application code. `GateVerifier` checks each phase record against the
+run's pinned image/configuration/source/patch/workspace and evidence manifest,
+and requires distinct execution IDs, provider operation IDs and report artifacts
+for baseline, patched regression, existing suite and clean replay. The v1 signed
+gate purpose is rejected by the v2 model.
+
+This is a binding/verification contract, not a production gate producer. The
+producer that reads durable phase journals and creates a signature under an
+independently provisioned key remains unimplemented. Current context still
+supplies one run-wide image/configuration/workspace value; distinct phase
+configuration and workspace expectations must be loaded from durable phase
+records before live acceptance. Synthetic signer tests do not establish any
+production gate or VERIFIED verdict.
+
+## Signed gate payload v3 — 2026-10-28
+
+Schema 3 (`replayforge.verification-gates.v3`) adds required phase-specific
+image, configuration, and workspace bindings for all seven mandatory gate
+phases. Gate records are checked against their phase binding; distinct
+workspaces/configurations are allowed across baseline, candidate, existing
+suite, clean replay, and local policy gates. Baseline image/configuration also
+must match the legacy run-level fields. The seven required gate names and verdict
+policy are unchanged. See `docs/verification-gate-v3.md`.
+
+This improves exact binding in the consumer. It does not implement the
+production phase-journal loader or signing producer. No production gate keys,
+independently trusted operation correlation, separate existing-suite execution
+path, or live seven-gate evidence exists. Synthetic tests do not grant VERIFIED.

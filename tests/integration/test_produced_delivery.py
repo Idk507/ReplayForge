@@ -32,8 +32,10 @@ from tests.unit.test_runner_admission import fixture as capability_fixture
 store = test_postgres.store
 
 
-def inputs(store):
-    lease, owner, run, actions, candidate, clean, _ = prepared(store, reserve=False)
+def inputs(store, *, include_suite=False):
+    prepared_result = prepared(store, reserve=False, include_suite=include_suite)
+    lease, owner, run, actions, candidate, clean, verifier = prepared_result[:7]
+    suite_report = prepared_result[7] if include_suite else None
     content = archive([("app.py", b"x=1\n", tarfile.REGTYPE)])
     tree, count, size = archive_identity(content)
 
@@ -49,6 +51,9 @@ def inputs(store):
         {
             **actions.model_dump(),
             "candidate_plan": measured(actions.candidate_plan),
+            "suite_plan": (
+                None if actions.suite_plan is None else measured(actions.suite_plan)
+            ),
             "clean_plan": measured(actions.clean_plan),
             "patched_tree_ref": tree,
         }
@@ -59,15 +64,28 @@ def inputs(store):
     key = Ed25519PrivateKey.generate()
     _, profile, _, sign, admission = capability_fixture("REMOTE_SERVICE")
     journals = []
-    for phase, plan, execution, report in (
+    phase_inputs = [
         (
             "CANDIDATE",
             actions.candidate_plan,
             actions.candidate_execution_id,
             candidate,
         ),
-        ("CLEAN_REPLAY", actions.clean_plan, actions.clean_execution_id, clean),
-    ):
+    ]
+    if suite_report is not None and actions.suite_plan is not None:
+        phase_inputs.append(
+            (
+                "EXISTING_SUITE",
+                actions.suite_plan,
+                actions.suite_execution_id,
+                suite_report,
+            )
+        )
+    phase_inputs.append(
+        ("CLEAN_REPLAY", actions.clean_plan, actions.clean_execution_id, clean)
+    )
+    for phase, plan, execution, report in phase_inputs:
+        assert execution is not None
         binding = PreparedImageBinding(
             plan_ref=plan_ref(plan),
             execution_id=execution,
@@ -153,6 +171,24 @@ def inputs(store):
         journals,
         ReceiptVerifier({"test": key.public_key()}, origin="REMOTE_SERVICE"),
     )
+
+
+def test_completed_producer_handoff_includes_independent_suite_operation(store):
+    lease, owner, run, journals, verifier = inputs(store, include_suite=True)
+    first = deliver_produced_replays(
+        store,
+        lease,
+        owner,
+        journals[0],
+        journals[2],
+        verifier,
+        workspace_sha256="a" * 64,
+        expected_version=run.version,
+        suite=journals[1],
+    )
+    _, files = EvidenceStore(store).read(run.run_id, owner, first.evidence_manifest_ref)
+    names = {item.name for item in files}
+    assert {"suite-receipt.json", "suite-junit.xml"} <= names
 
 
 def test_completed_producer_pair_handoff_retains_exact_reports_and_reconciles(store):

@@ -6,7 +6,11 @@ from uuid import uuid4
 import pytest
 
 from packages.contracts.repository import RepositoryGrant
-from services.publication.patch import PublicationDenied, apply_approved_patch
+from services.publication.patch import (
+    PublicationDenied,
+    apply_approved_patch,
+    blob_sha,
+)
 
 DIFF = (
     "diff --git a/src/a.py b/src/a.py\n--- a/src/a.py\n+++ b/src/a.py\n"
@@ -79,6 +83,30 @@ def test_zero_count_insertion_and_multiple_hunks_preserve_other_lines():
     )
 
 
+def test_checkout_path_publication_policy_matches_patch_admission():
+    policy = grant().model_copy(update={"approved_paths": ("checkout/",)})
+    diff = DIFF.replace("src/a.py", "checkout/payments.py")
+    edit = apply_approved_patch(diff, {"checkout/payments.py": b"x=1\ny=2\n"}, policy)
+    assert edit[0].path == "checkout/payments.py"
+    for denied in ("checkout/tests/test_a.py", "checkout-other/a.py"):
+        with pytest.raises(PublicationDenied):
+            apply_approved_patch(
+                diff.replace("checkout/payments.py", denied),
+                {denied: b"x=1\ny=2\n"},
+                policy,
+            )
+
+
+def test_publication_rejects_candidate_that_edits_regression_test():
+    malicious = DIFF.replace("src/a.py", "checkout/tests/test_payments.py")
+    with pytest.raises(PublicationDenied, match="PUBLICATION_PATCH_SCOPE"):
+        apply_approved_patch(
+            malicious,
+            {"checkout/tests/test_payments.py": b"assert False\n"},
+            grant().model_copy(update={"approved_paths": ("checkout/",)}),
+        )
+
+
 def test_unicode_line_separator_inside_source_is_not_a_git_hunk_boundary():
     original = "value='a\u2028b'\n".encode()
     diff = (
@@ -89,3 +117,29 @@ def test_unicode_line_separator_inside_source_is_not_a_git_hunk_boundary():
         apply_approved_patch(diff, {"src/a.py": original}, grant())[0].content
         == "value='c\u2028d'\n"
     )
+
+
+def test_missing_final_newline_replacement_matches_runner_patch_semantics():
+    diff = (
+        "diff --git a/src/a.py b/src/a.py\n--- a/src/a.py\n+++ b/src/a.py\n"
+        "@@ -1 +1 @@\n-x=1\n\\ No newline at end of file\n+x=2\n"
+    )
+    edit = apply_approved_patch(diff, {"src/a.py": b"x=1"}, grant())[0]
+    assert edit.content == "x=2\n"
+    assert edit.before_sha == blob_sha(b"x=1")
+    assert edit.after_sha == blob_sha(b"x=2\n")
+
+
+def test_missing_final_newline_outside_changed_hunk_is_preserved():
+    diff = (
+        "diff --git a/src/a.py b/src/a.py\n--- a/src/a.py\n+++ b/src/a.py\n"
+        "@@ -1 +1 @@\n-x=1\n+x=2\n"
+    )
+    edit = apply_approved_patch(diff, {"src/a.py": b"x=1\ny=2"}, grant())[0]
+    assert edit.content == "x=2\ny=2"
+
+
+@pytest.mark.parametrize("source", [b"x=1\r\ny=2\n", b"x=1\0y=2\n"])
+def test_publication_still_rejects_crlf_and_nul_source(source):
+    with pytest.raises(PublicationDenied, match="PUBLICATION_SOURCE_INVALID"):
+        apply_approved_patch(DIFF, {"src/a.py": source}, grant())

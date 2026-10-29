@@ -13,7 +13,9 @@ from psycopg.types.json import Jsonb
 from packages.contracts.run import Stage
 from services.orchestrator.baseline_delivery import receive_baseline
 from services.orchestrator.replay_delivery import receive_replays
+from services.orchestrator.replay_dispatch import dispatch_replay
 from services.persistence.evidence import EvidenceStore
+from services.persistence.replay import ReplayJournal
 from services.persistence.store import Store, StoreError
 from services.runner.receipts import (
     ReceiptDenied,
@@ -26,11 +28,12 @@ from services.verifier.replay import ReplayActions, ReplayReport
 from tests.integration import test_postgres
 from tests.integration.test_baseline_delivery import prepared as baseline_inputs
 from tests.unit.test_replay_receipts import XML
+from tests.unit.test_runner_admission import fixture as capability_fixture
 
 store = test_postgres.store
 
 
-def prepared(store, *, failing=False, reserve=True):
+def prepared(store, *, failing=False, reserve=True, include_suite=False):
     _, lease, owner, _, baseline, signed, xml, verifier = baseline_inputs(store)
     run = receive_baseline(
         store, lease, owner, baseline.execution_id, signed, xml, verifier
@@ -47,8 +50,14 @@ def prepared(store, *, failing=False, reserve=True):
             (Jsonb(run.model_dump(mode="json")), run.run_id),
         )
     key = Ed25519PrivateKey.generate()
-    plans, reports = [], []
-    for phase in ("CANDIDATE", "CLEAN_REPLAY"):
+    plans, reports, operation_ids = {}, {}, {}
+    phases = (
+        ("CANDIDATE", "EXISTING_SUITE", "CLEAN_REPLAY")
+        if include_suite
+        else ("CANDIDATE", "CLEAN_REPLAY")
+    )
+    for phase in phases:
+        operation_ids[phase] = uuid4()
         plan = baseline.plan.model_copy(
             update={
                 "request": baseline.plan.request.model_copy(
@@ -72,14 +81,22 @@ def prepared(store, *, failing=False, reserve=True):
         envelope = envelope.model_copy(
             update={"signature": key.sign(canonical(envelope, unsigned=True)).hex()}
         )
-        plans.append(plan)
-        reports.append(ReplayReport(signed=envelope, junit=XML))
+        plans[phase] = plan
+        reports[phase] = ReplayReport(
+            operation_id=operation_ids[phase], signed=envelope, junit=XML
+        )
     actions = ReplayActions(
-        candidate_plan=plans[0],
-        clean_plan=plans[1],
+        candidate_plan=plans["CANDIDATE"],
+        suite_plan=plans.get("EXISTING_SUITE"),
+        clean_plan=plans["CLEAN_REPLAY"],
         baseline_execution_id=baseline.execution_id,
-        candidate_execution_id=reports[0].signed.payload.execution_id,
-        clean_execution_id=reports[1].signed.payload.execution_id,
+        candidate_execution_id=reports["CANDIDATE"].signed.payload.execution_id,
+        suite_execution_id=(
+            reports["EXISTING_SUITE"].signed.payload.execution_id
+            if include_suite
+            else None
+        ),
+        clean_execution_id=reports["CLEAN_REPLAY"].signed.payload.execution_id,
         patched_tree_ref="sha256:" + "8" * 64,
         test_name="test_duplicate",
     )
@@ -89,14 +106,41 @@ def prepared(store, *, failing=False, reserve=True):
         run = ReplayJournal(store).reserve(
             lease, owner, actions, expected_version=run.version
         )
-    return (
+        _, profile, _, attest, capability_verifier = capability_fixture(
+            "REMOTE_SERVICE"
+        )
+
+        class Backend:
+            origin = "REMOTE_SERVICE"
+            runner_id = profile.runner_id
+            configuration_ref = profile.configuration_ref
+
+            def submit(self, plan, execution_id, expected_tree_ref):
+                return operation_ids[plan.request.phase]
+
+        backend = Backend()
+        for phase in phases:
+            dispatch_replay(
+                store,
+                lease,
+                owner,
+                phase,
+                attest(),
+                capability_verifier,
+                backend,
+                expected_version=run.version,
+                allow_live=True,
+            )
+    result = (
         lease,
         owner,
         run,
         actions,
-        *reports,
+        reports["CANDIDATE"],
+        reports["CLEAN_REPLAY"],
         ReceiptVerifier({"test": key.public_key()}, origin="REMOTE_SERVICE"),
     )
+    return (*result, reports["EXISTING_SUITE"]) if include_suite else result
 
 
 @pytest.mark.parametrize("failing", [False, True])
@@ -137,6 +181,32 @@ def test_delivery_restart_and_concurrent_duplicates_preserve_exact_bytes(
     ) == 1
 
 
+def test_existing_suite_operation_and_receipt_are_retained_as_a_distinct_phase(store):
+    lease, owner, run, actions, candidate, clean, verifier, suite = prepared(
+        store, include_suite=True
+    )
+    result = receive_replays(
+        store,
+        lease,
+        owner,
+        actions,
+        candidate,
+        clean,
+        verifier,
+        workspace_sha256="a" * 64,
+        expected_version=run.version,
+        suite=suite,
+    )
+    _, retained = EvidenceStore(store).read(
+        run.run_id, owner, result.evidence_manifest_ref
+    )
+    assert any(item.name == "suite-receipt.json" for item in retained)
+    assert any(item.name == "suite-junit.xml" for item in retained)
+    assert suite.operation_id == ReplayJournal(store).operation_id(
+        run.run_id, owner, "EXISTING_SUITE"
+    )
+
+
 @pytest.mark.parametrize(
     "fault",
     [
@@ -147,6 +217,7 @@ def test_delivery_restart_and_concurrent_duplicates_preserve_exact_bytes(
         "test",
         "baseline",
         "signature",
+        "operation",
         "cancel",
         "consent",
         "rollback",
@@ -168,6 +239,8 @@ def test_delivery_denials_leave_no_partial_bundle(store, fault, monkeypatch):
                 "signed": candidate.signed.model_copy(update={"signature": "0" * 128})
             }
         )
+    elif fault == "operation":
+        candidate = candidate.model_copy(update={"operation_id": uuid4()})
     elif fault == "baseline":
         actions = actions.model_copy(update={"baseline_execution_id": uuid4()})
     elif fault == "cancel":

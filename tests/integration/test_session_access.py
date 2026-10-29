@@ -20,7 +20,7 @@ from tests.integration.test_auth_journal import identity, journal, login
 store = test_postgres.store
 
 
-def setup(store, fault=None):
+def setup(store, fault=None, who=None):
     base = journal(store)
     # Explicit synthetic consent authority, not a production role prescription.
     authority = Store(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"])
@@ -33,7 +33,7 @@ def setup(store, fault=None):
 
     access = AuthAccess(j, config, factory, allow_test=True)
     app = create_session_app(store, j, config, factory, access, allow_test=True)
-    session = login(j)
+    session = login(j, who)
     c = TestClient(app, base_url=config.public_origin, client=("127.0.0.1", 50000))
     c.cookies.set(config.session_cookie, session.secret.get_secret_value())
     headers = {
@@ -43,12 +43,16 @@ def setup(store, fault=None):
     return c, j, session, headers, access, calls
 
 
-def connect(access, session):
+def connect(access, session, *, include_checkout=False, source_commit="a" * 40):
     user = access.journal.session(session.secret, allow_test=True)
     return access.connect(
         user,
         ConnectRepository(
-            installation_id=7, repository_id=42, source_commit="a" * 40, consent=True
+            installation_id=7,
+            repository_id=42,
+            source_commit=source_commit,
+            consent=True,
+            include_checkout=include_checkout,
         ),
     )
 
@@ -56,6 +60,7 @@ def connect(access, session):
 def test_session_connect_run_owner_scope_and_csrf(store):
     c, j, session, headers, access, calls = setup(store)
     repo = connect(access, session)
+    assert "checkout/" not in repo.approved_paths
     payload = {
         "repository_id": str(repo.repository_id),
         "commit_sha": "a" * 40,
@@ -74,6 +79,16 @@ def test_session_connect_run_owner_scope_and_csrf(store):
     assert c.get("/api/v1/runs/" + run + "/events").status_code == 404
     assert c.get("/api/v1/runs/" + run + "/verification").status_code == 404
     assert all(v.method == "GET" for v in calls)
+
+
+def test_checkout_path_is_added_only_by_explicit_connection_choice(store):
+    # Use a distinct synthetic owner so this consent variant doesn't collide
+    # with another integration case's immutable connection for the same repo.
+    who = identity().model_copy(update={"id": 100000 + uuid4().int % 2_000_000_000})
+    _, _, session, _, access, _ = setup(store, who=who)
+    repo = connect(access, session, include_checkout=True)
+    assert repo.approved_paths.count("checkout/") == 1
+    assert repo.consent and repo.commits == ("a" * 40,)
 
 
 @pytest.mark.parametrize("fault", ["removed", "readonly", "write"])

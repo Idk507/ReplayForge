@@ -16,13 +16,22 @@ The first supported diff vocabulary is deliberately narrow:
 
 - UTF-8, LF-only Git unified diffs; at most 500,000 encoded bytes, 10,000 lines,
   25 distinct files and 5,000 added/deleted lines.
-- Existing Python files under src/ or app/, also admitted by the repository grant.
-  Tests, workflows, lock/config files and secret/reserved/traversal paths are denied.
+- Existing Python files under src/, app/ or explicitly granted checkout/, also
+  admitted by the repository grant. The authenticated connection form keeps
+  checkout/ off unless separately selected. Test-named paths, workflows,
+  lock/config files and secret/reserved/traversal paths are denied.
 - Matching unquoted diff/old/new paths, optional ordinary Git index header,
   explicit unified hunks with exact old/new line counts and non-overlapping ranges.
 - No creation/deletion headers, renames, mode changes, binary formats, quoted
-  filenames, CRLF, NUL bytes or no-final-newline markers. Unsupported formats fail
-  closed. Each file must contain at least one added/deleted line.
+  filenames, CRLF or NUL bytes. A Git no-final-newline marker is accepted only
+  for an original/context line in its valid hunk position; added replacement
+  lines remain LF-terminated. Unsupported formats fail closed. Each file must
+  contain at least one added/deleted line.
+
+The inert publication patch applier applies this same original-file marker form.
+It preserves unchanged unterminated final lines byte-for-byte and emits the
+standard LF when a marked unterminated line is replaced. Publication still
+rejects CRLF and NUL source bytes.
 
 The gate computes patch_ref from exact input UTF-8 bytes and derives changed
 paths/line counts from hunks, never from model declarations. Its safe result

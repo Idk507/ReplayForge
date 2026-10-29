@@ -104,17 +104,22 @@ def debit_replays(
     run: RunState,
     candidate: TestCommandPlan,
     clean: TestCommandPlan,
+    suite: TestCommandPlan | None = None,
 ) -> Budget:
-    """Reserve the complete pair atomically; exhaustion never partially debits."""
+    """Reserve replay actions atomically; exhaustion never partially debits."""
     candidate = TestCommandPlan.model_validate(candidate.model_dump())
     clean = TestCommandPlan.model_validate(clean.model_dump())
+    plans = [candidate, clean]
+    if suite is not None:
+        suite = TestCommandPlan.model_validate(suite.model_dump())
+        plans.append(suite)
     return _debit(
         store,
         conn,
         run,
         (
-            ("sandbox_commands", 2),
-            ("execution_seconds", candidate.timeout_seconds + clean.timeout_seconds),
+            ("sandbox_commands", len(plans)),
+            ("execution_seconds", sum(plan.timeout_seconds for plan in plans)),
         ),
     )
 

@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 const runId="12345678-1234-4123-8123-123456789abc",repo="12345678-1234-4123-8123-123456789abd";
 const diff="--- a/src/a.py\n+++ b/src/a.py\n@@ -1 +1 @@\n-x=1\n+x=2\n";
 const binding={run_id:runId,repository_id:repo,owner_id:runId,source_commit:"a".repeat(40),patch_ref:"sha256:"+createHash("sha256").update(diff).digest("hex"),verification_ref:"sha256:"+"b".repeat(64),target_branch:"main",policy_version:"repository-v1"};
-const run={run_id:runId,repository_id:repo,source_commit:binding.source_commit,current_stage:"VERIFIED",version:3,trace_id:repo,evidence_manifest_ref:null,verification_ref:binding.verification_ref,cancellation_requested:false,failure_reason:null,remaining_budget:{model_calls:10,sandbox_commands:10,research_searches:2,execution_seconds:600,estimated_spend_microusd:1000000}};
+const run={run_id:runId,repository_id:repo,source_commit:binding.source_commit,source_manifest_ref:null,current_stage:"VERIFIED",version:3,trace_id:repo,evidence_manifest_ref:null,verification_ref:binding.verification_ref,cancellation_requested:false,failure_reason:null,remaining_budget:{model_calls:10,sandbox_commands:10,research_searches:2,execution_seconds:600,estimated_spend_microusd:1000000}};
 
 for(const tamper of [false,true]) test(`synthetic exact review, tampered hash=${tamper}`,async({page})=>{
   let receipt:Record<string,unknown>|null=null,approvals=0,published=0;
@@ -25,6 +25,7 @@ for(const tamper of [false,true]) test(`synthetic exact review, tampered hash=${
       expect(body.nonce).toBe(receipt?.nonce);expect(body.expected_version).toBe(4);
       return route.fulfill({json:{html_url:"https://github.com/example/demo/pull/1",origin:"REMOTE_SERVICE"}});
     }
+    if(path.endsWith("/executions")) return route.fulfill({json:{run_id:runId,phases:[]}});
     if(path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:""});
     if(path.endsWith("/research")) return route.fulfill({json:[]});
     if(path.endsWith("/patch")) return route.fulfill({json:{proposal:{unified_diff:diff,justification:"Synthetic test patch",risk_notes:"Synthetic browser contract; no execution or PR."}}});

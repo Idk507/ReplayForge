@@ -1,6 +1,8 @@
 """Synthetic pair correlation; never claims fresh provider compute."""
 
 from uuid import uuid4
+import hashlib
+import json
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -40,8 +42,8 @@ def inputs():
     )
     return (
         actions,
-        ReplayReport(signed=sign(candidate), junit=XML),
-        ReplayReport(signed=sign(clean), junit=XML),
+        ReplayReport(operation_id=uuid4(), signed=sign(candidate), junit=XML),
+        ReplayReport(operation_id=uuid4(), signed=sign(clean), junit=XML),
         ReceiptVerifier({"test": key.public_key()}, origin="TEST_TRANSPORT"),
         args["now"],
     )
@@ -99,3 +101,53 @@ def test_pair_requires_identical_report_retention_policy():
     )
     with pytest.raises(ReceiptDenied, match="REPLAY_PAIR_BINDING_INVALID"):
         inspect_replay_pair(actions, candidate, clean, verifier, now=now)
+
+
+def test_existing_suite_plan_is_a_distinct_pinned_execution():
+    actions, *_ = inputs()
+    suite_request = actions.candidate_plan.request.model_copy(
+        update={"phase": "EXISTING_SUITE"}
+    )
+    suite_plan = actions.candidate_plan.model_copy(update={"request": suite_request})
+    suite_id = uuid4()
+    expanded = ReplayActions.model_validate(
+        {
+            **actions.model_dump(),
+            "suite_plan": suite_plan.model_dump(),
+            "suite_execution_id": suite_id,
+        }
+    )
+    assert expanded.suite_plan == suite_plan
+    assert expanded.suite_execution_id == suite_id
+    assert (
+        len(
+            {
+                expanded.baseline_execution_id,
+                expanded.candidate_execution_id,
+                expanded.suite_execution_id,
+                expanded.clean_execution_id,
+            }
+        )
+        == 4
+    )
+
+
+def test_existing_suite_plan_requires_matching_phase_and_execution_id():
+    actions, *_ = inputs()
+    with pytest.raises(ValueError):
+        ReplayActions.model_validate(
+            {**actions.model_dump(), "suite_plan": actions.candidate_plan.model_dump()}
+        )
+
+
+def test_legacy_pair_reservation_encoding_remains_recoverable():
+    from services.persistence.replay import _decode
+
+    actions, *_ = inputs()
+    body = json.dumps(
+        actions.model_dump(mode="json", exclude={"suite_plan", "suite_execution_id"}),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    assert _decode(body, hashlib.sha256(body).hexdigest()) == actions
