@@ -1,8 +1,20 @@
-/** Loopback session BFF. Never substitutes a server operator token for a user. */
+import { publicOrigin } from "./public-origin.mjs";
+
+/** Session BFF. Never substitutes a server operator token for a user. */
 export async function sessionBridge(request: Request, segments: string[]): Promise<Response> {
   const url=new URL(request.url), host=request.headers.get("host") ?? url.host;
-  const origin=`http://${host}`;
-  if(!/^(127\.0\.0\.1|localhost):[0-9]{1,5}$/.test(host) ||
+  const mode=process.env.REPLAYFORGE_DEPLOYMENT_MODE ?? "LOCAL_DEVELOPMENT";
+  let origin=`http://${host}`, cookieName="rf_dev_session";
+  if(mode==="PUBLIC_DEPLOYMENT") {
+    const configured=process.env.REPLAYFORGE_PUBLIC_ORIGIN ?? "";
+    const parsed=publicOrigin(configured);
+    if(!parsed || parsed.host!==host) return Response.json({error_class:"PUBLIC_ORIGIN_INVALID"},{status:503});
+    origin=configured;
+    cookieName="__Host-rf_session";
+  } else if(mode!=="LOCAL_DEVELOPMENT") {
+    return Response.json({error_class:"DEPLOYMENT_MODE_INVALID"},{status:503});
+  }
+  if((mode==="LOCAL_DEVELOPMENT" && !/^(127\.0\.0\.1|localhost):[0-9]{1,5}$/.test(host)) ||
      request.headers.get("sec-fetch-site")==="cross-site" ||
      (request.headers.has("origin") && request.headers.get("origin")!==origin)) {
     return Response.json({error_class:"LOCAL_ORIGIN_REQUIRED"},{status:403});
@@ -29,10 +41,14 @@ export async function sessionBridge(request: Request, segments: string[]): Promi
     return Response.json({error_class:"BACKEND_NOT_CONFIGURED"},{status:503});
   const cookie=request.headers.get("cookie") ?? "";
   if(cookie.length>8192) return Response.json({error_class:"AUTH_REQUIRED"},{status:401});
-  const values=cookie.split(";").map(v=>v.trim()).filter(v=>v.startsWith("rf_dev_session="));
-  if(values.length!==1 || !/^rf_dev_session=[A-Za-z0-9_-]{43}$/.test(values[0]))
+  const values=cookie.split(";").map(v=>v.trim()).filter(v=>v.startsWith(`${cookieName}=`));
+  if(values.length!==1 || !new RegExp(`^${cookieName}=[A-Za-z0-9_-]{43}$`).test(values[0]))
     return Response.json({error_class:"AUTH_REQUIRED"},{status:401});
   const headers=new Headers({Cookie:values[0],"Accept-Encoding":"identity"});
+  if(mode==="PUBLIC_DEPLOYMENT") {
+    headers.set("Host",host);
+    headers.set("X-Forwarded-Proto","https");
+  }
   if(request.headers.has("origin")) headers.set("Origin",request.headers.get("origin")!);
   if(request.headers.has("x-csrf-token")) {
     const csrf=request.headers.get("x-csrf-token")!;

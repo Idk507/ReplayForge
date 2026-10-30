@@ -260,9 +260,12 @@ def dispatch_once(
     lease = store.claim(
         worker_id,
         stages=(Stage.CREATED, Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING),
+        first_attempt_only=True,
     )
     if lease is None:
         return WorkerResult(status="IDLE")
+    if not store.collection_first_claim(lease):
+        raise BrokerError("COLLECTION_RECONCILIATION_REQUIRED")
     state_owner, state = store.claimed_run(lease)
     result = client.dispatch(lease, state.version, paths)
     persisted = store.get(lease.run_id, state_owner)

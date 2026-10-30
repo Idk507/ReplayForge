@@ -1,7 +1,9 @@
 """Explicit loopback GitHub-session startup; no provider I/O at construction."""
 
 import os
+import re
 from collections.abc import Mapping
+from ipaddress import ip_address
 from pathlib import Path
 
 import psycopg
@@ -9,6 +11,7 @@ from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretBytes, SecretStr
 
@@ -33,7 +36,9 @@ class AuthLocalConfig(BaseModel):
     publication_key_path: str | None = None
 
     @classmethod
-    def from_env(cls, values: Mapping[str, str] | None = None) -> "AuthLocalConfig":
+    def from_env(
+        cls, values: Mapping[str, str] | None = None, *, public: bool = False
+    ) -> "AuthLocalConfig":
         values = os.environ if values is None else values
         try:
 
@@ -42,8 +47,31 @@ class AuthLocalConfig(BaseModel):
                 if not 1 <= len(raw) <= 4096:
                     raise ValueError
                 info = conninfo_to_dict(raw)
+                private_host = values.get("REPLAYFORGE_PRIVATE_DATABASE_HOST", "")
+                if public:
+                    try:
+                        ip_address(private_host)
+                    except ValueError:
+                        pass
+                    else:
+                        raise ValueError
                 if (
-                    info.get("host") not in {"127.0.0.1", "localhost", "::1"}
+                    (
+                        not public
+                        and info.get("host") not in {"127.0.0.1", "localhost", "::1"}
+                    )
+                    or (
+                        public
+                        and (
+                            not re.fullmatch(
+                                r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+",
+                                private_host,
+                            )
+                            or private_host in {"localhost", "127.0.0.1"}
+                            or info.get("host") != private_host
+                            or info.get("sslmode") != "verify-full"
+                        )
+                    )
                     or not all(info.get(v) for v in ("user", "password", "dbname"))
                     or set(info)
                     - {
@@ -54,10 +82,12 @@ class AuthLocalConfig(BaseModel):
                         "password",
                         "sslmode",
                         "connect_timeout",
+                        *(["sslrootcert"] if public else []),
                     }
                 ):
                     raise ValueError
-                info["hostaddr"] = "::1" if info["host"] == "::1" else "127.0.0.1"
+                if not public:
+                    info["hostaddr"] = "::1" if info["host"] == "::1" else "127.0.0.1"
                 info["port"] = info.get("port", "5432")
                 info["connect_timeout"] = "5"
                 info["options"] = "-c statement_timeout=5000 -c lock_timeout=3000"
@@ -66,12 +96,28 @@ class AuthLocalConfig(BaseModel):
             api, api_info = dsn("REPLAYFORGE_DATABASE_URL")
             auth, auth_info = dsn("REPLAYFORGE_AUTH_DATABASE_URL")
             if (
-                any(api_info[k] != auth_info[k] for k in ("hostaddr", "port", "dbname"))
+                any(
+                    api_info.get(k) != auth_info.get(k)
+                    for k in (
+                        ("host", "port", "dbname")
+                        if public
+                        else ("hostaddr", "port", "dbname")
+                    )
+                )
                 or api_info["user"] == auth_info["user"]
             ):
                 raise ValueError
             enabled = values.get("REPLAYFORGE_AUTH_ENABLE_GITHUB", "false")
             if enabled not in {"true", "false"}:
+                raise ValueError
+            if public and (
+                values.get("REPLAYFORGE_DEPLOYMENT_MODE") != "PUBLIC_DEPLOYMENT"
+                or enabled != "true"
+            ):
+                raise ValueError
+            if public and values.get("REPLAYFORGE_AUTH_API_ORIGIN") != values.get(
+                "REPLAYFORGE_AUTH_WEB_ORIGIN"
+            ):
                 raise ValueError
             encryption = bytes.fromhex(
                 values.get("REPLAYFORGE_AUTH_ENCRYPTION_KEY_HEX", "")
@@ -83,14 +129,14 @@ class AuthLocalConfig(BaseModel):
                 raise ValueError
             collection_key = None
             if collection == "true":
-                import re
-
                 key = values.get("REPLAYFORGE_COLLECTION_WORKER_KEY", "")
                 if enabled != "true" or not re.fullmatch(r"[A-Za-z0-9_-]{43}", key):
                     raise ValueError
                 collection_key = SecretStr(key)
             publication = values.get("REPLAYFORGE_ENABLE_GITHUB_PUBLICATION", "false")
             if publication not in {"true", "false"}:
+                raise ValueError
+            if public and (collection != "false" or publication != "false"):
                 raise ValueError
             key_path = values.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
             branch = values.get("REPLAYFORGE_APPROVAL_TARGET_BRANCH") or None
@@ -116,14 +162,16 @@ class AuthLocalConfig(BaseModel):
                     web_origin=values.get(
                         "REPLAYFORGE_AUTH_WEB_ORIGIN", "http://127.0.0.1:3000"
                     ),
-                    development=True,
+                    development=not public,
                 ),
                 encryption_key=SecretBytes(encryption),
                 hash_key=SecretBytes(hashing),
                 allow_live=enabled == "true",
             )
         except (ValueError, TypeError, psycopg.Error, AuthDenied):
-            raise AuthDenied("AUTH_LOCAL_CONFIG_INVALID") from None
+            raise AuthDenied(
+                "AUTH_PUBLIC_CONFIG_INVALID" if public else "AUTH_LOCAL_CONFIG_INVALID"
+            ) from None
 
 
 def _role(dsn: SecretStr, *, auth: bool) -> None:
@@ -150,7 +198,32 @@ def create_from_env() -> FastAPI:
     Separate restricted auth and execution roles on one local DB are mandatory.
     Startup does not exchange credentials, list repositories or create a PR.
     """
-    config = AuthLocalConfig.from_env()
+    return _create_with_config(AuthLocalConfig.from_env())
+
+
+def create_public_from_env() -> FastAPI:
+    """Start behind a trusted local proxy; bind Uvicorn to loopback only."""
+    config = AuthLocalConfig.from_env(public=True)
+    app = _create_with_config(config)
+
+    @app.get("/health/live")
+    def live() -> JSONResponse:
+        return JSONResponse({"status": "live"})
+
+    @app.get("/health/ready")
+    def ready() -> JSONResponse:
+        try:
+            for dsn in (config.api_dsn, config.auth_dsn):
+                with psycopg.connect(dsn.get_secret_value(), connect_timeout=5) as conn:
+                    conn.execute("SELECT 1").fetchone()
+        except psycopg.Error:
+            return JSONResponse({"status": "unavailable"}, status_code=503)
+        return JSONResponse({"status": "ready"})
+
+    return app
+
+
+def _create_with_config(config: AuthLocalConfig) -> FastAPI:
     try:
         _role(config.auth_dsn, auth=True)
         _role(config.api_dsn, auth=False)

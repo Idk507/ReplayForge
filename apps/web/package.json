@@ -8,7 +8,8 @@
     "start": "node scripts/next.mjs start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:public": "playwright test --config=playwright.public.config.ts"
   },
   "dependencies": {
     "next": "16.4.2",

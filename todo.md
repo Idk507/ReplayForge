@@ -1,8 +1,52 @@
 # ReplayForge — Delivery Tracker
 
-**Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. All boxes initially unchecked: no implementation or live test is asserted by this documentation package.
+**Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. Checkboxes track observed evidence; milestone completion requires the original acceptance criteria and linked results.
 
-## Current focus - core repair orchestration, 2026-10-25
+## Current focus - public full-stack deployment, 2026-10-30
+
+**Latest live checkpoint:** the additional authorized grant-completion execution
+succeeded: revision 0036, verified TLS and separate API/auth roles. The real
+three-container workbench is public at
+https://replayforge-web.blacksky-3aa3a460.centralindia.azurecontainerapps.io .
+Post-restart app revision replayforge-web--0000002 is active and Healthy. Five public anonymous Playwright checks pass again (37.1s; evidence: docs/evidence/public-workbench-post-restart-20261030-035217.xml). Live OAuth now succeeds as Idk507, and identity persists across browser refresh. Revision-restart session persistence is still unproven. Callback was saved and real OAuth previously succeeded before restart. Repository listing is empty and its cause is unconfirmed; no permissions were expanded. The fresh-create script still does not reproduce the live proxy override.
+
+- [ ] Public full-stack deployment remains incomplete. The local session BFF,
+  exact HTTPS-origin/cookie checks, API verified-TLS/separate-role startup,
+  three pinned images, NGINX proxy, health routes, and focused deployment tests
+  are prepared. The Docker build-context test passed (1 passed); targeted
+  Next lint/typecheck, Ruff/mypy, image startup, and Alembic-head checks are
+  recorded in `docs/evidence/fullstack-deployment-local-20261029.md`.
+
+  Under the user's bounded approval, created the private Southeast Asia VNet,
+  PostgreSQL delegated subnet, DNS link, reciprocal Connected peering, PostgreSQL
+  18 B1ms/32-GiB/7-day server with public access disabled, and scoped ACR identity
+  assignments. Reused the existing Central India ACA environment, VNet, ACR and
+  DNS zone. Rechecked and pushed the three approved image digests. The server is
+  `Ready`; estimated baseline is about $28.40/month before usage/network/logs/tax.
+
+  The first invalid Job name was rejected (HTTP 400) and reconciled as absent.
+  The original private bootstrap Job `rf-db-bootstrap-20261029` was created and
+  started once; execution `rf-db-bootstrap-20261029-jnv9unb` failed with exit
+  code 20 during Alembic. Source review found its `rf_migrator` schema CREATE
+  grant was placed after Alembic; this ordering is fixed locally. The approved
+  workspace link was then configured and verified `Succeeded`.
+
+  One authorized recovery Job `rf-db-recovery-20261030` was created (HTTP 201)
+  and started once (HTTP 200). Execution `rf-db-recovery-20261030-nybaja8`
+  failed with container exit code 31. The workspace and Container Apps log
+  endpoint returned no retained rows; the execution replica was already
+  cleaned up. The recovery script's exit 31 identifies only an unexpected
+  Python error, not the phase or migration revision. The Windows host has no
+  private DNS or TCP/5432 route. The actual DB revision and role ACL state are
+  therefore unknown; do not deploy the app against the database yet. The
+  one-shot authorization is exhausted; no further Job starts, DB writes,
+  reset, stamp, or cleanup were performed. No public Container App or OAuth
+  callback update exists. M3, M4 and public deployment remain open.
+
+  Exact resources, costs, failed-request evidence, recovery scripts and
+  cleanup requirements are in
+  `docs/evidence/fullstack-deployment-local-20261029.md` and
+  `docs/evidence/azure-deployment-operation-journal-20261029.jsonl`.
 
 - [x] Authorized source-to-workspace handoff and clean replay correction,
 2026-10-26. The internal auth broker now fetches only current-consent manifest
@@ -722,3 +766,24 @@ attempts. Next priority: authenticated source-broker-to-worker handoff, then ful
 M3 runner/verifier progression; reviewer/write brokerage follows verified evidence.
 Page2 provider metadata returned50 valid entries; intermittent UI failure is not
 claimed reproduced. Actual user picker confirmation remains pending. M3/M4 open.
+  Docker build-context check also excludes local SQLite/PostgreSQL data and dump
+  artifacts from included source roots while retaining SQL migrations; the
+  synthetic Docker build-context test passed (1 passed, exit 0). JUnit SHA256
+  is recorded in the deployment evidence report.
+
+## 2026-10-30 delayed retained-log reconciliation (supersedes unknown revision)
+Read-only workspace search found the execution markers in `ContainerAppConsoleLogs_CL` after ingestion delay. The earlier queries used `ContainerAppConsoleLogs`, so the earlier no-logs conclusion was premature. Retained evidence: `docs/evidence/postgres-recovery-retained-markers-20261030.json`.
+
+The preflight confirmed an EMPTY database, zero application tables, certificate-verified TLS, valid role flags, and `migrator_create=false`. Every migration from 0001 through 0036 emitted MIGRATION_OK, including 0036 at 2026-10-29T18:37:06.3417297Z. At 18:37:10.237709Z the script emitted `RECOVERY_FAILED error_class=SyntaxError`. Thus forward migration to 0036 succeeded; failure occurred afterward during runtime grants. The submitted sequence query's reserved `table` alias is consistent with this SQL syntax error and is corrected locally. Runtime table grants may have been applied; sequence grants and final role validation remain incomplete. No further Job start or database write was submitted. A separately scoped grant-completion/validation execution is required because the prior authorization expressly allowed only one recovery start. Public deployment remains pending role/TLS validation.
+
+## 2026-10-30 real public application deployed
+The separately authorized grant-completion Job `rf-db-grants-20261030-vlhnnn4` succeeded. Create operation ba00bf32a86d4bee8781376594065fad; start operation 7ad15b9e4a274614a5c8abe32cdfe06e. Retained markers confirm revision 0036, TLS verify-full, and validated separate API/auth role contracts.
+
+The actual three-container application was created with HTTP 201 (operation 6d01fcb7a41149328daa1905808989fe). URL: https://replayforge-web.blacksky-3aa3a460.centralindia.azurecontainerapps.io . Initial proxy startup failed because the long hostname exceeded NGINX's server_names_hash_bucket_size default. Applied bucket size 128 using existing image command override (PATCH 202, operation 7c6f0fae15714abc9f80ad0fb66f5ba5); local template also fixed. Revision replayforge-web--0000001.
+
+Public Playwright: 5 passed in 8.1 seconds. Actual HTTPS tests covered workbench sign-in boundary, evaluation disclosure, anonymous API 401, readiness using both actual database connections, and mobile no-overflow. Evidence: docs/evidence/public-workbench-passing-20261030.xml. Initial failed tests retained separately in public-first-start-failed-20261030.xml.
+
+GitHub App callback configuration is currently blocked at GitHub sudo-mode human MFA. An operator prompt is open. Real login, authenticated run persistence/history, restart acceptance and Devpost primary URL update are not yet accepted. No live M3 execution or M4 benchmark acceptance is claimed. No Git push or PR occurred.
+
+
+

@@ -57,6 +57,21 @@ test("SSE cursor ignores replayed IDs and rejects ID/body mismatch", () => {
   expect(()=>parseEvents(frame(3)+frame(2),1)).toThrow();
 });
 
+test("timeline displays persisted events when execution status is unavailable", async ({page}) => {
+  await page.route("**/api/backend/**", async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/executions")) return route.fulfill({status:503, body:"{}"});
+    if (path.endsWith("/events")) return route.fulfill({contentType:"text/event-stream",body:`id: 1\nevent: CREATED\ndata: ${JSON.stringify({sequence:1,event_type:"CREATED",stage:"CREATED",version:0,observed_at:"2026-10-20T10:00:00Z",trace_id:repo})}\n\n`});
+    if (path.endsWith("/research")) return route.fulfill({json:[]});
+    if (path.endsWith("/patch")) return route.fulfill({status:404,body:"{}"});
+    return route.fulfill({json:path.endsWith("/runs") ? [synthetic] : synthetic});
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name:/Run 12345678/}).click();
+  await expect(page.locator(".timeline li")).toHaveCount(1);
+  await expect(page.locator(".timeline li")).toContainText("CREATED");
+});
+
 test("synthetic contract: reconnect preserves cursor, missing gates stay missing, mobile has no overflow", async ({page}) => {
   let eventCalls = 0;
   const cursors: string[] = [];

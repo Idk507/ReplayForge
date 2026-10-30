@@ -86,6 +86,9 @@ def test_worker_restart_after_uncertain_collection_keeps_post_single():
         def claimed_run(self, _lease):
             return uuid4(), SimpleNamespace(version=0)
 
+        def collection_first_claim(self, _lease):
+            return True
+
     store = StickyLeaseStore()
     with BrokerClient(
         "http://127.0.0.1:8000",
@@ -188,6 +191,45 @@ def test_worker_configuration_masks_credentials_and_uses_broker_only():
         }
     )
     assert c.paths == ("README.md",) and "synthetic" not in repr(c)
+
+
+def test_azure_worker_requires_pinned_host_role_and_verified_tls(tmp_path):
+    from psycopg.conninfo import conninfo_to_dict
+
+    from scripts.run_authenticated_worker import BrokerWorkerConfig, ConfigError
+
+    root = tmp_path / "ca.pem"
+    root.write_text("test CA placeholder")
+    host = "demo.postgres.database.azure.com"
+    values = {
+        "REPLAYFORGE_COLLECTION_WORKER_MODE": "azure",
+        "REPLAYFORGE_COLLECTION_DB_HOST": host,
+        "REPLAYFORGE_COLLECTION_DB_ROLE": "rf_collection_worker",
+        "REPLAYFORGE_DATABASE_URL": (
+            f"host={host} dbname=demo user=rf_collection_worker "
+            f"password=synthetic sslmode=verify-full sslrootcert={root.as_posix()}"
+        ),
+        "REPLAYFORGE_COLLECTION_WORKER_KEY": "s" * 43,
+    }
+    info = conninfo_to_dict(BrokerWorkerConfig.from_env(values).dsn.get_secret_value())
+    assert info["sslmode"] == "verify-full" and "hostaddr" not in info
+    for change in (
+        {"REPLAYFORGE_COLLECTION_WORKER_MODE": "local"},
+        {"REPLAYFORGE_COLLECTION_DB_HOST": "other.postgres.database.azure.com"},
+        {"REPLAYFORGE_COLLECTION_DB_ROLE": "rf_other"},
+        {
+            "REPLAYFORGE_DATABASE_URL": values["REPLAYFORGE_DATABASE_URL"].replace(
+                "verify-full", "require"
+            )
+        },
+        {
+            "REPLAYFORGE_DATABASE_URL": values["REPLAYFORGE_DATABASE_URL"].replace(
+                str(root.as_posix()), "missing.pem"
+            )
+        },
+    ):
+        with pytest.raises(ConfigError):
+            BrokerWorkerConfig.from_env(values | change)
 
 
 def test_launcher_excludes_inherited_provider_secrets(tmp_path, monkeypatch):

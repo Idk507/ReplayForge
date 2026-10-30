@@ -1,0 +1,7 @@
+FROM replayforge-local-api:dev
+COPY --chown=65532:65532 scripts/run_authenticated_worker.py /app/scripts/run_authenticated_worker.py
+COPY --chown=65532:65532 services/orchestrator/source_broker.py /app/services/orchestrator/source_broker.py
+COPY --chown=65532:65532 services/persistence/store.py /app/services/persistence/store.py
+USER 65532:65532
+RUN test -r /etc/ssl/certs/ca-certificates.crt
+CMD ["python", "-m", "scripts.run_authenticated_worker", "--run", "--max-ticks", "1000"]

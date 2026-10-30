@@ -348,6 +348,24 @@ class Store:
                 row["checkpoint"]
             )
 
+    def collection_first_claim(self, lease: Lease) -> bool:
+        """Allow collection dispatch only on a fresh first fenced acquisition.
+
+        A prior claim may have submitted a request whose response was lost.
+        Reconciliation is required rather than guessing whether it ran.
+        """
+        lease = Lease.model_validate(lease.model_dump())
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT attempt_count FROM job_leases WHERE run_id=%s
+                AND worker_id=%s AND token=%s AND status='leased'
+                AND leased_until>clock_timestamp()""",
+                (lease.run_id, lease.worker_id, lease.token),
+            ).fetchone()
+            if row is None:
+                raise StoreError("LEASE_LOST")
+            return row["attempt_count"] == 1
+
     def context(self, run_id: UUID, owner: UUID, artifact_id: str) -> ContextBundle:
         """Owner-scoped retained read with checksum and schema verification."""
         if not re.fullmatch(r"sha256:[a-f0-9]{64}", artifact_id):
@@ -656,9 +674,10 @@ class Store:
         triage_only: bool = False,
         stages: tuple[Stage, ...] | None = None,
         run_id: UUID | None = None,
+        first_attempt_only: bool = False,
     ) -> Lease | None:
         """Claim queued/expired work; at most three acquisitions, server clock."""
-        if type(triage_only) is not bool:
+        if type(triage_only) is not bool or type(first_attempt_only) is not bool:
             raise StoreError("CLAIM_STAGE_INVALID")
         if run_id is not None and not isinstance(run_id, UUID):
             raise StoreError("CLAIM_RUN_INVALID")
@@ -679,8 +698,9 @@ class Store:
                 AND (%s::text[] IS NULL OR
                      r.checkpoint->>'current_stage'=ANY(%s::text[]))
                 AND (%s::uuid IS NULL OR r.id=%s)
+                AND (NOT %s OR j.attempt_count=0)
                 ORDER BY r.id FOR UPDATE OF r,j SKIP LOCKED LIMIT 1""",
-                (triage_only, names, names, run_id, run_id),
+                (triage_only, names, names, run_id, run_id, first_attempt_only),
             ).fetchone()
             if row is None:
                 return None

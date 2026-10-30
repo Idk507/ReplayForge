@@ -44,16 +44,20 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
     async function poll() {
       try {
         const current = await request(`runs/${selected}`, runSchema, {signal: abort.signal});
-        const executions = await request(`runs/${selected}/executions`, executionStatusSchema, {signal: abort.signal});
         const response = await fetch(`/api/backend/runs/${selected}/events?after=${cursor}`, {signal: abort.signal, cache: "no-store"});
         if (!response.ok) throw new ApiError(response.status);
         const page = parseEvents(await response.text(), cursor);
         if (stopped) return;
         setRun(previous => previous?.run_id === current.run_id && previous.version >= current.version ? previous : current); setRuns(items => items.map(item => item.run_id === current.run_id && item.version <= current.version ? current : item));
         setEvents(items => [...items, ...page].slice(-500));
-        setExecutionStatus(executions);
         if (page.length) cursor = page[page.length - 1].sequence;
-        setConnection("Connected"); setDetailError(""); failures = 0;
+        setConnection("Connected"); failures = 0;
+        try {
+          const executions = await request(`runs/${selected}/executions`, executionStatusSchema, {signal: abort.signal});
+          if (!stopped) {setExecutionStatus(executions); setDetailError("");}
+        } catch (e) {
+          if (!stopped) {setExecutionStatus(null); setDetailError(errorMessage(e));}
+        }
         timer = setTimeout(poll, page.length === 100 ? 50 : terminal.has(current.current_stage) || sessionMode ? 10000 : 2500);
       } catch (e) {
         if (stopped) return;

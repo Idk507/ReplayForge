@@ -188,7 +188,8 @@ def test_worker_claim_http_broker_and_persisted_stage_agree(store):
     c, j, session, broker, payload, fetched = prepared(store)
     with j.store._connection() as db:
         db.execute(
-            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            "UPDATE job_leases SET status='queued',token=NULL,attempt_count=0 "
+            "WHERE run_id=%s",
             (payload["lease"]["run_id"],),
         )
     internal = TestClient(
@@ -208,6 +209,111 @@ def test_worker_claim_http_broker_and_persisted_stage_agree(store):
     ) as client:
         result = dispatch_once(store, uuid4(), client, ("README.md",))
     assert result.stage.value == "TRIAGING" and len(fetched) == 1
+
+
+def test_restricted_worker_claims_and_broker_persists_events(store):
+    """The worker identity has no access to source or auth custody tables."""
+    import os
+
+    import httpx
+    import psycopg
+    from fastapi.testclient import TestClient
+    from psycopg import sql
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    from services.orchestrator.source_broker import BrokerClient, dispatch_once
+    from services.persistence.store import Store
+
+    c, journal, session, _broker, payload, fetched = prepared(store)
+    run_id = payload["lease"]["run_id"]
+    role = "rf_collection_" + uuid4().hex
+    admin_dsn = os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]
+    with psycopg.connect(admin_dsn, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(role)))
+        try:
+            admin.execute(
+                sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL("GRANT SELECT, UPDATE ON runs,job_leases TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL("GRANT SELECT, INSERT ON run_events TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            with journal.store._connection() as db:
+                db.execute(
+                    "UPDATE job_leases SET status='queued',token=NULL,attempt_count=0 "
+                    "WHERE run_id=%s",
+                    (run_id,),
+                )
+            conninfo = conninfo_to_dict(admin_dsn)
+            conninfo["user"] = role
+            worker_store = Store(make_conninfo("", **conninfo))
+            internal = TestClient(
+                c.app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 50000)
+            )
+
+            def handle(req):
+                response = internal.request(
+                    req.method,
+                    str(req.url),
+                    headers=dict(req.headers),
+                    content=req.content,
+                )
+                return httpx.Response(response.status_code, content=response.content)
+
+            with BrokerClient(
+                "http://127.0.0.1:8000",
+                SecretStr("s" * 43),
+                transport=httpx.MockTransport(handle),
+            ) as client:
+                result = dispatch_once(worker_store, uuid4(), client, ("README.md",))
+            assert result.stage.value == "TRIAGING" and len(fetched) == 1
+            events = store.events(result.run_id, session.user_id)
+            assert any(e.event_type == "LEASE_CLAIMED" for e in events)
+            assert any(e.stage.value == "TRIAGING" for e in events)
+            with psycopg.connect(make_conninfo("", **conninfo)) as restricted:
+                assert restricted.execute(
+                    "SELECT has_table_privilege(current_user,"
+                    "'auth_credentials','SELECT')"
+                ).fetchone() == (False,)
+        finally:
+            admin.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
+            admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role)))
+
+
+def test_expired_claim_is_not_redispatched_after_restart(store):
+    import httpx
+
+    from services.orchestrator.source_broker import BrokerClient, dispatch_once
+
+    _c, journal, _session, _broker, payload, fetched = prepared(store)
+    with journal.store._connection() as db:
+        db.execute(
+            "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+            "WHERE run_id=%s",
+            (payload["lease"]["run_id"],),
+        )
+    calls = []
+
+    def handle(request):
+        calls.append(request.method)
+        return httpx.Response(200, json={"enabled": True})
+
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(handle),
+    ) as client:
+        assert dispatch_once(store, uuid4(), client, ("README.md",)).status == "IDLE"
+        assert dispatch_once(store, uuid4(), client, ("README.md",)).status == "IDLE"
+    assert calls == ["GET", "GET"] and not fetched
 
 
 def test_cancelled_collection_never_fetches_source(store):
