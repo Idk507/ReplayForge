@@ -1,8 +1,8 @@
 """Synthetic pair correlation; never claims fresh provider compute."""
 
-from uuid import uuid4
 import hashlib
 import json
+from uuid import uuid4
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
