@@ -229,8 +229,19 @@ def test_restricted_worker_claims_and_broker_persists_events(store):
     role = "rf_collection_" + uuid4().hex
     admin_dsn = os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]
     with psycopg.connect(admin_dsn, autocommit=True) as admin:
-        admin.execute(sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(role)))
+        password = uuid4().hex + uuid4().hex
+        admin.execute(
+            sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(
+                sql.Identifier(role), sql.Literal(password)
+            )
+        )
         try:
+            # A CREATEROLE creator must inherit the role to drop its objects later.
+            admin.execute(
+                sql.SQL("GRANT {} TO CURRENT_USER WITH INHERIT TRUE").format(
+                    sql.Identifier(role)
+                )
+            )
             admin.execute(
                 sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(
                     sql.Identifier(role)
@@ -254,6 +265,7 @@ def test_restricted_worker_claims_and_broker_persists_events(store):
                 )
             conninfo = conninfo_to_dict(admin_dsn)
             conninfo["user"] = role
+            conninfo["password"] = password
             worker_store = Store(make_conninfo("", **conninfo))
             internal = TestClient(
                 c.app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 50000)
