@@ -1,6 +1,6 @@
 # Claude development handoff
 
-Updated 2026-10-30. Authoritative detail stays in `todo.md`, `milestones.md` and the linked docs; this file is only continuity state.
+Updated 2026-11-01. Authoritative detail stays in `todo.md`, `milestones.md` and the linked docs; this file is only continuity state.
 
 ## Branch and base
 - Branch `claude/replayforge-local-product`, based on `ffa8cc7` (public `main`) plus:
@@ -36,13 +36,7 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 
 ## Findings
 - Run creation already writes a `CREATED` event and a job lease in one transaction (`services/persistence/store.py` ~L552), so an empty production timeline was more likely the UI request-ordering bug (fixed locally, regression-tested) or a stale deployed build — still unproven for run `56f56757`.
-- `scripts/run_authenticated_worker.py` already composes collection, triage (opt-in inference) and patch dispatch; local mode is loopback only. The "never repeat an unknown external call" behavior must stay until a journaled reconciliation exists.
-
-## Next tasks (in order)
-1. Operator runs the two DB commands above; fix any failures.
-2. Design the explicit reconciliation workflow for previously claimed collection jobs (states: never started / claim acquired / dispatched / outcome unknown / completed / failed), using existing journal contracts; add disposable-DB tests incl. crash-after-dispatch.
-3. Local E2E acceptance: create run → worker (synthetic source transport) → manifest → timeline after reload.
-4. Then repository context builder → investigation (fixture provider first) → repair → execution adapter (fake only locally) → verification → frontend polish → evaluation.
+- `scripts/run_authenticated_worker.py` already composes collection, triage (opt-in inference) and patch dispatch; local mode is loopback only. The never-reclaim behavior is retained; recovery is now the audited operator reconciliation.
 
 ## Decisions
 - Did not edit or clean the Codex worktree or the original dirty checkout.
