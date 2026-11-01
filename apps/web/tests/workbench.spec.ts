@@ -291,3 +291,35 @@ for (const [stage, title] of [
     await expect(page.getByText("No retained verdict")).toBeVisible();
   });
 }
+
+for (const [code, extra, title, body] of [
+  ["WORKER_NOT_CLAIMING", {job_status: "queued", attempt: 0, age_seconds: 600, lease_seconds_left: null, dispatch_state: null, operator_action_required: false}, "Queued: no worker has claimed this run", /no progress is implied/],
+  ["NEEDS_RECONCILIATION", {job_status: "leased", attempt: 1, age_seconds: 900, lease_seconds_left: 0, dispatch_state: "SENT_UNCERTAIN", operator_action_required: true}, "Collection needs operator reconciliation", /will not resend automatically/],
+  ["COLLECTING", {job_status: "leased", attempt: 1, age_seconds: 20, lease_seconds_left: 25, dispatch_state: "SENT_UNCERTAIN", operator_action_required: false}, "Collecting source", /no files are shown until it is retained/],
+] as const) {
+  test(`diagnostics explain ${code} without implying progress`, async ({page}) => {
+    const queued = {...synthetic, current_stage: "CREATED", version: 0, failure_reason: null};
+    await page.route("**/api/backend/**", route => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith("/events")) return route.fulfill({contentType: "text/event-stream", body: ""});
+      if (path.endsWith("/diagnostics")) return route.fulfill({json: {run_id: runId, stage: "CREATED", code, ...extra}});
+      if (path.endsWith("/executions")) return route.fulfill({json: {run_id: runId, phases: []}});
+      if (path.endsWith("/research")) return route.fulfill({json: []});
+      if (path.endsWith("/verification") || path.endsWith("/patch")) return route.fulfill({status: 404, json: {}});
+      return route.fulfill({json: path.endsWith("/runs") ? [queued] : queued});
+    });
+    await page.goto("/");
+    await page.getByRole("button", {name: /Run 12345678/}).click();
+    await expect(page.getByText(title, {exact: true})).toBeVisible();
+    await expect(page.getByText(body)).toBeVisible();
+    await expect(page.getByText("Verified", {exact: true})).toHaveCount(0);
+  });
+}
+
+test("bridge allows only a GET for the read-only diagnostics path", async () => {
+  const headers = {host: "127.0.0.1:3000"};
+  const ok = await bridge(new Request("http://127.0.0.1:3000/api", {headers}), ["runs", runId, "diagnostics"]);
+  expect(ok.status).not.toBe(404);
+  const post = await bridge(new Request("http://127.0.0.1:3000/api", {method: "POST", headers: {...headers, origin: "http://127.0.0.1:3000"}, body: "{}"}), ["runs", runId, "diagnostics"]);
+  expect(post.status).toBe(404);
+});

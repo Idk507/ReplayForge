@@ -20,6 +20,7 @@ from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
 from services.orchestrator.research import ResearchBroker, RetainedResearch
+from services.persistence.collection_journal import CollectionJournal, Diagnostic
 from services.persistence.evidence import EvidenceStore
 from services.persistence.execution_status import (
     ExecutionStatusSnapshot,
@@ -331,6 +332,13 @@ def create_app(
         run_id: UUID, artifact_id: ArtifactID, owner: Annotated[UUID, Depends(identity)]
     ) -> SourceManifest:
         return store.source_manifest(run_id, owner, artifact_id)
+
+    @app.get("/api/v1/runs/{run_id}/diagnostics")
+    def diagnostics(
+        run_id: UUID, owner: Annotated[UUID, Depends(identity)]
+    ) -> Diagnostic:
+        """Owner-scoped, read-only queue/lease state; no credentials, no actions."""
+        return CollectionJournal(store).diagnose(run_id, owner)
 
     @app.get("/api/v1/runs/{run_id}/events")
     def events(

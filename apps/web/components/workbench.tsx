@@ -2,10 +2,33 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { createSchema, executionStatusSchema, researchSchema, type ExecutionStatus, type Research, gateNames, manifestSchema, parseEvents, patchSchema, runSchema, sourceManifestSchema, summarySchema, uuid, type Manifest, type Patch, type Run, type RunEvent, type SourceManifest, type Summary } from "../lib/contracts";
+import { createSchema, diagnosticSchema, executionStatusSchema, type Diagnostic, researchSchema, type ExecutionStatus, type Research, gateNames, manifestSchema, parseEvents, patchSchema, runSchema, sourceManifestSchema, summarySchema, uuid, type Manifest, type Patch, type Run, type RunEvent, type SourceManifest, type Summary } from "../lib/contracts";
 import { ApiError, errorMessage, request } from "../lib/client";
 import ReviewPanel from "./review-panel";
 
+const preCollection = new Set(["CREATED", "VALIDATING", "QUEUED", "COLLECTING"]);
+const diagnosticTitle: Record<Diagnostic["code"], string> = {
+  WAITING_FOR_WORKER: "Queued: waiting for a worker",
+  WORKER_NOT_CLAIMING: "Queued: no worker has claimed this run",
+  COLLECTING: "Collecting source",
+  NEEDS_RECONCILIATION: "Collection needs operator reconciliation",
+  JOB_EXHAUSTED: "Collection attempts exhausted",
+  JOB_STOPPED: "Collection stopped without progress",
+  ADVANCED: "Collection finished",
+  TERMINAL: "Run ended",
+};
+function diagnosticText(d: Diagnostic): string {
+  const age = d.age_seconds < 120 ? `${d.age_seconds} s` : `${Math.floor(d.age_seconds / 60)} min`;
+  switch (d.code) {
+    case "WAITING_FOR_WORKER": return `Your incident is saved and has waited ${age}. A background worker must start collection before tests, patches or verification can appear. This page does not run repository code itself.`;
+    case "WORKER_NOT_CLAIMING": return `Saved ${age} ago and still unclaimed. No collection worker appears to be running for this deployment, so nothing has been collected. Ask the operator to start the collection worker; no progress is implied.`;
+    case "COLLECTING": return `A worker holds the claim (${d.lease_seconds_left ?? 0} s of lease left). Source collection is in progress; no files are shown until it is retained.`;
+    case "NEEDS_RECONCILIATION": return `A worker claimed this run (attempt ${d.attempt}) but its lease expired${d.dispatch_state ? ` with request state ${d.dispatch_state.replaceAll("_", " ")}` : ""}. The system will not resend automatically because the outcome may be unknown. An operator must reconcile it.`;
+    case "JOB_EXHAUSTED": return "Every allowed claim attempt was used without finishing collection. An operator must review and start a new investigation.";
+    case "JOB_STOPPED": return "The job was closed before collection produced a result. An operator must review it.";
+    default: return "";
+  }
+}
 const terminal = new Set(["NOT_VERIFIED", "INCONCLUSIVE", "POLICY_BLOCKED", "CANCELLED", "CLOSED", "PR_OPENED", "PR_FAILED"]);
 const label = (text: string) => text.replaceAll("_", " ");
 const short = (text: string) => text.slice(0, 8);
@@ -16,6 +39,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
   const [selected, setSelected] = useState(""), [view, setView] = useState("timeline");
   const [events, setEvents] = useState<RunEvent[]>([]), [connection, setConnection] = useState("Not connected");
   const [executionStatus, setExecutionStatus] = useState<ExecutionStatus | null>(null);
+  const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
   const [research, setResearch] = useState<Research>([]);
   const [summary, setSummary] = useState<Summary | null>(null), [manifest, setManifest] = useState<Manifest | null>(null), [sourceManifest, setSourceManifest] = useState<SourceManifest | null>(null), [patch, setPatch] = useState<Patch | null>(null);
   const [error, setError] = useState(""), [detailError, setDetailError] = useState("");
@@ -58,6 +82,12 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
         } catch (e) {
           if (!stopped) {setExecutionStatus(null); setDetailError(errorMessage(e));}
         }
+        if (preCollection.has(current.current_stage)) {
+          try {
+            const found = await request(`runs/${selected}/diagnostics`, diagnosticSchema, {signal: abort.signal});
+            if (!stopped) setDiagnostic(found);
+          } catch { if (!stopped) setDiagnostic(null); }
+        } else if (!stopped) setDiagnostic(null);
         timer = setTimeout(poll, page.length === 100 ? 50 : terminal.has(current.current_stage) || sessionMode ? 10000 : 2500);
       } catch (e) {
         if (stopped) return;
@@ -151,7 +181,7 @@ export default function Workbench({sessionMode=false,initialRepository="",initia
         : <section className="investigation"><div className="breadcrumb">WORKSPACE <span>/</span> INVESTIGATION <span>/</span> {short(selected)}</div><div className="run-title"><div><p className="eyebrow">INCIDENT REPAIR</p><h1>Investigation <span className="mono">{short(selected)}</span></h1></div><span className={`badge ${tone(run?.current_stage ?? "LOADING")}`}>{label(run?.current_stage ?? "LOADING")}</span></div>
           <div className="identity-strip"><span>SOURCE <code>{run?.source_commit ?? "Loading…"}</code></span><span>VERSION <b>{run?.version ?? "—"}</b></span><span className="connection" role="status">● {connection}</span></div>
           {detailError && <div className="error" role="alert">{detailError} Events resume automatically from the last validated sequence.</div>}
-          {run?.current_stage==="CREATED"&&<div className="blank-panel" role="status"><strong>Queued: waiting for a worker</strong><p>Your incident is saved. A background worker must start collection before tests, patches or verification can appear. This page does not run repository code itself.</p></div>}
+          {run&&preCollection.has(run.current_stage)&&(diagnostic?<div className="blank-panel" role="status" data-code={diagnostic.code}><strong>{diagnosticTitle[diagnostic.code]}</strong><p>{diagnosticText(diagnostic)}</p></div>:run.current_stage==="CREATED"&&<div className="blank-panel" role="status"><strong>Queued: waiting for a worker</strong><p>Your incident is saved. A background worker must start collection before tests, patches or verification can appear. This page does not run repository code itself.</p></div>)}
           {run?.current_stage==="TRIAGING"&&<div className="blank-panel" role="status"><strong>Context recorded: triage is not complete</strong><p>The collected context is ready for investigation. A worker must retain a reproduction-test proposal before baseline execution can begin. No test result is implied by this checkpoint.</p></div>}
           {run?.current_stage==="REPRODUCING"&&<div className="blank-panel" role="status"><strong>Reproduction proposed: baseline not accepted</strong><p>A reproduction-test proposal is recorded. Baseline execution and evidence collection must establish the original failure before patching can start. Queued or submitted work does not prove that a test ran.</p></div>}
           {run?.failure_reason && <p className="error" role="status">Run ended: {label(run.failure_reason)}</p>}

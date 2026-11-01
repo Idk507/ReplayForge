@@ -63,6 +63,34 @@ class Reconciliation(BaseModel):
     blocked_reason: str | None = None
 
 
+DiagnosticCode = Literal[
+    "WAITING_FOR_WORKER",
+    "WORKER_NOT_CLAIMING",
+    "COLLECTING",
+    "NEEDS_RECONCILIATION",
+    "JOB_EXHAUSTED",
+    "JOB_STOPPED",
+    "ADVANCED",
+    "TERMINAL",
+]
+STALE_QUEUE_SECONDS = 120
+
+
+class Diagnostic(BaseModel):
+    """Owner-visible, read-only explanation of why a run is where it is."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    run_id: UUID
+    stage: Stage
+    code: DiagnosticCode
+    job_status: str
+    attempt: int
+    age_seconds: int
+    lease_seconds_left: int | None
+    dispatch_state: DispatchState | None
+    operator_action_required: bool
+
+
 def lease_fingerprint(lease: Lease) -> str:
     """Stable generation identifier that never stores the bearer token."""
     return hashlib.sha256(
@@ -224,6 +252,58 @@ class CollectionJournal:
     def observe(self, run_id: UUID, owner: UUID | None = None) -> Observation:
         with self.store._connection() as conn:
             return self._observe(conn, run_id, owner, False)
+
+    def diagnose(self, run_id: UUID, owner: UUID) -> Diagnostic:
+        """Classify from durable facts only; never claims progress that is absent."""
+        with self.store._connection() as conn:
+            row = conn.execute(
+                """SELECT r.checkpoint,j.status,j.attempt_count,
+                EXTRACT(EPOCH FROM clock_timestamp()-r.created_at)::int AS age,
+                EXTRACT(EPOCH FROM j.leased_until-clock_timestamp())::int AS left
+                FROM runs r JOIN job_leases j ON j.run_id=r.id
+                WHERE r.id=%s AND r.owner_id=%s""",
+                (run_id, owner),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            state = RunState.model_validate(row["checkpoint"])
+            status = str(row["status"])
+            attempt = int(str(row["attempt_count"]))
+            age = max(0, int(str(row["age"])))
+            left = None if row["left"] is None else int(str(row["left"]))
+            dispatch: DispatchState | None = None
+            if state.current_stage in PRE_COLLECTION and status == "leased":
+                dispatch = self._observe(conn, run_id, owner, False).state
+        if state.current_stage in TERMINAL:
+            code: DiagnosticCode = "TERMINAL"
+        elif state.current_stage not in PRE_COLLECTION:
+            code = "ADVANCED"
+        elif status == "exhausted":
+            code = "JOB_EXHAUSTED"
+        elif status == "done":
+            code = "JOB_STOPPED"
+        elif status == "queued":
+            code = (
+                "WORKER_NOT_CLAIMING"
+                if age > STALE_QUEUE_SECONDS
+                else "WAITING_FOR_WORKER"
+            )
+        elif left is not None and left > 0:
+            code = "COLLECTING"
+        else:
+            code = "NEEDS_RECONCILIATION"
+        return Diagnostic(
+            run_id=run_id,
+            stage=state.current_stage,
+            code=code,
+            job_status=status,
+            attempt=attempt,
+            age_seconds=age,
+            lease_seconds_left=None if left is None else max(0, left),
+            dispatch_state=dispatch,
+            operator_action_required=code
+            in {"NEEDS_RECONCILIATION", "JOB_EXHAUSTED", "JOB_STOPPED"},
+        )
 
     def candidates(self) -> tuple[Observation, ...]:
         """Operator listing: expired claims awaiting explicit reconciliation."""

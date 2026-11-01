@@ -500,3 +500,85 @@ def test_failed_collection_is_visible_and_consent_loss_never_fetches(store):
     assert after.current_stage != Stage.TRIAGING and after.source_manifest_ref is None
     assert "LEASE_CLAIMED" in events(store, run_id, session)
     assert CollectionJournal(store).observe(run_id).state == DispatchState.REJECTED
+
+
+def backdate(store, run_id, seconds):
+    with store._connection() as db:
+        db.execute(
+            "UPDATE runs SET created_at=clock_timestamp()-make_interval(secs=>%s) "
+            "WHERE id=%s",
+            (seconds, run_id),
+        )
+
+
+def test_diagnostics_distinguish_waiting_from_an_unclaimed_stale_queue(store):
+    _c, session, lease, _payload, _fetched = claimed(store)
+    requeue_job(store, lease.run_id)
+    journal = CollectionJournal(store)
+    young = journal.diagnose(lease.run_id, session.user_id)
+    assert (young.code, young.job_status, young.attempt) == (
+        "WAITING_FOR_WORKER",
+        "queued",
+        0,
+    )
+    assert not young.operator_action_required
+    backdate(store, lease.run_id, 600)
+    stale = journal.diagnose(lease.run_id, session.user_id)
+    assert stale.code == "WORKER_NOT_CLAIMING" and stale.age_seconds >= 600
+
+
+def test_diagnostics_follow_the_claim_and_never_hide_uncertainty(store):
+    _c, session, lease, payload, _fetched = claimed(store)
+    journal = CollectionJournal(store)
+    live = journal.diagnose(lease.run_id, session.user_id)
+    assert live.code == "COLLECTING" and (live.lease_seconds_left or 0) > 0
+    op = journal.record_intent(lease, payload["expected_version"])
+    journal.mark_sent(lease, op)
+    expire(store, lease.run_id)
+    stuck = journal.diagnose(lease.run_id, session.user_id)
+    assert stuck.code == "NEEDS_RECONCILIATION" and stuck.operator_action_required
+    assert stuck.dispatch_state == DispatchState.SENT_UNCERTAIN and stuck.attempt == 1
+    journal.reconcile(
+        lease.run_id,
+        session.user_id,
+        "FAIL",
+        operator=OPERATOR,
+        reason=REASON,
+        authorize=allow,
+    )
+    assert journal.diagnose(lease.run_id, session.user_id).code == "TERMINAL"
+
+
+def test_diagnostics_report_progress_only_after_the_run_advanced(store):
+    c, session, lease, _payload, _fetched = claimed(store)
+    requeue_job(store, lease.run_id)
+    client, _posts = broker_client(c)
+    with client:
+        dispatch_once(store, uuid4(), client, ("README.md",))
+    assert (
+        CollectionJournal(store).diagnose(lease.run_id, session.user_id).code
+        == "ADVANCED"
+    )
+
+
+def test_diagnostics_api_is_owner_scoped_and_read_only(store):
+    c, session, lease, _payload, _fetched = claimed(store)
+    requeue_job(store, lease.run_id)
+    r = c.get(f"/api/v1/runs/{lease.run_id}/diagnostics")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["code"] == "WAITING_FOR_WORKER" and body["run_id"] == str(lease.run_id)
+    assert set(body) == {
+        "run_id",
+        "stage",
+        "code",
+        "job_status",
+        "attempt",
+        "age_seconds",
+        "lease_seconds_left",
+        "dispatch_state",
+        "operator_action_required",
+    }
+    assert c.post(f"/api/v1/runs/{lease.run_id}/diagnostics").status_code in {404, 405}
+    with pytest.raises(StoreError, match="NOT_FOUND"):
+        CollectionJournal(store).diagnose(lease.run_id, uuid4())
