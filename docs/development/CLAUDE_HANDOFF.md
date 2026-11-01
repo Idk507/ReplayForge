@@ -8,20 +8,31 @@ Updated 2026-10-30. Authoritative detail stays in `todo.md`, `milestones.md` and
 - Imported from the original checkout (gitignored/absent in the release tree): `artifacts/` (not committed) and `docs/evidence/nebius-pytest-wheelhouse.json`.
 - Small independent fix: ruff import ordering in `services/verifier/replay.py`, `tests/unit/test_replay_pair.py`.
 
-## Validated here (actual runs, Windows, `uv sync --locked`)
+## Validated (2026-11-01, Windows, disposable PostgreSQL 18)
 | Check | Result |
 |---|---|
-| `uv run pytest tests/unit` | 992 passed |
-| `uv run ruff check .` / `ruff format --check .` | clean after import-order fix / 337 formatted |
-| `uv run mypy` | no issues in 164 files |
-| `npm run lint`, `typecheck`, `build` (apps/web) | pass |
-| `npx playwright test tests/workbench.spec.ts` | 13 passed, 1 skipped (the real-API test needs the disposable DB) |
+| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261101c.xml`, commit 441fb7d) | **1797 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 14m00s |
+| `scripts.test_postgres --web` | 16 Playwright passed incl. real local API test |
+| `tests/integration/test_collection_reconciliation.py` | 20 passed (journal, reconcile, lifecycle) |
+| ruff check/format, mypy (166 files), unit | clean; 992 passed |
+Earlier runs failed (3, then 24) and were fixed: `0036` downgrade conditional, worker schema pin 0037,
+order-dependent downgrade tests, Playwright scope. Evidence logs retained under `docs/evidence/`.
 
-## NOT validated (blocked on operator)
-- Every PostgreSQL integration test, including the 47 collection worker/broker tests and the skipped real-local-API browser test. `scripts/test_postgres.py` prompts for the local PostgreSQL administrator password (service `postgresql-x64-18` is running). Agents must not be given that password; run from your own terminal, from this worktree:
-  - `uv run python -m scripts.test_postgres --pytest-target tests/integration/test_collection_broker.py --evidence-name collection-broker-local-20261030.xml`
-  - `uv run python -m scripts.test_postgres --web --evidence-name web-local-20261030.xml --timeout-seconds 900`
-- No live GitHub, Nebius or sandbox call was made. Nothing here is VERIFIED, no real PR, and M3/M4 are unchanged (open).
+## Done this phase
+- Migration `0037` + `services/persistence/collection_journal.py`; `dispatch_once` writes intent -> SENT -> outcome.
+- Audited operator reconciliation (`scripts/reconcile_collection.py`); see `docs/collection-reconciliation.md`.
+- Local lifecycle acceptance (synthetic source): create -> claim -> collect -> manifest -> timeline, read cold.
+- Verification worker default schema revision is now 0037.
+
+## NOT validated
+- No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.
+- `deploy/` tooling and `.ps1` still pinned to 0036 (intentionally refuses 0037; needs review before any deploy).
+- Docker-dependent tests skipped (3).
+
+## Next tasks
+1. Repository context builder over the retained manifest (deterministic index, provenance per chunk).
+2. Investigation contract + synthetic fixture provider; real Nemotron only with explicit authorization.
+3. Then reproduction/patch/execution (fake adapter only locally), verification, UI diagnostics for reconciliation states.
 
 ## Findings
 - Run creation already writes a `CREATED` event and a job lease in one transaction (`services/persistence/store.py` ~L552), so an empty production timeline was more likely the UI request-ordering bug (fixed locally, regression-tested) or a stale deployed build — still unproven for run `56f56757`.
