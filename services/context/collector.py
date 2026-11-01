@@ -2,6 +2,7 @@
 
 import ast
 import hashlib
+import json
 import re
 import unicodedata
 
@@ -14,6 +15,7 @@ from packages.contracts.context import (
     DependencyFile,
     dependency_digest,
 )
+from services.context.index import build_index
 from services.repository.snapshot import Snapshot, SnapshotError
 
 PRIVATE_KEY = re.compile(
@@ -140,12 +142,61 @@ def collect(
         candidate = bundle.model_copy(
             update={"files": bundle.files + (item,), "omissions": tuple(omissions)}
         )
-        if len(candidate.model_dump_json().encode()) > 3800:
+        # Reserve room for the repository map below the 4096-byte bundle cap.
+        if len(candidate.model_dump_json().encode()) > 3300:
             omissions.append("CONTEXT_BUDGET")
         else:
             bundle = candidate
+    try:
+        index = build_index(snapshot)
+    except ValueError:
+        raise ContextError("SOURCE_INTEGRITY") from None
+    included = {item.path for item in bundle.files}
+    entries: list[str] = []
+    for indexed in index.files:
+        if indexed.role in {"SOURCE", "TEST"} and indexed.path not in included:
+            names = ",".join(sym.name[:24] for sym in indexed.symbols[:6])
+            entries.append(f"{indexed.role} {indexed.path}: {names}"[:120])
+    for test, sources in index.test_map.items():
+        entries.append(f"TESTS {test} -> {','.join(sources)}"[:120])
+    base = {
+        **bundle.model_dump(),
+        "index_digest": index.digest,
+        "frameworks": index.frameworks[:8],
+    }
+    mapped: list[str] = []
+    for entry in entries:
+        cleaned = redact(entry)
+        if len(mapped) == 16:
+            omissions.append("MAP_LIMIT")
+            break
+        if not re.fullmatch(r"[ -~]+", cleaned):
+            omissions.append("MAP_ENTRY_SKIPPED")
+            continue
+        trial = ContextBundle.model_validate(
+            {
+                **base,
+                "omissions": tuple(omissions),
+                "repository_map": (*mapped, cleaned),
+            }
+        )
+        # Triage embeds the bundle as an escaped JSON string inside a 4096-byte
+        # context, so bound the escaped size, not just the raw bundle.
+        escaped = json.dumps(
+            {"context_0": trial.model_dump_json()},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        if len(trial.model_dump_json().encode()) > 4096 or len(escaped.encode()) > 3900:
+            omissions.append("MAP_BUDGET")
+            break
+        mapped.append(cleaned)
     result = ContextBundle.model_validate(
-        {**bundle.model_dump(), "omissions": tuple(omissions)}
+        {
+            **base,
+            "omissions": tuple(dict.fromkeys(omissions)),
+            "repository_map": tuple(mapped),
+        }
     )
     if len(result.model_dump_json().encode()) > 4096:
         raise ContextError("CONTEXT_BUDGET")

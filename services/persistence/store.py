@@ -396,6 +396,9 @@ class Store:
                         "evidence_origin",
                         "dependency_files",
                         "deps_hash",
+                        "index_digest",
+                        "frameworks",
+                        "repository_map",
                     )
                     if key not in stored
                 )

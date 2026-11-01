@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -75,8 +76,23 @@ class ContextBundle(BaseModel):
     deps_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     sanitized_errors: str = Field(max_length=1024, repr=False)
     omissions: tuple[str, ...] = Field(default=(), max_length=18)
+    # Compact repository map from the deterministic index (names and roles only).
+    index_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    frameworks: tuple[str, ...] = Field(default=(), max_length=8)
+    repository_map: tuple[str, ...] = Field(default=(), max_length=16)
     trust: Literal["UNTRUSTED_REPOSITORY_DATA"] = "UNTRUSTED_REPOSITORY_DATA"
     can_authorize_execution: Literal[False] = False
+
+    @model_validator(mode="after")
+    def map_shape(self) -> Self:
+        if any(not re.fullmatch(r"[a-z][a-z0-9_-]{1,15}", f) for f in self.frameworks):
+            raise ValueError("MAP_FRAMEWORK")
+        if any(
+            len(entry) > 120 or not re.fullmatch(r"[ -~]+", entry)
+            for entry in self.repository_map
+        ):
+            raise ValueError("MAP_ENTRY")
+        return self
 
     @model_validator(mode="after")
     def dependency_identity(self) -> Self:
