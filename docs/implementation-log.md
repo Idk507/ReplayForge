@@ -3550,3 +3550,19 @@ The fresh browser context displayed sign-in, so it does not establish authentica
 2026-10-30 deployment packaging: added a reviewed template injection/validation command to the create-only ACA script to reproduce the live NGINX proxy configuration. Updated renderer's placeholder contract from three to four after first focused test failed. Rerun `uv run pytest -q tests/unit/test_public_proxy_config.py tests/unit/test_auth_public_config.py`: 23 passed. PowerShell parser and targeted diff checks passed. No app update or image push. Authenticated session and persistent run acceptance still pending due unavailable browser session; repository-listing root cause unknown.
 
 2026-10-30 authenticated acceptance: live OAuth callback completed; UI showed Idk507. Authenticated integrations page preserved identity after refresh. Installation discovery selected Idk507 and consistently returned an empty page-1 repository list; the UI instructs operator to approve Contents read and select a repository. Previous/Next were disabled. GitHub App permissions page requires sudo-mode MFA; no security permission or installation scope was changed. No repository grant/run exists, so persistence acceptance is blocked. Exact operator action and limits are recorded in the deployment evidence report.
+
+
+## 2026-11-01 - local collection hardening (b3149b9)
+
+Commands (PowerShell/Git Bash, Windows, disposable PostgreSQL 18 via scripts.test_postgres):
+- Full backend, no targets: first run 3 failed/1773 passed (0036 downgrade guard, order-dependent
+  downgrade tests); after 0037 added 24 failed/1773 passed (worker schema pin, fake store, tests);
+  after fixes `...20261101c` 1797 passed/3 skipped exit 0; tree ranking `...d` 1815 passed exit 0;
+  repository map `...e` 1821 passed exit 0; diagnostics `...f` **1825 passed, 3 skipped, exit 0**.
+- `uv run pytest tests/unit`: 1011 passed before diagnostics. `npx playwright test` in apps/web:
+  19 passed, 1 skipped. `uv run ruff check .`, `ruff format --check .`, `uv run mypy`: clean.
+Changes: migration 0037 collection_dispatches/_events/collection_reconciliations;
+services/persistence/collection_journal.py; dispatch_once intent->SENT->outcome; scripts/reconcile_collection.py;
+services/context/index.py; snapshot list_attested_tree and GitHubReader.list_paths; ContextBundle
+index_digest/frameworks/repository_map; GET /api/v1/runs/{id}/diagnostics.
+No live provider call, remote write or cloud charge occurred. Nothing is VERIFIED.

@@ -2,6 +2,26 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. Checkboxes track observed evidence; milestone completion requires the original acceptance criteria and linked results.
 
+## Local collection hardening - 2026-11-01 (implementation b3149b9)
+
+- [x] Collection dispatch journal and audited operator reconciliation (migration
+  0037), tree-listing path ranking when an incident names no file, repository
+  map in the context bundle, and a read-only run-diagnostics API/workbench panel.
+  Worker still never re-claims a previously claimed job. Acceptance (actual):
+  `scripts.test_postgres` full backend on disposable PostgreSQL 18, commit
+  b3149b9: **1825 passed, 3 skipped (Docker/public-deployment tests), exit 0,
+  993.33 s**; `scripts.test_postgres --web` 16 Playwright passed earlier on the
+  same schema; later web run `npx playwright test` 19 passed, 1 skipped (real-API
+  case needs the disposable DB); ruff, ruff format, mypy (167 files) clean.
+  Evidence: docs/evidence/full-backend-local-20261101f.xml/.log (prior runs
+  ...c/...d/...e retained; earlier failing runs 3 and 24 failures fixed).
+  Design: docs/collection-reconciliation.md. Handoff: docs/development/CLAUDE_HANDOFF.md.
+  Remaining gaps: collection evidence is TEST_TRANSPORT only (no live GitHub/Nebius/
+  sandbox call); deploy/ tooling still pinned to 0036 and refuses 0037; the
+  full repository index is summarized in the bundle but not stored as its own
+  artifact. M3 and M4 exits are unchanged and remain open (qualified runtime,
+  production signing trust and approved publication need user authorization).
+
 ## Current focus - public full-stack deployment, 2026-10-30
 
 **Latest live checkpoint:** the additional authorized grant-completion execution
