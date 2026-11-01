@@ -47,7 +47,7 @@ class VerificationWorkerConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
     dsn: SecretStr
     expected_database: str = Field(pattern=r"^[A-Za-z0-9_-]{1,63}$")
-    expected_revision: str = Field(pattern=r"^[0-9]{4}$", default="0036")
+    expected_revision: str = Field(pattern=r"^[0-9]{4}$", default="0037")
     required_role: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,63}$")
 
     @classmethod
@@ -85,7 +85,7 @@ class VerificationWorkerConfig(BaseModel):
                 dsn=SecretStr(make_conninfo("", **info)),
                 expected_database=env.get("REPLAYFORGE_DATABASE_NAME", ""),
                 required_role=env.get("REPLAYFORGE_VERIFICATION_WORKER_ROLE") or None,
-                expected_revision=env.get("REPLAYFORGE_SCHEMA_REVISION", "0036"),
+                expected_revision=env.get("REPLAYFORGE_SCHEMA_REVISION", "0037"),
             )
         except (ValueError, TypeError, psycopg.Error):
             raise VerificationWorkerError(

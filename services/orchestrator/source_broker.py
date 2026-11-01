@@ -254,7 +254,12 @@ class BrokerClient:
 
 
 def dispatch_once(
-    store: Store, worker_id: UUID, client: BrokerClient, paths: tuple[str, ...]
+    store: Store,
+    worker_id: UUID,
+    client: BrokerClient,
+    paths: tuple[str, ...],
+    *,
+    journal: CollectionJournal | None = None,
 ) -> WorkerResult:
     """Probe readiness before claim. One POST only; never replay an unknown result."""
     client.ready()
@@ -270,7 +275,7 @@ def dispatch_once(
     state_owner, state = store.claimed_run(lease)
     # Durable intent first; SENT is committed before the request is initiated so a
     # missing marker proves nothing was sent. Unknown outcomes stay SENT_UNCERTAIN.
-    journal = CollectionJournal(store)
+    journal = journal or CollectionJournal(store)
     operation_id = journal.record_intent(lease, state.version)
     journal.mark_sent(lease, operation_id)
     try:

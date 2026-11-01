@@ -76,7 +76,7 @@ def test_deployment_trust_starts_worker_with_disposable_database(store):
                 "REPLAYFORGE_DATABASE_URL": os.environ["REPLAYFORGE_TEST_DATABASE_URL"],
                 "REPLAYFORGE_DATABASE_NAME": database,
                 "REPLAYFORGE_VERIFICATION_WORKER_ROLE": role,
-                "REPLAYFORGE_SCHEMA_REVISION": "0036",
+                "REPLAYFORGE_SCHEMA_REVISION": "0037",
             },
             test_only=True,
         )
@@ -854,7 +854,7 @@ def test_production_verification_finalizes_complete_four_phase_run(
     worker_config = VerificationWorkerConfig(
         dsn=SecretStr(test_dsn),
         expected_database=test_info["dbname"],
-        expected_revision="0036",
+        expected_revision="0037",
         required_role=os.environ["REPLAYFORGE_TEST_ROLE"],
     )
     # Schema-head read is part of worker startup's database contract.

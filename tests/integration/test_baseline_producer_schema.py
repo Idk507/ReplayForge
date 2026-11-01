@@ -73,6 +73,7 @@ def test_nonempty_baseline_producer_ledger_refuses_downgrade(store):
         )
     with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
         before = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    test_postgres.release_gate_envelopes()
     # Rows left by earlier tests in the shared database may retain capability
     # payloads, in which case 0035 refuses before 0032 does; either is a refusal.
     with pytest.raises(

@@ -89,14 +89,35 @@ def test_worker_restart_after_uncertain_collection_keeps_post_single():
         def collection_first_claim(self, _lease):
             return True
 
+    class RecordingJournal:
+        """Durable intent and SENT must precede the POST; no outcome is recorded."""
+
+        def __init__(self):
+            self.steps = []
+
+        def record_intent(self, _lease, _version):
+            self.steps.append("intent")
+            return uuid4()
+
+        def mark_sent(self, _lease, _operation_id):
+            assert calls.count("POST") == 0
+            self.steps.append("sent")
+
+        def mark_outcome(self, _operation_id, kind):
+            self.steps.append(kind)
+
     store = StickyLeaseStore()
+    journal = RecordingJournal()
     with BrokerClient(
         "http://127.0.0.1:8000",
         SecretStr("s" * 43),
         transport=httpx.MockTransport(handle),
     ) as first_worker:
         with pytest.raises(BrokerError, match="UNCONFIRMED"):
-            dispatch_once(store, claimed.worker_id, first_worker, ("README.md",))
+            dispatch_once(
+                store, claimed.worker_id, first_worker, ("README.md",), journal=journal
+            )
+    assert journal.steps == ["intent", "sent"]  # unknown result stays uncertain
 
     # A restarted worker may check readiness, but cannot reclaim the live lease
     # or repeat the collection POST whose outcome is unknown.

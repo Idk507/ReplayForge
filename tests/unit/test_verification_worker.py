@@ -23,7 +23,7 @@ def test_worker_config_pins_loopback_database_and_head() -> None:
         }
     )
     assert config.expected_database == "rf_worker"
-    assert config.expected_revision == "0036"
+    assert config.expected_revision == "0037"
     assert config.required_role == "rf_verify_worker"
     assert "secret" not in repr(config)
 

@@ -23,6 +23,15 @@ from services.api.app import LocalAuth, create_app
 from services.persistence.store import Store, StoreError
 
 
+def release_gate_envelopes() -> None:
+    """Disposable-DB test aid: earlier tests' signed envelopes would make the 0036
+    downgrade guard refuse before the older migration guard under test is reached."""
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        conn.execute(
+            "UPDATE verification_results SET envelope_version=NULL,envelope_bytes=NULL"
+        )
+
+
 def prepare_store() -> Store:
     dsn = os.environ.get("REPLAYFORGE_TEST_DATABASE_URL")
     if not dsn:
