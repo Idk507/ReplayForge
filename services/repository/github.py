@@ -15,7 +15,11 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 from packages.contracts.repository import RepositoryGrant
 from packages.contracts.run import CommitSHA
 from packages.policies.repository import admit, allowed_entry
-from services.repository.snapshot import Snapshot, load_attested_tree
+from services.repository.snapshot import (
+    Snapshot,
+    list_attested_tree,
+    load_attested_tree,
+)
 
 
 class RepositoryReadError(Exception):
@@ -119,6 +123,18 @@ class GitHubReader:
             trace_id=uuid4(),
             evidence_origin=self._origin,
         )
+
+    def list_paths(
+        self, grant: RepositoryGrant, caller: UUID, commit: str
+    ) -> tuple[str, ...]:
+        """Verified tree walk only; returns admitted paths, never downloads blobs."""
+        deadline = time.monotonic() + 20
+        resolution = self.resolve(grant, caller, commit)
+        objects = _GitHubObjects(self, grant, resolution.tree_sha, deadline)
+        listing = list_attested_tree(
+            objects, grant, caller, commit, resolution.tree_sha
+        )
+        return tuple(path for path, _blob in listing)
 
     def acquire(
         self,

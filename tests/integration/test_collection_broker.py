@@ -18,7 +18,7 @@ from tests.integration.test_session_access import connect, setup
 store = test_postgres.store
 
 
-def prepared(store, incident="Small README demonstration"):
+def prepared(store, incident="Small README demonstration", path_lister=None):
     c, j, session, headers, access, calls = setup(store)
     repo = connect(access, session)
     with j.store._connection() as db:
@@ -79,7 +79,11 @@ def prepared(store, incident="Small README demonstration"):
         return load
 
     broker = CollectionBroker(
-        store, access, SecretStr("s" * 43), source_loader_factory=factory
+        store,
+        access,
+        SecretStr("s" * 43),
+        source_loader_factory=factory,
+        path_lister=path_lister,
     )
     install_routes(c.app, broker)
     payload = CollectionRequest(
@@ -409,3 +413,83 @@ def test_materialization_source_is_fetched_by_manifest_after_fresh_access(store)
     )
     assert denied.status_code == 403
     assert len(fetched) == 2
+
+
+def lister_returning(tree, calls):
+    def lister(_token, _run, _grant):
+        calls.append(1)
+        return tree
+
+    return lister
+
+
+TREE = ("README.md", "src/checkout.py", "src/ledger.py", "src/web.py")
+
+
+def post_collection(c, payload):
+    return c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+
+
+def test_incident_without_file_names_ranks_the_verified_tree(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        "Customer retried the checkout and got a duplicate payment",
+        path_lister=lister_returning(TREE, calls),
+    )
+    r = post_collection(c, payload)
+    assert r.status_code == 200 and r.json()["stage"] == "TRIAGING", r.json()
+    assert calls == [1] and fetched == [("src/checkout.py",)]
+
+
+def test_ranking_is_skipped_when_the_incident_names_a_file(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        'AssertionError in File "src/ledger.py", line 4',
+        path_lister=lister_returning(TREE, calls),
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert calls == [] and fetched == [("src/ledger.py",)]
+
+
+def test_unmatched_incident_keeps_the_explicit_fallback(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store, "zzz qqq", path_lister=lister_returning(TREE, calls)
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert calls == [1] and fetched == [("README.md",)]
+
+
+def test_ranked_paths_outside_the_grant_are_never_fetched(store):
+    calls = []
+    outside = ("README.md", "secrets/checkout.py")
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        "checkout duplicate payment",
+        path_lister=lister_returning(outside, calls),
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert fetched == [("README.md",)]
+
+
+def test_listing_failure_collects_nothing_and_leaves_the_claim(store):
+    from services.orchestrator.collection import SourceInputError
+
+    def failing(_token, _run, _grant):
+        raise SourceInputError("SOURCE_UNAVAILABLE")
+
+    c, j, session, broker, payload, fetched = prepared(
+        store, "checkout duplicate payment", path_lister=failing
+    )
+    post_collection(c, payload)
+    assert not fetched
+    from uuid import UUID
+
+    state = store.get(UUID(payload["lease"]["run_id"]), session.user_id)
+    assert state.current_stage.value != "TRIAGING"

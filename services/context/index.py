@@ -361,3 +361,44 @@ def search_symbols(index: RepositoryIndex, term: str) -> tuple[tuple[str, Symbol
     return tuple(
         (f.path, s) for f in index.files for s in f.symbols if needle in s.name.lower()
     )[:50]
+
+
+def rank_listing(
+    paths: tuple[str, ...], incident: str, *, limit: int = 6
+) -> tuple[str, ...]:
+    """Pick files to fetch from tree paths alone, before any blob is read.
+
+    Path-name overlap only (the same rule as ``rank_paths`` before content is
+    known). Python sources outrank their tests; a matching ``test_<stem>.py`` is
+    added beside a chosen source. Returns () when nothing matches, so the caller
+    keeps its explicit fallback instead of guessing.
+    """
+    if not 1 <= limit <= 16:
+        raise ValueError("RANK_LIMIT")
+    wanted = _tokens(incident)
+    scored: list[tuple[int, str]] = []
+    for path in paths:
+        role = _role(path)
+        if role not in {"SOURCE", "TEST"}:
+            continue
+        hits = wanted & _tokens(path.replace("/", "_").replace(".", "_"))
+        if hits:
+            scored.append((5 * len(hits) - (1 if role == "TEST" else 0), path))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    chosen: list[str] = []
+    for _score, path in scored:
+        if path not in chosen:
+            chosen.append(path)
+        if _role(path) == "SOURCE":
+            stem = path.rsplit("/", 1)[-1]
+            partner = sorted(
+                p
+                for p in paths
+                if _role(p) == "TEST" and p.rsplit("/", 1)[-1] == "test_" + stem
+            )
+            for test in partner[:1]:
+                if test not in chosen:
+                    chosen.append(test)
+        if len(chosen) >= limit:
+            break
+    return tuple(chosen[:limit])

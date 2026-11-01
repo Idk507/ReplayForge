@@ -95,6 +95,21 @@ def load_attested_tree(
     )
 
 
+def list_attested_tree(
+    source: ObjectSource,
+    grant: RepositoryGrant,
+    caller: UUID,
+    commit: str,
+    tree: str,
+) -> tuple[tuple[str, str], ...]:
+    """Admitted (path, blob id) pairs from verified tree objects; no blob reads."""
+    if not re.fullmatch(r"[a-f0-9]{40}", tree):
+        raise SnapshotError("TREE_IDENTITY")
+    listing: list[tuple[str, str]] = []
+    _load_snapshot(source, grant, caller, commit, root_tree=tree, listing=listing)
+    return tuple(sorted(listing))
+
+
 def _load_snapshot(
     source: ObjectSource,
     grant: RepositoryGrant,
@@ -103,8 +118,13 @@ def _load_snapshot(
     *,
     root_tree: str | None = None,
     selected_paths: tuple[str, ...] | None = None,
+    listing: list[tuple[str, str]] | None = None,
 ) -> Snapshot:
-    """Shared bounded tree traversal; raw and provider commit proofs stay distinct."""
+    """Shared bounded tree traversal; raw and provider commit proofs stay distinct.
+
+    With ``listing`` only tree objects are fetched: admitted file paths and blob
+    IDs are appended and no blob is downloaded (the returned Snapshot is empty).
+    """
     grant = RepositoryGrant.model_validate(grant.model_dump())
     if not admit(grant, caller, grant.repository_id, commit).allowed:
         raise SnapshotError("SCOPE_DENIED")
@@ -189,6 +209,8 @@ def _load_snapshot(
                     walk(child, path + "/", depth + 1)
             elif mode not in {"100644", "100755"}:
                 raise SnapshotError("ENTRY_MODE_DENIED")
+            elif listing is not None and allowed_entry(grant, path, mode):
+                listing.append((path, child))
             elif allowed_entry(grant, path, mode) and (
                 selected_paths is None or path in selected_paths
             ):
@@ -213,7 +235,11 @@ def _load_snapshot(
                     raise SnapshotError("PATH_DENIED")
 
     walk(root_tree, "", 0)
-    if selected_paths is not None and set(content) != set(selected_paths):
+    if (
+        listing is None
+        and selected_paths is not None
+        and set(content) != set(selected_paths)
+    ):
         raise SnapshotError("SELECTED_PATH_MISSING")
     return Snapshot(
         commit,

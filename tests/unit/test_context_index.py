@@ -150,3 +150,27 @@ def test_symbol_search_is_literal_and_bounded():
 def test_limits_reject_bad_rank_size():
     with pytest.raises(ValueError, match="RANK_LIMIT"):
         rank_paths(build_index(snapshot()), "payment", limit=0)
+
+
+def test_listing_rank_selects_matching_sources_with_their_tests():
+    from services.context.index import rank_listing
+
+    tree = (
+        "README.md",
+        "checkout/payments.py",
+        "checkout/ledger.py",
+        "tests/test_payments.py",
+        "web/banner.py",
+        "requirements.txt",
+    )
+    chosen = rank_listing(
+        tree, "Customer retried checkout after timeout; duplicate payment charged twice"
+    )
+    assert chosen[0] == "checkout/payments.py"
+    assert "tests/test_payments.py" in chosen
+    assert "web/banner.py" not in chosen and "README.md" not in chosen
+    assert rank_listing(tree, "zzz qqq unrelated words") == ()
+    assert rank_listing(tree, "payment", limit=1) == ("checkout/payments.py",)
+    assert rank_listing(tree, "payment") == rank_listing(
+        tuple(reversed(tree)), "payment"
+    )
