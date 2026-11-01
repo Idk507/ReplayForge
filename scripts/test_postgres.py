@@ -75,8 +75,7 @@ def main() -> int:
                 sql.SQL(
                     # CREATEROLE lets restricted-role tests create their own
                     # short-lived worker identity; the role is task-owned and dropped.
-                    "CREATE ROLE {} LOGIN PASSWORD {} "
-                    "NOSUPERUSER NOCREATEDB CREATEROLE"
+                    "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB CREATEROLE"
                 ).format(sql.Identifier(role), sql.Literal(secret))
             )
             try:

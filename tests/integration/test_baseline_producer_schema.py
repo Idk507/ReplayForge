@@ -71,14 +71,20 @@ def test_nonempty_baseline_producer_ledger_refuses_downgrade(store):
             "VALUES (%s,%s,%s,clock_timestamp()+interval '1 hour')",
             (action.execution_id, "a" * 64, b"{}"),
         )
+    with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        before = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    # Rows left by earlier tests in the shared database may retain capability
+    # payloads, in which case 0035 refuses before 0032 does; either is a refusal.
     with pytest.raises(
-        RuntimeError, match="ARCHIVE_BASELINE_PRODUCER_BEFORE_DOWNGRADE"
+        RuntimeError,
+        match="ARCHIVE_BASELINE_(PRODUCER|CAPABILITY_PAYLOADS)_BEFORE_DOWNGRADE",
     ):
         command.downgrade(Config("alembic.ini"), "0031")
     with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+        # A refused downgrade must leave the schema revision unchanged.
         assert (
             conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            == "0032"
+            == before
         )
         assert (
             conn.execute(

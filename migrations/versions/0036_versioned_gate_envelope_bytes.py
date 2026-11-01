@@ -32,5 +32,20 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Never discard retained signed envelope bytes during an automatic rollback.
-    raise RuntimeError("0036 downgrade requires an evidence archival procedure")
+    # Never discard retained signed envelope bytes; an empty ledger can roll back.
+    if (
+        op.get_bind()
+        .exec_driver_sql(
+            "SELECT EXISTS(SELECT 1 FROM verification_results "
+            "WHERE envelope_bytes IS NOT NULL)"
+        )
+        .scalar()
+    ):
+        raise RuntimeError("ARCHIVE_GATE_ENVELOPES_BEFORE_DOWNGRADE")
+    op.execute(
+        "ALTER TABLE verification_results "
+        "DROP CONSTRAINT verification_results_envelope_pair_check, "
+        "DROP CONSTRAINT verification_results_envelope_bytes_check, "
+        "DROP CONSTRAINT verification_results_envelope_version_check, "
+        "DROP COLUMN envelope_bytes, DROP COLUMN envelope_version"
+    )
