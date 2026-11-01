@@ -257,6 +257,12 @@ def test_restricted_worker_claims_and_broker_persists_events(store):
                     sql.Identifier(role)
                 )
             )
+            admin.execute(
+                sql.SQL(
+                    "GRANT SELECT, INSERT ON collection_dispatches,"
+                    "collection_dispatch_events TO {}"
+                ).format(sql.Identifier(role))
+            )
             with journal.store._connection() as db:
                 db.execute(
                     "UPDATE job_leases SET status='queued',token=NULL,attempt_count=0 "

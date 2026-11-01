@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from deploy.postgres_recovery import (
     REQUIRED_TABLES_AT_0031,
@@ -47,10 +49,31 @@ def test_pristine_database_is_eligible_for_forward_recovery() -> None:
     assess_database_state(_state(None))
 
 
-def test_actual_migration_chain_is_linear_and_ends_at_0036() -> None:
+def test_actual_migration_chain_is_linear_and_ends_at_0037() -> None:
     config = Path(__file__).resolve().parents[1] / "alembic.ini"
-    chain = _migration_chain(str(config))
-    assert chain[-6:] == ["0031", "0032", "0033", "0034", "0035", "0036"]
+    scripts = ScriptDirectory.from_config(Config(str(config)))
+    assert scripts.get_heads() == ["0037"]
+    chain = [r.revision for r in reversed(list(scripts.walk_revisions()))]
+    assert chain[-7:] == [
+        "0031",
+        "0032",
+        "0033",
+        "0034",
+        "0035",
+        "0036",
+        "0037",
+    ]
+
+
+def test_deployment_recovery_tool_refuses_unreviewed_0037_head() -> None:
+    """Deployment recovery is intentionally still pinned to 0036 and fails closed.
+
+    Advancing it needs a reviewed assessment of the 0037 collection journal
+    tables and grants; local development never relies on that tool.
+    """
+    config = Path(__file__).resolve().parents[1] / "alembic.ini"
+    with pytest.raises(RecoveryRefused, match="unexpected_alembic_heads"):
+        _migration_chain(str(config))
 
 
 def test_initial_bootstrap_grants_migration_schema_before_alembic() -> None:

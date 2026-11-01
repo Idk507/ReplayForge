@@ -19,6 +19,7 @@ from packages.providers.nebius import NebiusConfig
 from services.orchestrator.patch_worker import tick_patch
 from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
+from services.persistence.collection_journal import CollectionJournal
 from services.persistence.store import Lease, Store
 from services.runner.receipts import canonical
 
@@ -267,7 +268,18 @@ def dispatch_once(
     if not store.collection_first_claim(lease):
         raise BrokerError("COLLECTION_RECONCILIATION_REQUIRED")
     state_owner, state = store.claimed_run(lease)
-    result = client.dispatch(lease, state.version, paths)
+    # Durable intent first; SENT is committed before the request is initiated so a
+    # missing marker proves nothing was sent. Unknown outcomes stay SENT_UNCERTAIN.
+    journal = CollectionJournal(store)
+    operation_id = journal.record_intent(lease, state.version)
+    journal.mark_sent(lease, operation_id)
+    try:
+        result = client.dispatch(lease, state.version, paths)
+    except BrokerError as error:
+        if str(error) == "COLLECTION_DENIED":
+            # A definite broker refusal returned before any collection effect.
+            journal.mark_outcome(operation_id, "REJECTED")
+        raise
     persisted = store.get(lease.run_id, state_owner)
     if (
         persisted.current_stage != result.stage
@@ -275,6 +287,7 @@ def dispatch_once(
         or persisted.repository_id != state.repository_id
     ):
         raise BrokerError("COLLECTION_UNCONFIRMED")
+    journal.mark_outcome(operation_id, "COMPLETED")
     return result
 
 
