@@ -24,13 +24,23 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 - Local lifecycle acceptance (synthetic source): create -> claim -> collect -> manifest -> timeline, read cold.
 - Verification worker default schema revision is now 0037.
 
+## Repository index (new, unit-tested only)
+- `services/context/index.py`: deterministic `build_index(snapshot)` (roles, languages, frameworks, symbols with
+  line ranges, imports, entry points, test-to-source map, canonical digest, per-file blob/sha256 provenance),
+  `rank_paths(index, incident)` (path/symbol/import names only; comments and strings cannot steer ranking),
+  `search_symbols` (literal substring). 8 unit tests; 1000 unit tests pass; ruff/mypy clean.
+- NOT yet wired: collection still selects paths from explicit incident references or a fallback before any
+  fetch, and the index is not retained as an artifact. Wiring needs a two-phase acquire (tree identities, rank,
+  then fetch <=16 blobs) in `GitHubReader.acquire`/`CollectionBroker.process`, plus artifact storage
+  (`Store.context`-style, checksummed) and a UI panel. Run the full DB suite after that change.
+
 ## NOT validated
 - No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.
 - `deploy/` tooling and `.ps1` still pinned to 0036 (intentionally refuses 0037; needs review before any deploy).
 - Docker-dependent tests skipped (3).
 
 ## Next tasks
-1. Repository context builder over the retained manifest (deterministic index, provenance per chunk).
+1. Wire the repository index: two-phase acquire + retained checksummed index artifact + analysis view.
 2. Investigation contract + synthetic fixture provider; real Nemotron only with explicit authorization.
 3. Then reproduction/patch/execution (fake adapter only locally), verification, UI diagnostics for reconciliation states.
 
