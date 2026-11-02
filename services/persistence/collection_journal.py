@@ -21,6 +21,7 @@ import psycopg
 from pydantic import BaseModel, ConfigDict
 
 from packages.contracts.run import RunState, Stage
+from packages.observability.logs import log_event
 from packages.policies.transitions import TERMINAL, transition
 from services.persistence.store import Lease, Store, StoreError
 
@@ -422,6 +423,15 @@ class CollectionJournal:
                         stage.value,
                     ),
                 )
+                log_event(
+                    "reconcile.decision",
+                    action=action,
+                    status=job_status,
+                    stage=stage,
+                    run_id=run_id,
+                    operator=operator,
+                    attempt=obs.attempt,
+                )
                 return Reconciliation(
                     id=audit_id,
                     run_id=run_id,
@@ -444,6 +454,15 @@ class CollectionJournal:
     ) -> None:
         """Committed outside the refused transaction so denials stay visible."""
         obs = obs or self.observe(run_id, owner)
+        log_event(
+            "reconcile.blocked",
+            level=30,
+            run_id=run_id,
+            operator=operator,
+            status=obs.state.value,
+            error_class=why[:48].replace("_", "_"),
+            attempt=obs.attempt,
+        )
         with self.store._connection() as conn:
             conn.execute(
                 """INSERT INTO collection_reconciliations

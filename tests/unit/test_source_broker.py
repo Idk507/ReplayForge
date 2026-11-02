@@ -84,7 +84,13 @@ def test_worker_restart_after_uncertain_collection_keeps_post_single():
             return claimed if self.claim_attempts == 1 else None
 
         def claimed_run(self, _lease):
-            return uuid4(), SimpleNamespace(version=0)
+            return uuid4(), SimpleNamespace(
+                version=0,
+                repository_id=uuid4(),
+                source_commit="a" * 40,
+                current_stage="QUEUED",
+                trace_id=uuid4(),
+            )
 
         def collection_first_claim(self, _lease):
             return True

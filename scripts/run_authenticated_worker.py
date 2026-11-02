@@ -15,6 +15,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 from packages.contracts.inference import ModelCostPolicy
+from packages.observability.logs import configure, log_event
 from packages.policies.repository import safe_tree_path
 from packages.providers.nebius import NebiusConfig, ProbeError
 from services.orchestrator.source_broker import (
@@ -158,6 +159,7 @@ def main() -> int:
         parser.error(
             "choose triage or patch; inference requires opt-in and estimate 1..2000000"
         )
+    configure()  # JSON lines on stderr; stdout keeps the per-tick result objects
     stop = Event()
     previous = {}
     try:
@@ -192,6 +194,8 @@ def main() -> int:
             previous[sig] = signal.signal(sig, lambda signum, frame: stop.set())
         store = Store(c.dsn.get_secret_value())
         worker = uuid4()
+        mode = "triage" if args.triage else "patch" if args.patch else "collect"
+        log_event("worker.start", worker_id=worker, action=mode, attempt=args.max_ticks)
         with BrokerClient(c.url, c.key) as client:
             for _ in range(args.max_ticks):
                 if stop.is_set():
@@ -206,8 +210,15 @@ def main() -> int:
                 print(result.model_dump_json())
                 if result.status == "IDLE" and stop.wait(1):
                     break
+        log_event("worker.stop", worker_id=worker, action=mode, status="CLEAN")
         return 0
     except (ConfigError, BrokerError, StoreError, ProbeError, psycopg.Error) as error:
+        log_event(
+            "worker.stop",
+            level=40,
+            status="STOPPED",
+            error_class=type(error).__name__,
+        )
         print(
             json.dumps(
                 {

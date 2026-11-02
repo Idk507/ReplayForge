@@ -14,6 +14,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Protocol, Self
 
+from packages.observability.logs import log_event
 from services.persistence.store import Lease, StoreError
 
 
@@ -56,10 +57,23 @@ class LeaseKeeper:
             except StoreError as error:
                 if str(error) == "LEASE_LOST":
                     self.lost = True
+                    log_event(
+                        "lease.lost",
+                        level=30,
+                        run_id=self._lease.run_id,
+                        worker_id=self._lease.worker_id,
+                    )
                     return
                 failures += 1  # transient database fault: try again next interval
                 if failures >= 3:
                     self.degraded = True
+                    log_event(
+                        "lease.renewal_degraded",
+                        level=30,
+                        run_id=self._lease.run_id,
+                        worker_id=self._lease.worker_id,
+                        error_class=str(error)[:48],
+                    )
                     return
 
     def __enter__(self) -> Self:
