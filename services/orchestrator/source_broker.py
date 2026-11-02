@@ -16,6 +16,7 @@ from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
 from packages.contracts.source import MaterializationSourceResult, SourceManifest
 from packages.providers.nebius import NebiusConfig
+from services.orchestrator.lease_keeper import LeaseKeeper
 from services.orchestrator.patch_worker import tick_patch
 from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
@@ -260,6 +261,7 @@ def dispatch_once(
     paths: tuple[str, ...],
     *,
     journal: CollectionJournal | None = None,
+    heartbeat_seconds: float = 10.0,
 ) -> WorkerResult:
     """Probe readiness before claim. One POST only; never replay an unknown result."""
     client.ready()
@@ -279,7 +281,9 @@ def dispatch_once(
     operation_id = journal.record_intent(lease, state.version)
     journal.mark_sent(lease, operation_id)
     try:
-        result = client.dispatch(lease, state.version, paths)
+        # The request may outlast the 30 s lease; renew our own live claim meanwhile.
+        with LeaseKeeper(store, lease, interval_seconds=heartbeat_seconds):
+            result = client.dispatch(lease, state.version, paths)
     except BrokerError as error:
         if str(error) == "COLLECTION_DENIED":
             # A definite broker refusal returned before any collection effect.
@@ -317,16 +321,17 @@ def dispatch_triage_once(
         return WorkerResult(status="IDLE")
     owner, state = store.claimed_run(lease)
     client.authorize_triage(lease, state.version)
-    result = run_triage(
-        store,
-        lease,
-        owner,
-        config,
-        cost_policy=cost_policy,
-        transport=transport,
-        finish_job=True,
-        queue_baseline=True,
-    )
+    with LeaseKeeper(store, lease):
+        result = run_triage(
+            store,
+            lease,
+            owner,
+            config,
+            cost_policy=cost_policy,
+            transport=transport,
+            finish_job=True,
+            queue_baseline=True,
+        )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )

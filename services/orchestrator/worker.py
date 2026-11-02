@@ -18,6 +18,7 @@ from services.orchestrator.collection import (
     InputLoader,
     run_collection,
 )
+from services.orchestrator.lease_keeper import LeaseKeeper
 from services.orchestrator.repair_flow import run_triage
 from services.persistence.store import Store, StoreError
 
@@ -71,9 +72,10 @@ def tick(
     if lease is None:
         return WorkerResult(status="IDLE")
     owner, _ = store.claimed_run(lease)
-    result = run_collection(
-        store, owner, lease, input_loader=input_loader, queue_triage=queue_triage
-    )
+    with LeaseKeeper(store, lease):
+        result = run_collection(
+            store, owner, lease, input_loader=input_loader, queue_triage=queue_triage
+        )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )
@@ -97,15 +99,16 @@ def tick_triage(
     if lease is None:
         return WorkerResult(status="IDLE")
     owner, _ = store.claimed_run(lease)
-    result = run_triage(
-        store,
-        lease,
-        owner,
-        config,
-        cost_policy=cost_policy,
-        transport=transport,
-        finish_job=True,
-    )
+    with LeaseKeeper(store, lease):
+        result = run_triage(
+            store,
+            lease,
+            owner,
+            config,
+            cost_policy=cost_policy,
+            transport=transport,
+            finish_job=True,
+        )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )
