@@ -49,12 +49,12 @@ def test_pristine_database_is_eligible_for_forward_recovery() -> None:
     assess_database_state(_state(None))
 
 
-def test_actual_migration_chain_is_linear_and_ends_at_0037() -> None:
+def test_actual_migration_chain_is_linear_and_ends_at_0038() -> None:
     config = Path(__file__).resolve().parents[1] / "alembic.ini"
     scripts = ScriptDirectory.from_config(Config(str(config)))
-    assert scripts.get_heads() == ["0037"]
+    assert scripts.get_heads() == ["0038"]
     chain = [r.revision for r in reversed(list(scripts.walk_revisions()))]
-    assert chain[-7:] == [
+    assert chain[-8:] == [
         "0031",
         "0032",
         "0033",
@@ -62,10 +62,11 @@ def test_actual_migration_chain_is_linear_and_ends_at_0037() -> None:
         "0035",
         "0036",
         "0037",
+        "0038",
     ]
 
 
-def test_deployment_recovery_tool_refuses_unreviewed_0037_head() -> None:
+def test_deployment_recovery_tool_refuses_unreviewed_0038_head() -> None:
     """Deployment recovery is intentionally still pinned to 0036 and fails closed.
 
     Advancing it needs a reviewed assessment of the 0037 collection journal

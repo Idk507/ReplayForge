@@ -169,6 +169,36 @@ def _module_paths(path: str) -> set[str]:
     return names
 
 
+def _body_digest(
+    source_commit: str,
+    files: tuple[IndexedFile, ...],
+    frameworks: tuple[str, ...],
+    test_map: dict[str, tuple[str, ...]],
+    omissions: tuple[str, ...],
+) -> str:
+    body = {
+        "source_commit": source_commit,
+        "files": [f.model_dump() for f in files],
+        "frameworks": sorted(frameworks),
+        "test_map": test_map,
+        "omissions": list(omissions),
+    }
+    return hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def index_is_consistent(index: RepositoryIndex) -> bool:
+    """True when the stored digest matches the content it claims to summarize."""
+    return index.digest == _body_digest(
+        index.source_commit,
+        index.files,
+        index.frameworks,
+        index.test_map,
+        index.omissions,
+    )
+
+
 def build_index(snapshot: Snapshot) -> RepositoryIndex:
     """Index every identity in the snapshot, reading only bytes it already holds."""
     identities = sorted(snapshot.files, key=lambda f: f.path)
@@ -268,16 +298,13 @@ def build_index(snapshot: Snapshot) -> RepositoryIndex:
     languages: dict[str, int] = {}
     for item in files:
         languages[item.language] = languages.get(item.language, 0) + 1
-    body = {
-        "source_commit": snapshot.source_commit,
-        "files": [f.model_dump() for f in files],
-        "frameworks": sorted(frameworks),
-        "test_map": test_map,
-        "omissions": omissions,
-    }
-    digest = hashlib.sha256(
-        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    digest = _body_digest(
+        snapshot.source_commit,
+        tuple(files),
+        tuple(sorted(frameworks)),
+        test_map,
+        tuple(omissions),
+    )
     return RepositoryIndex(
         source_commit=snapshot.source_commit,
         evidence_origin=snapshot.evidence_origin,

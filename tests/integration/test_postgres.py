@@ -58,7 +58,8 @@ def prepare_store() -> Store:
         conn.execute(
             sql.SQL(
                 "GRANT SELECT,INSERT ON collection_dispatches,"
-                "collection_dispatch_events,collection_reconciliations TO {}"
+                "collection_dispatch_events,collection_reconciliations,"
+                "repository_indexes TO {}"
             ).format(role)
         )
         conn.execute(

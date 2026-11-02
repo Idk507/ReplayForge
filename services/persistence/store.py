@@ -22,6 +22,7 @@ from packages.contracts.source import SealedSnapshot, SourceManifest
 from packages.policies.budget import BudgetError, consume
 from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import TERMINAL, transition
+from services.context.index import RepositoryIndex, index_is_consistent
 
 
 class StoreError(Exception):
@@ -118,6 +119,7 @@ class Store:
         expected_version: int,
         source_manifest: SourceManifest | None = None,
         sealed_snapshot: SealedSnapshot | None = None,
+        repository_index: RepositoryIndex | None = None,
         queue_triage: bool = False,
     ) -> RunState:
         """Commit sanitized context and TRIAGING checkpoint in one transaction.
@@ -151,6 +153,15 @@ class Store:
                 )
             ):
                 raise StoreError("SOURCE_MANIFEST_MISMATCH")
+        index_payload = None
+        if repository_index is not None:
+            index_payload = self._index_payload(repository_index)
+            if (
+                repository_index.digest != bundle.index_digest
+                or repository_index.source_commit != bundle.source_commit
+                or repository_index.evidence_origin != bundle.evidence_origin
+            ):
+                raise StoreError("INDEX_BINDING")
         sealed_payload = None
         if sealed_snapshot is not None:
             sealed_snapshot = SealedSnapshot.model_validate(
@@ -219,6 +230,16 @@ class Store:
                 VALUES (%s,%s,%s)""",
                 (state.run_id, digest, payload),
             )
+            if index_payload is not None:
+                conn.execute(
+                    """INSERT INTO repository_indexes(run_id,digest,payload)
+                    VALUES (%s,%s,%s)""",
+                    (
+                        state.run_id,
+                        hashlib.sha256(index_payload).hexdigest(),
+                        index_payload,
+                    ),
+                )
             data = state.model_dump()
             if sealed_payload is not None:
                 sealed_digest = hashlib.sha256(sealed_payload).hexdigest()
@@ -245,6 +266,48 @@ class Store:
                 ("queued" if queue_triage else "done", queue_triage, state.run_id),
             )
             return state
+
+    @staticmethod
+    def _index_payload(index: RepositoryIndex) -> bytes:
+        """Canonical bounded analysis artifact; names and hashes only, no source."""
+        index = RepositoryIndex.model_validate(index.model_dump())
+        if not index_is_consistent(index):
+            raise StoreError("INDEX_INTEGRITY")
+        payload = json.dumps(
+            index.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        if len(payload) > 262144:
+            raise StoreError("INDEX_LIMIT")
+        return payload
+
+    def repository_index(self, run_id: UUID, owner: UUID) -> RepositoryIndex:
+        """Owner/retention/checksum/canonical read of the run's retained index."""
+        with self._connection() as conn:
+            row = conn.execute(
+                """SELECT i.payload,i.digest FROM repository_indexes i
+                JOIN runs r ON r.id=i.run_id WHERE i.run_id=%s AND r.owner_id=%s
+                AND i.expires_at>clock_timestamp()
+                ORDER BY i.created_at DESC LIMIT 1""",
+                (run_id, owner),
+            ).fetchone()
+            if row is None:
+                raise StoreError("NOT_FOUND")
+            payload = row["payload"]
+            if (
+                not isinstance(payload, bytes)
+                or hashlib.sha256(payload).hexdigest() != row["digest"]
+            ):
+                raise StoreError("INDEX_INTEGRITY")
+            try:
+                index = RepositoryIndex.model_validate_json(payload)
+            except ValidationError:
+                raise StoreError("INDEX_INTEGRITY") from None
+            if self._index_payload(index) != payload:
+                raise StoreError("INDEX_INTEGRITY")
+            return index
 
     @staticmethod
     def _source_payload(manifest: SourceManifest) -> bytes:

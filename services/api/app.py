@@ -19,6 +19,7 @@ from packages.contracts.source import SourceManifest
 from packages.policies.repository import admit
 from packages.policies.transitions import TransitionError
 from services.context.incident import prepare_incident
+from services.context.index import RepositoryIndex
 from services.orchestrator.research import ResearchBroker, RetainedResearch
 from services.persistence.collection_journal import CollectionJournal, Diagnostic
 from services.persistence.evidence import EvidenceStore
@@ -332,6 +333,13 @@ def create_app(
         run_id: UUID, artifact_id: ArtifactID, owner: Annotated[UUID, Depends(identity)]
     ) -> SourceManifest:
         return store.source_manifest(run_id, owner, artifact_id)
+
+    @app.get("/api/v1/runs/{run_id}/repository-index")
+    def repository_index(
+        run_id: UUID, owner: Annotated[UUID, Depends(identity)]
+    ) -> RepositoryIndex:
+        """Owner-scoped retained static analysis: names, hashes and provenance only."""
+        return store.repository_index(run_id, owner)
 
     @app.get("/api/v1/runs/{run_id}/diagnostics")
     def diagnostics(

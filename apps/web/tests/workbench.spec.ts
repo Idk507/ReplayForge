@@ -323,3 +323,58 @@ test("bridge allows only a GET for the read-only diagnostics path", async () => 
   const post = await bridge(new Request("http://127.0.0.1:3000/api", {method: "POST", headers: {...headers, origin: "http://127.0.0.1:3000"}, body: "{}"}), ["runs", runId, "diagnostics"]);
   expect(post.status).toBe(404);
 });
+
+const indexFixture = {
+  source_commit: "a".repeat(40), evidence_origin: "TEST_TRANSPORT",
+  files: [
+    {path: "checkout/payments.py", blob_id: "c".repeat(40), sha256: "e".repeat(64), size_bytes: 480, language: "python", role: "SOURCE", parse_status: "PARSED", symbols: [{name: "PaymentService", kind: "class", line: 5, end_line: 9}, {name: "retry_charge", kind: "function", line: 12, end_line: 13}], imports: ["checkout.ledger", "uuid"], entry_point: false},
+    {path: "tests/test_payments.py", blob_id: "d".repeat(40), sha256: "f".repeat(64), size_bytes: 90, language: "python", role: "TEST", parse_status: "PARSED", symbols: [], imports: ["checkout.payments"], entry_point: false},
+  ],
+  languages: {python: 2}, frameworks: ["fastapi", "pytest"], test_map: {"tests/test_payments.py": ["checkout/payments.py"]}, omissions: [],
+  digest: "9".repeat(64), trust: "UNTRUSTED_REPOSITORY_DATA", can_authorize_execution: false,
+};
+
+async function routeCollected(page: import("@playwright/test").Page, index: unknown | null) {
+  const collected = {...synthetic, current_stage: "TRIAGING", failure_reason: null, source_manifest_ref: "sha256:" + "d".repeat(64)};
+  await page.route("**/api/backend/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/events")) return route.fulfill({contentType: "text/event-stream", body: ""});
+    if (path.endsWith("/executions")) return route.fulfill({json: {run_id: runId, phases: []}});
+    if (path.endsWith("/research")) return route.fulfill({json: []});
+    if (path.endsWith("/repository-index")) return index ? route.fulfill({json: index}) : route.fulfill({status: 404, json: {}});
+    if (path.includes("/source-manifests/")) return route.fulfill({json: {schema_version: "1.0", repository_id: repo, source_commit: "a".repeat(40), root_tree: "b".repeat(40), evidence_origin: "TEST_TRANSPORT", commit_identity: "GITHUB_HTTPS_METADATA", raw_commit_verified: false, observed_at: "2026-10-26T12:00:00Z", trace_id: repo, policy_version: "repository-v1", files: [{path: "README.md", blob_id: "c".repeat(40), sha256: "e".repeat(64), size_bytes: 10}]}});
+    if (path.endsWith("/patch")) return route.fulfill({status: 404, json: {}});
+    return route.fulfill({json: path.endsWith("/runs") ? [collected] : collected});
+  });
+}
+
+test("analysis tab shows the retained index as untrusted static data", async ({page}) => {
+  await routeCollected(page, indexFixture);
+  await page.goto("/");
+  await page.getByRole("button", {name: /Run 12345678/}).click();
+  await page.getByRole("tab", {name: "analysis"}).click();
+  await expect(page.getByRole("heading", {name: "Repository analysis"})).toBeVisible();
+  await expect(page.getByText(/not a diagnosis/)).toBeVisible();
+  await expect(page.getByText("checkout/payments.py", {exact: true}).first()).toBeVisible();
+  await expect(page.getByText("fastapi, pytest")).toBeVisible();
+  await expect(page.locator("body")).toContainText("9".repeat(64));
+  await page.getByText("2 symbols · parsed").click();
+  await expect(page.getByText(/PaymentService \(class, lines 5-9\)/)).toBeVisible();
+  await expect(page.getByText("tests/test_payments.py").first()).toBeVisible();
+  await expect(page.getByText("Verified", {exact: true})).toHaveCount(0);
+});
+
+test("analysis tab explains a missing index without inventing results", async ({page}) => {
+  await routeCollected(page, null);
+  await page.goto("/");
+  await page.getByRole("button", {name: /Run 12345678/}).click();
+  await page.getByRole("tab", {name: "analysis"}).click();
+  await expect(page.getByText("No retained analysis is available for this run.")).toBeVisible();
+});
+
+test("bridge allows only GET for the read-only repository-index path", async () => {
+  const headers = {host: "127.0.0.1:3000"};
+  expect((await bridge(new Request("http://127.0.0.1:3000/api", {headers}), ["runs", runId, "repository-index"])).status).not.toBe(404);
+  const post = await bridge(new Request("http://127.0.0.1:3000/api", {method: "POST", headers: {...headers, origin: "http://127.0.0.1:3000"}, body: "{}"}), ["runs", runId, "repository-index"]);
+  expect(post.status).toBe(404);
+});
