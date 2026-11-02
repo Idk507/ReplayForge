@@ -11,7 +11,7 @@ Updated 2026-11-01. Authoritative detail stays in `todo.md`, `milestones.md` and
 ## Validated (2026-11-01, Windows, disposable PostgreSQL 18)
 | Check | Result |
 |---|---|
-| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261101f.xml`, commit b3149b9) | **1825 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 16m33s |
+| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261102b.xml`, commit 54967d4) | **1831 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 15m56s |
 | `scripts.test_postgres --web` | 16 Playwright passed incl. real local API test |
 | `tests/integration/test_collection_reconciliation.py` | 20 passed (journal, reconcile, lifecycle) |
 | ruff check/format, mypy (166 files), unit | clean; 992 passed |
@@ -38,7 +38,7 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 - Tree-listing path ranking when the incident names no file (`rank_listing`, `GitHubReader.list_paths`).
 - `ContextBundle` repository map (index digest, frameworks, symbols of unincluded files, test links).
 - Read-only `GET /api/v1/runs/{id}/diagnostics` + workbench panel (WORKER_NOT_CLAIMING, NEEDS_RECONCILIATION, ...).
-- Remaining: store the full index as its own checksummed artifact (needs migration 0038 + worker pin bump) and an analysis view.
+- Full index retained as checksummed owner-scoped artifact (migration 0038, `Store.repository_index`, GET `/repository-index`, workbench Analysis tab); worker schema pin is now 0038. `scripts.test_postgres --web`: 23 Playwright passed.
 
 ## NOT validated
 - No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.
@@ -46,7 +46,7 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 - Docker-dependent tests skipped (3).
 
 ## Next tasks
-1. Retain the full index as a checksummed artifact + analysis view; then investigation contract/fixture provider work.
+1. Feed the retained index/ranking into the investigation (triage) and add the synthetic fixture provider; real Nemotron only with explicit authorization.
 2. Investigation contract + synthetic fixture provider; real Nemotron only with explicit authorization.
 3. Then reproduction/patch/execution (fake adapter only locally), verification, UI diagnostics for reconciliation states.
 

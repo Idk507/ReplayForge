@@ -2,7 +2,7 @@
 
 **Planning date:** Monday 12 Oct 2026 | **Hard deadline:** Fri 30 Oct 2026, 10:00 PDT / 22:30 IST. Checkboxes track observed evidence; milestone completion requires the original acceptance criteria and linked results.
 
-## Local collection hardening - 2026-11-01 (implementation b3149b9)
+## Local collection hardening - 2026-11-01/02 (implementation b3149b9, then 54967d4)
 
 - [x] Collection dispatch journal and audited operator reconciliation (migration
   0037), tree-listing path ranking when an incident names no file, repository
@@ -16,6 +16,16 @@
   Evidence: docs/evidence/full-backend-local-20261101f.xml/.log (prior runs
   ...c/...d/...e retained; earlier failing runs 3 and 24 failures fixed).
   Design: docs/collection-reconciliation.md. Handoff: docs/development/CLAUDE_HANDOFF.md.
+  Follow-up 2026-11-02 (implementation 54967d4): the repository index is now
+  retained as an immutable checksummed owner-scoped artifact (migration 0038,
+  stored atomically with context; GET /api/v1/runs/{id}/repository-index; workbench
+  Analysis tab). Acceptance (actual): full backend on disposable PostgreSQL 18
+  **1831 passed, 3 skipped, exit 0, 955.74 s** (evidence
+  docs/evidence/full-backend-local-20261102b.xml/.log; an earlier run `a` had 2
+  downgrade-guard test-isolation failures, fixed); `scripts.test_postgres --web`
+  23 Playwright passed including the real local API case; standalone
+  `npx playwright test` 22 passed, 1 skipped; unit 1011 passed; ruff/format/mypy
+  (167 files) clean.
   Remaining gaps: collection evidence is TEST_TRANSPORT only (no live GitHub/Nebius/
   sandbox call); deploy/ tooling still pinned to 0036 and refuses 0037; the
   full repository index is summarized in the bundle but not stored as its own

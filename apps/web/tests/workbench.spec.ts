@@ -319,7 +319,8 @@ for (const [code, extra, title, body] of [
 test("bridge allows only a GET for the read-only diagnostics path", async () => {
   const headers = {host: "127.0.0.1:3000"};
   const ok = await bridge(new Request("http://127.0.0.1:3000/api", {headers}), ["runs", runId, "diagnostics"]);
-  expect(ok.status).not.toBe(404);
+  // A backend 404 for an unknown run is fine; only the bridge's own denial is not.
+  expect(((await ok.json().catch(() => ({}))) as {error_class?: string}).error_class).not.toBe("PATH_DENIED");
   const post = await bridge(new Request("http://127.0.0.1:3000/api", {method: "POST", headers: {...headers, origin: "http://127.0.0.1:3000"}, body: "{}"}), ["runs", runId, "diagnostics"]);
   expect(post.status).toBe(404);
 });
@@ -374,7 +375,8 @@ test("analysis tab explains a missing index without inventing results", async ({
 
 test("bridge allows only GET for the read-only repository-index path", async () => {
   const headers = {host: "127.0.0.1:3000"};
-  expect((await bridge(new Request("http://127.0.0.1:3000/api", {headers}), ["runs", runId, "repository-index"])).status).not.toBe(404);
+  const ok = await bridge(new Request("http://127.0.0.1:3000/api", {headers}), ["runs", runId, "repository-index"]);
+  expect(((await ok.json().catch(() => ({}))) as {error_class?: string}).error_class).not.toBe("PATH_DENIED");
   const post = await bridge(new Request("http://127.0.0.1:3000/api", {method: "POST", headers: {...headers, origin: "http://127.0.0.1:3000"}, body: "{}"}), ["runs", runId, "repository-index"]);
   expect(post.status).toBe(404);
 });

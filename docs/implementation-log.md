@@ -3566,3 +3566,14 @@ services/persistence/collection_journal.py; dispatch_once intent->SENT->outcome;
 services/context/index.py; snapshot list_attested_tree and GitHubReader.list_paths; ContextBundle
 index_digest/frameworks/repository_map; GET /api/v1/runs/{id}/diagnostics.
 No live provider call, remote write or cloud charge occurred. Nothing is VERIFIED.
+
+
+## 2026-11-02 - retained repository index (54967d4)
+
+- Full backend (no targets, disposable PostgreSQL 18): run `a` 2 failed/1829 passed (0038 downgrade guard vs
+  shared-DB test isolation); after fix run `b` **1831 passed, 3 skipped, exit 0, 955.74 s**.
+- `scripts.test_postgres --web`: 23 Playwright passed (real local API case included). `npx playwright test`
+  in apps/web: 22 passed, 1 skipped. Unit 1011 passed. ruff, ruff format, mypy (167 files): clean.
+- Changes: migration 0038 repository_indexes; Store.store_context(repository_index=...), Store.repository_index();
+  GET /api/v1/runs/{id}/repository-index; workbench Analysis tab; verification worker default schema 0038.
+  deploy/ tooling remains pinned to 0036 (refuses 0038). No live provider call, remote write or charge.
