@@ -1,0 +1,298 @@
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 11%]
+........................................................................ [ 15%]
+.................F.............F........................................ [ 19%]
+.................s...................................................... [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+......ss................................................................ [ 39%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 51%]
+........................................................................ [ 54%]
+........................................................................ [ 58%]
+........................................................................ [ 62%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 78%]
+........................................................................ [ 82%]
+........................................................................ [ 86%]
+........................................................................ [ 90%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+..................................                                       [100%]
+================================== FAILURES ===================================
+________ test_claim_binding_tampering_and_runtime_mutation_are_denied _________
+
+store = <services.persistence.store.Store object at 0x0000025511EFD9A0>
+
+    def test_claim_binding_tampering_and_runtime_mutation_are_denied(store):
+        from alembic import command
+        from alembic.config import Config
+    
+        journal, lease, owner, run, action, *_ = baseline_journal_fixture(store)
+        journal.record_action(lease, owner, action, expected_version=0)
+        _, profile, _, sign, verifier = fixture("REMOTE_SERVICE")
+        backend = FakeBackend(profile)
+        dispatch_baseline(
+            store,
+            lease,
+            owner,
+            action.execution_id,
+            sign(),
+            verifier,
+            backend,
+            expected_version=0,
+        )
+        with psycopg.connect(store.dsn) as c:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                c.execute(
+                    "DELETE FROM baseline_submissions WHERE execution_id=%s",
+                    (action.execution_id,),
+                )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as c:
+            c.execute(
+                "UPDATE baseline_submissions SET configuration_ref=%s "
+                "WHERE execution_id=%s",
+                ("sha256:" + "f" * 64, action.execution_id),
+            )
+        with pytest.raises(StoreError, match="CONFLICT"):
+            dispatch_baseline(
+                store,
+                lease,
+                owner,
+                action.execution_id,
+                sign(),
+                verifier,
+                backend,
+                expected_version=1,
+            )
+        assert len(backend.calls) == 1
+        test_postgres.release_gate_envelopes()
+        with pytest.raises(RuntimeError, match="ARCHIVE_BASELINE"):
+>           command.downgrade(Config("alembic.ini"), "0027")
+
+tests\integration\test_baseline_dispatch.py:293: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\alembic\command.py:530: in downgrade
+    script.run_env()
+.venv\Lib\site-packages\alembic\script\base.py:545: in run_env
+    util.load_python_file(self.dir, "env.py")
+.venv\Lib\site-packages\alembic\util\pyfiles.py:116: in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\alembic\util\pyfiles.py:136: in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap_external>:999: in exec_module
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+migrations\env.py:20: in <module>
+    context.run_migrations()
+<string>:8: in run_migrations
+    ???
+.venv\Lib\site-packages\alembic\runtime\environment.py:946: in run_migrations
+    self.get_context().run_migrations(**kw)
+.venv\Lib\site-packages\alembic\runtime\migration.py:627: in run_migrations
+    step.migration_fn(**kw)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def downgrade() -> None:
+        # Retained analysis artifacts are evidence; keep them unless the table is empty.
+        if (
+            op.get_bind()
+            .exec_driver_sql("SELECT EXISTS(SELECT 1 FROM repository_indexes)")
+            .scalar()
+        ):
+>           raise RuntimeError("ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE")
+E           RuntimeError: ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE
+
+migrations\versions\0038_repository_indexes.py:29: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+store = <services.persistence.store.Store object at 0x0000025511EFD9A0>
+
+    def test_claim_binding_tampering_and_runtime_mutation_are_denied(store):
+        from alembic import command
+        from alembic.config import Config
+    
+        journal, lease, owner, run, action, *_ = baseline_journal_fixture(store)
+        journal.record_action(lease, owner, action, expected_version=0)
+        _, profile, _, sign, verifier = fixture("REMOTE_SERVICE")
+        backend = FakeBackend(profile)
+        dispatch_baseline(
+            store,
+            lease,
+            owner,
+            action.execution_id,
+            sign(),
+            verifier,
+            backend,
+            expected_version=0,
+        )
+        with psycopg.connect(store.dsn) as c:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                c.execute(
+                    "DELETE FROM baseline_submissions WHERE execution_id=%s",
+                    (action.execution_id,),
+                )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as c:
+            c.execute(
+                "UPDATE baseline_submissions SET configuration_ref=%s "
+                "WHERE execution_id=%s",
+                ("sha256:" + "f" * 64, action.execution_id),
+            )
+        with pytest.raises(StoreError, match="CONFLICT"):
+            dispatch_baseline(
+                store,
+                lease,
+                owner,
+                action.execution_id,
+                sign(),
+                verifier,
+                backend,
+                expected_version=1,
+            )
+        assert len(backend.calls) == 1
+        test_postgres.release_gate_envelopes()
+>       with pytest.raises(RuntimeError, match="ARCHIVE_BASELINE"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'ARCHIVE_BASELINE'
+E         Actual message: 'ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE'
+
+tests\integration\test_baseline_dispatch.py:292: AssertionError
+__________ test_nonempty_baseline_producer_ledger_refuses_downgrade ___________
+
+store = <services.persistence.store.Store object at 0x00000255120084A0>
+
+    def test_nonempty_baseline_producer_ledger_refuses_downgrade(store):
+        _, _, _, _, action, _, _, _ = prepared(store)
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "INSERT INTO baseline_submissions "
+                "(execution_id,plan_ref,capability_ref,runner_id,configuration_ref,"
+                "origin,expires_at) VALUES (%s,%s,%s,%s,%s,'TEST_TRANSPORT',"
+                "clock_timestamp()+interval '1 hour')",
+                (
+                    action.execution_id,
+                    plan_ref(action.plan),
+                    "sha256:" + "a" * 64,
+                    uuid4(),
+                    "sha256:" + "b" * 64,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO baseline_preparations "
+                "(execution_id,digest,payload,expires_at) "
+                "VALUES (%s,%s,%s,clock_timestamp()+interval '1 hour')",
+                (action.execution_id, "a" * 64, b"{}"),
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            before = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        test_postgres.release_gate_envelopes()
+        # Rows left by earlier tests in the shared database may retain capability
+        # payloads, in which case 0035 refuses before 0032 does; either is a refusal.
+        with pytest.raises(
+            RuntimeError,
+            match="ARCHIVE_BASELINE_(PRODUCER|CAPABILITY_PAYLOADS)_BEFORE_DOWNGRADE",
+        ):
+>           command.downgrade(Config("alembic.ini"), "0031")
+
+tests\integration\test_baseline_producer_schema.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\alembic\command.py:530: in downgrade
+    script.run_env()
+.venv\Lib\site-packages\alembic\script\base.py:545: in run_env
+    util.load_python_file(self.dir, "env.py")
+.venv\Lib\site-packages\alembic\util\pyfiles.py:116: in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\alembic\util\pyfiles.py:136: in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap_external>:999: in exec_module
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+migrations\env.py:20: in <module>
+    context.run_migrations()
+<string>:8: in run_migrations
+    ???
+.venv\Lib\site-packages\alembic\runtime\environment.py:946: in run_migrations
+    self.get_context().run_migrations(**kw)
+.venv\Lib\site-packages\alembic\runtime\migration.py:627: in run_migrations
+    step.migration_fn(**kw)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def downgrade() -> None:
+        # Retained analysis artifacts are evidence; keep them unless the table is empty.
+        if (
+            op.get_bind()
+            .exec_driver_sql("SELECT EXISTS(SELECT 1 FROM repository_indexes)")
+            .scalar()
+        ):
+>           raise RuntimeError("ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE")
+E           RuntimeError: ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE
+
+migrations\versions\0038_repository_indexes.py:29: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+store = <services.persistence.store.Store object at 0x00000255120084A0>
+
+    def test_nonempty_baseline_producer_ledger_refuses_downgrade(store):
+        _, _, _, _, action, _, _, _ = prepared(store)
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            conn.execute(
+                "INSERT INTO baseline_submissions "
+                "(execution_id,plan_ref,capability_ref,runner_id,configuration_ref,"
+                "origin,expires_at) VALUES (%s,%s,%s,%s,%s,'TEST_TRANSPORT',"
+                "clock_timestamp()+interval '1 hour')",
+                (
+                    action.execution_id,
+                    plan_ref(action.plan),
+                    "sha256:" + "a" * 64,
+                    uuid4(),
+                    "sha256:" + "b" * 64,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO baseline_preparations "
+                "(execution_id,digest,payload,expires_at) "
+                "VALUES (%s,%s,%s,clock_timestamp()+interval '1 hour')",
+                (action.execution_id, "a" * 64, b"{}"),
+            )
+        with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
+            before = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        test_postgres.release_gate_envelopes()
+        # Rows left by earlier tests in the shared database may retain capability
+        # payloads, in which case 0035 refuses before 0032 does; either is a refusal.
+>       with pytest.raises(
+            RuntimeError,
+            match="ARCHIVE_BASELINE_(PRODUCER|CAPABILITY_PAYLOADS)_BEFORE_DOWNGRADE",
+        ):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'ARCHIVE_BASELINE_(PRODUCER|CAPABILITY_PAYLOADS)_BEFORE_DOWNGRADE'
+E         Actual message: 'ARCHIVE_REPOSITORY_INDEXES_BEFORE_DOWNGRADE'
+
+tests\integration\test_baseline_producer_schema.py:79: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\testclient.py:53
+  C:\Users\dhanu\Downloads\ReplayForge\.claude\worktrees\replayforge-hackathon-submission-468f27\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/integration/test_production_verification_loader.py: 20 warnings
+  tests\integration\test_production_verification_loader.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/integration/test_baseline_dispatch.py::test_claim_binding_tampering_and_runtime_mutation_are_denied
+FAILED tests/integration/test_baseline_producer_schema.py::test_nonempty_baseline_producer_ledger_refuses_downgrade
+2 failed, 1829 passed, 3 skipped, 21 warnings in 1070.73s (0:17:50)

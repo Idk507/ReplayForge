@@ -24,12 +24,21 @@ from services.persistence.store import Store, StoreError
 
 
 def release_gate_envelopes() -> None:
-    """Disposable-DB test aid: earlier tests' signed envelopes would make the 0036
-    downgrade guard refuse before the older migration guard under test is reached."""
+    """Disposable-DB test aid for the older-migration downgrade guards.
+
+    Evidence retained by earlier tests in the shared database (signed envelopes,
+    repository indexes, collection journal rows) makes the newer migrations'
+    downgrade guards refuse first; clear only that later evidence so the older
+    guard under test is the one reached. Never used outside disposable databases.
+    """
     with psycopg.connect(os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]) as conn:
         conn.execute(
             "UPDATE verification_results SET envelope_version=NULL,envelope_bytes=NULL"
         )
+        conn.execute("DELETE FROM repository_indexes")
+        conn.execute("DELETE FROM collection_reconciliations")
+        conn.execute("DELETE FROM collection_dispatch_events")
+        conn.execute("DELETE FROM collection_dispatches")
 
 
 def prepare_store() -> Store:
