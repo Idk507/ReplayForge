@@ -11,7 +11,7 @@ Updated 2026-11-01. Authoritative detail stays in `todo.md`, `milestones.md` and
 ## Validated (2026-11-01, Windows, disposable PostgreSQL 18)
 | Check | Result |
 |---|---|
-| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261102b.xml`, commit 54967d4) | **1831 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 15m56s |
+| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261102c.xml`, commit 34a88d1) | **1845 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 15m29s |
 | `scripts.test_postgres --web` | 16 Playwright passed incl. real local API test |
 | `tests/integration/test_collection_reconciliation.py` | 20 passed (journal, reconcile, lifecycle) |
 | ruff check/format, mypy (166 files), unit | clean; 992 passed |
@@ -39,6 +39,10 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 - `ContextBundle` repository map (index digest, frameworks, symbols of unincluded files, test links).
 - Read-only `GET /api/v1/runs/{id}/diagnostics` + workbench panel (WORKER_NOT_CLAIMING, NEEDS_RECONCILIATION, ...).
 - Full index retained as checksummed owner-scoped artifact (migration 0038, `Store.repository_index`, GET `/repository-index`, workbench Analysis tab); worker schema pin is now 0038. `scripts.test_postgres --web`: 23 Playwright passed.
+
+## Lease heartbeat (done)
+- `LeaseKeeper` renews the worker's live lease during collection/triage/patch calls; see `docs/collection-reconciliation.md`.
+- Pending from the local audit: structured logging/correlation IDs, CI workflow, tests for `scripts/reconcile_collection.py`, line-ending normalization, stale README counts, bandit hygiene (`usedforsecurity=False`, static query in collection_journal).
 
 ## NOT validated
 - No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.

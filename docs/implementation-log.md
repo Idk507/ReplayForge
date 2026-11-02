@@ -3577,3 +3577,11 @@ No live provider call, remote write or cloud charge occurred. Nothing is VERIFIE
 - Changes: migration 0038 repository_indexes; Store.store_context(repository_index=...), Store.repository_index();
   GET /api/v1/runs/{id}/repository-index; workbench Analysis tab; verification worker default schema 0038.
   deploy/ tooling remains pinned to 0036 (refuses 0038). No live provider call, remote write or charge.
+
+
+## 2026-11-02 - lease heartbeat (34a88d1)
+
+- Added services/orchestrator/lease_keeper.py (LeaseKeeper) and wrapped collection dispatch, direct collection,
+  triage (both paths) and patch ticks. Full backend (disposable PostgreSQL 18, no targets):
+  **1845 passed, 3 skipped, exit 0, 929.68 s** (evidence full-backend-local-20261102c). Unit 1020 expected
+  (9 new); ruff, ruff format, mypy (168 files) clean. No live provider call, remote write or charge.

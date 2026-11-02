@@ -26,6 +26,13 @@
   23 Playwright passed including the real local API case; standalone
   `npx playwright test` 22 passed, 1 skipped; unit 1011 passed; ruff/format/mypy
   (167 files) clean.
+  Lease heartbeat 2026-11-02 (implementation 34a88d1): a worker's own live claim is
+  now renewed every 10 s (bounded to 180 s, never reviving an expired claim) while
+  the collection request, triage model call and patch model call run, closing the
+  30 s lease versus 60 s request-timeout defect. Acceptance (actual): full backend
+  on disposable PostgreSQL 18 **1845 passed, 3 skipped, exit 0, 929.68 s**
+  (docs/evidence/full-backend-local-20261102c.xml/.log); 9 unit + 5 disposable-DB
+  lease-keeper tests incl. a control run that reproduces the defect without it.
   Remaining gaps: collection evidence is TEST_TRANSPORT only (no live GitHub/Nebius/
   sandbox call); deploy/ tooling still pinned to 0036 and refuses 0037; the
   full repository index is summarized in the bundle but not stored as its own

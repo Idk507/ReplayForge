@@ -30,3 +30,10 @@ Worker role additionally needs SELECT/INSERT on `collection_dispatches` and
 `collection_dispatch_events`. Tests: `tests/integration/test_collection_reconciliation.py` (20).
 Limits: replay safety rests on collection being a read of one immutable commit with lease
 fencing; the collection API has no idempotency key yet.
+
+## Lease renewal
+`LeaseKeeper` (services/orchestrator/lease_keeper.py) renews the worker's own live 30 s lease every 10 s,
+for at most 180 s, around the collection request and the triage/patch model calls. It cannot revive an
+expired claim, stops on `LEASE_LOST` (for example after an operator requeue), and a live keeper keeps the
+lease unexpired so reconciliation stays blocked while a worker is actually working. If the worker dies the
+lease lapses within 30 s and the run becomes reconcilable.
