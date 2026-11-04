@@ -45,6 +45,10 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 - Structured logging and CI workflow done (docs/observability-and-ci.md); CI has not yet run on GitHub.
 - Pending from the local audit: tests for `scripts/reconcile_collection.py`, line-ending normalization, stale README counts, bandit hygiene (`usedforsecurity=False`, static query in collection_journal).
 
+## Sandbox fallback (2026-11-04)
+- User deleted the Azure deployment; finish the full local workflow first.
+- If Nebius sandbox keeps failing, use NVIDIA OpenShell (remote Linux host), then a managed microVM. Plan: `docs/sandbox-fallback-plan.md`. Nothing run against OpenShell yet; external use needs user authorization.
+
 ## NOT validated
 - No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.
 - `deploy/` tooling and `.ps1` still pinned to 0036 (intentionally refuses 0037; needs review before any deploy).

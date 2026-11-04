@@ -27,6 +27,13 @@ Human reviewer must approve source commit + patch digest + target branch; mutati
 ## M5 acceptance
 Public demo operates without exposing privileged controls to anonymous users; project repo includes LICENSE and README and code needed to reproduce test fixtures. Video is public and under 3 minutes. Devpost specifies Coding and Agentic Engineering, actual NVIDIA+Nebius technology, optional Tavily usage, feedback and all required links. Submit on Oct 29 and keep endpoint available during Dec 1–15 judging window.
 
+## Sandbox provider fallback — 2026-11-04
+
+M2/M3 exit tests are unchanged. If the Nebius sandbox stays blocked (OCI import
+HTTP 404), the execution provider may be replaced (NVIDIA OpenShell on a remote
+Linux host first, then a managed microVM sandbox) provided it meets the contract
+in docs/sandbox-fallback-plan.md. A provider swap never weakens an exit test.
+
 ## Milestone change control
 For a slipped milestone: identify failing exit test, block dependent scope, select minimum safe fix and cut optional features first. Never claim pass on an incomplete milestone. Weekly reporting is not enough during 18-day sprint; update `todo.md` and `docs/implementation-log.md` after each completed acceptance gate. Keep the final 48 hours free from large architectural changes.
 

@@ -174,3 +174,5 @@ See `docs/evidence/m3-live-diagnostics-unit.xml`,
 `docs/evidence/m3-live-diagnostics-postgres.xml` and the ready-to-send
 `docs/m3-nebius-import-support.md`. No repository execution, inference or GitHub
 write occurred; provider billing was not returned. M3 remains incomplete.
+
+Fallback if this provider stays blocked: see docs/sandbox-fallback-plan.md.

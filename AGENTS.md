@@ -223,3 +223,11 @@ clean receipt recovery. Synthetic profiles remain synthetic; the earlier kernel
 diagnostic does not attest this workload template. Pinned OCI import failed
 HTTP404 after SDK URL normalization; preserve attempts and never substitute
 catalog UUID/tag for verified OCI identity. M3/M4 exits remain unchanged.
+
+## Sandbox provider fallback - 2026-11-04
+
+The execution provider is replaceable; acceptance is not. If the Nebius sandbox
+stays blocked, follow docs/sandbox-fallback-plan.md (NVIDIA OpenShell on a remote
+Linux host, then a managed microVM). Same contract, no weakened exit tests, no
+external call or spend without user authorization, and unverified provider
+capabilities must not be claimed.

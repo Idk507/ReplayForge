@@ -47,7 +47,18 @@
   artifact. M3 and M4 exits are unchanged and remain open (qualified runtime,
   production signing trust and approved publication need user authorization).
 
-## Current focus - public full-stack deployment, 2026-10-30
+## Current focus - complete local workflow and sandbox fallback, 2026-11-04
+
+The user deleted the Azure deployment and wants the complete working workflow
+first. Order: (1) feed the retained index into triage with a labelled synthetic
+provider; (2) reproduction/patch/verify with fake adapters behind a
+`SandboxProvider` boundary; (3) evidence/approval/PR UI; (4) audit leftovers.
+Sandbox: Nebius OCI import is time-boxed; if it keeps failing, switch to NVIDIA
+OpenShell on a remote Linux host, then a managed microVM sandbox. See
+docs/sandbox-fallback-plan.md. Unchecked/unrun: no OpenShell call has been made;
+any external provider, spend or real repository needs user authorization.
+
+## Superseded focus - public full-stack deployment, 2026-10-30 (deployment deleted by the user 2026-11-04)
 
 **Latest live checkpoint:** the additional authorized grant-completion execution
 succeeded: revision 0036, verified TLS and separate API/auth roles. The real
