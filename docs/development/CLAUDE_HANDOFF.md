@@ -11,7 +11,7 @@ Updated 2026-11-01. Authoritative detail stays in `todo.md`, `milestones.md` and
 ## Validated (2026-11-01, Windows, disposable PostgreSQL 18)
 | Check | Result |
 |---|---|
-| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261102c.xml`, commit 34a88d1) | **1845 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 15m29s |
+| Full backend `scripts.test_postgres` (evidence `full-backend-local-20261104a.xml`, commit 308d82f) | **1867 passed, 3 skipped (Docker/public-deployment tests), exit 0**, 15m10s |
 | `scripts.test_postgres --web` | 16 Playwright passed incl. real local API test |
 | `tests/integration/test_collection_reconciliation.py` | 20 passed (journal, reconcile, lifecycle) |
 | ruff check/format, mypy (166 files), unit | clean; 992 passed |
@@ -42,7 +42,8 @@ order-dependent downgrade tests, Playwright scope. Evidence logs retained under 
 
 ## Lease heartbeat (done)
 - `LeaseKeeper` renews the worker's live lease during collection/triage/patch calls; see `docs/collection-reconciliation.md`.
-- Pending from the local audit: structured logging/correlation IDs, CI workflow, tests for `scripts/reconcile_collection.py`, line-ending normalization, stale README counts, bandit hygiene (`usedforsecurity=False`, static query in collection_journal).
+- Structured logging and CI workflow done (docs/observability-and-ci.md); CI has not yet run on GitHub.
+- Pending from the local audit: tests for `scripts/reconcile_collection.py`, line-ending normalization, stale README counts, bandit hygiene (`usedforsecurity=False`, static query in collection_journal).
 
 ## NOT validated
 - No live GitHub/Nebius/sandbox call; collection evidence is `TEST_TRANSPORT`. Nothing is VERIFIED; M3/M4 open.

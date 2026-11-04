@@ -3585,3 +3585,13 @@ No live provider call, remote write or cloud charge occurred. Nothing is VERIFIE
   triage (both paths) and patch ticks. Full backend (disposable PostgreSQL 18, no targets):
   **1845 passed, 3 skipped, exit 0, 929.68 s** (evidence full-backend-local-20261102c). Unit 1020 expected
   (9 new); ruff, ruff format, mypy (168 files) clean. No live provider call, remote write or charge.
+
+
+## 2026-11-04 - structured logging and CI (308d82f)
+
+- Added packages/observability/logs.py (closed field set, credential-safe), instrumented collection, lease,
+  reconciliation, triage/patch and worker start/stop; .github/workflows/ci.yml; scripts/fetch_pytest_wheelhouse.py
+  (real download verified all 5 wheel hashes); scripts/check_secrets.py (CLEAN, 1000 files); test_postgres accepts
+  REPLAYFORGE_TEST_ADMIN_PASSWORD. First full run was interrupted (no result); rerun:
+  **1867 passed, 3 skipped, exit 0, 910.39 s** (full-backend-local-20261104a). actionlint exit 0.
+  The workflow has not yet executed on GitHub. No live provider call, remote write or charge.

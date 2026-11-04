@@ -33,6 +33,14 @@
   on disposable PostgreSQL 18 **1845 passed, 3 skipped, exit 0, 929.68 s**
   (docs/evidence/full-backend-local-20261102c.xml/.log); 9 unit + 5 disposable-DB
   lease-keeper tests incl. a control run that reproduces the defect without it.
+  Logging and CI 2026-11-04 (implementation 308d82f): allowlisted credential-safe JSON
+  logging with correlation fields (packages/observability/logs.py; docs/observability-and-ci.md),
+  GitHub Actions workflow (.github/workflows/ci.yml, actionlint-clean, NOT yet run on GitHub),
+  hash-verified wheelhouse fetch and tracked-file secret scan. Acceptance (actual): full backend
+  on disposable PostgreSQL 18 **1867 passed, 3 skipped, exit 0, 910.39 s**
+  (docs/evidence/full-backend-local-20261104a.xml/.log; a first attempt was killed by a session
+  interruption at ~11% and produced no result, so it is not counted); unit+contract 1269 passed;
+  Playwright 22 passed/1 skipped; ruff/format/mypy (172 files) clean.
   Remaining gaps: collection evidence is TEST_TRANSPORT only (no live GitHub/Nebius/
   sandbox call); deploy/ tooling still pinned to 0036 and refuses 0037; the
   full repository index is summarized in the bundle but not stored as its own
