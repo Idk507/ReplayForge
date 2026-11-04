@@ -7,7 +7,9 @@ import httpx
 
 from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
+from packages.observability.logs import timed
 from packages.providers.nebius import NebiusConfig
+from services.orchestrator.lease_keeper import LeaseKeeper
 from services.orchestrator.repair_flow import run_patch
 from services.orchestrator.worker import WorkerResult
 from services.persistence.baseline import BaselineJournal
@@ -39,16 +41,20 @@ def tick_patch(
     if authorize is not None:
         authorize(lease, run.version)
     action = BaselineJournal(store).accepted_action(run.run_id, owner)
-    result = run_patch(
-        store,
-        lease,
-        owner,
-        config,
-        action.execution_id,
-        cost_policy=cost_policy,
-        transport=transport,
-        queue_verification=True,
-    )
+    with (
+        timed("patch.dispatch", run_id=lease.run_id, worker_id=lease.worker_id),
+        LeaseKeeper(store, lease),
+    ):
+        result = run_patch(
+            store,
+            lease,
+            owner,
+            config,
+            action.execution_id,
+            cost_policy=cost_policy,
+            transport=transport,
+            queue_verification=True,
+        )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )

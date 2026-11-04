@@ -1,0 +1,13 @@
+FROM python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+WORKDIR /app
+RUN pip install --no-cache-dir uv==0.11.32
+COPY pyproject.toml uv.lock LICENSE NOTICE ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY packages/ packages/
+COPY services/ services/
+COPY scripts/ scripts/
+COPY migrations/ migrations/
+COPY alembic.ini ./
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+USER 65532:65532
+CMD ["uvicorn", "services.auth.local:create_public_from_env", "--factory", "--host", "127.0.0.1", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "127.0.0.1", "--no-access-log"]

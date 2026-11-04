@@ -135,3 +135,21 @@ def test_full_size_blob_fits_encoded_response_cap() -> None:
     with GitHubReader(SecretStr("synthetic-read-token"), transport=transport) as reader:
         result = reader.acquire(grant, grant.owner_id, grant.commits[0])
     assert len(result.snapshot.read_file("src/a.py", 65536)) == 65536
+
+
+def test_http_listing_reads_commit_and_trees_but_never_a_blob() -> None:
+    grant, responses, calls, transport = fixture()
+    with GitHubReader(SecretStr("synthetic-read-token"), transport=transport) as reader:
+        paths = reader.list_paths(grant, grant.owner_id, grant.commits[0])
+    assert paths == ("src/a.py",)
+    assert len(calls) == 3 and not any(c.startswith("blobs/") for c in calls)
+
+
+def test_http_listing_fails_closed_on_tree_tampering() -> None:
+    grant, responses, calls, transport = fixture()
+    root_key = next(k for k in responses if k.startswith("trees/"))
+    responses[root_key]["tree"][0]["path"] = "other"
+    with GitHubReader(SecretStr("synthetic-read-token"), transport=transport) as reader:
+        with pytest.raises((RepositoryReadError, SnapshotError)):
+            reader.list_paths(grant, grant.owner_id, grant.commits[0])
+    assert not any(c.startswith("blobs/") for c in calls)

@@ -18,7 +18,7 @@ from tests.integration.test_session_access import connect, setup
 store = test_postgres.store
 
 
-def prepared(store, incident="Small README demonstration"):
+def prepared(store, incident="Small README demonstration", path_lister=None):
     c, j, session, headers, access, calls = setup(store)
     repo = connect(access, session)
     with j.store._connection() as db:
@@ -79,7 +79,11 @@ def prepared(store, incident="Small README demonstration"):
         return load
 
     broker = CollectionBroker(
-        store, access, SecretStr("s" * 43), source_loader_factory=factory
+        store,
+        access,
+        SecretStr("s" * 43),
+        source_loader_factory=factory,
+        path_lister=path_lister,
     )
     install_routes(c.app, broker)
     payload = CollectionRequest(
@@ -188,7 +192,8 @@ def test_worker_claim_http_broker_and_persisted_stage_agree(store):
     c, j, session, broker, payload, fetched = prepared(store)
     with j.store._connection() as db:
         db.execute(
-            "UPDATE job_leases SET status='queued',token=NULL WHERE run_id=%s",
+            "UPDATE job_leases SET status='queued',token=NULL,attempt_count=0 "
+            "WHERE run_id=%s",
             (payload["lease"]["run_id"],),
         )
     internal = TestClient(
@@ -208,6 +213,129 @@ def test_worker_claim_http_broker_and_persisted_stage_agree(store):
     ) as client:
         result = dispatch_once(store, uuid4(), client, ("README.md",))
     assert result.stage.value == "TRIAGING" and len(fetched) == 1
+
+
+def test_restricted_worker_claims_and_broker_persists_events(store):
+    """The worker identity has no access to source or auth custody tables."""
+    import os
+
+    import httpx
+    import psycopg
+    from fastapi.testclient import TestClient
+    from psycopg import sql
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    from services.orchestrator.source_broker import BrokerClient, dispatch_once
+    from services.persistence.store import Store
+
+    c, journal, session, _broker, payload, fetched = prepared(store)
+    run_id = payload["lease"]["run_id"]
+    role = "rf_collection_" + uuid4().hex
+    admin_dsn = os.environ["REPLAYFORGE_MIGRATION_DATABASE_URL"]
+    with psycopg.connect(admin_dsn, autocommit=True) as admin:
+        password = uuid4().hex + uuid4().hex
+        admin.execute(
+            sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(
+                sql.Identifier(role), sql.Literal(password)
+            )
+        )
+        try:
+            # A CREATEROLE creator must inherit the role to drop its objects later.
+            admin.execute(
+                sql.SQL("GRANT {} TO CURRENT_USER WITH INHERIT TRUE").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL("GRANT SELECT, UPDATE ON runs,job_leases TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL("GRANT SELECT, INSERT ON run_events TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+            admin.execute(
+                sql.SQL(
+                    "GRANT SELECT, INSERT ON collection_dispatches,"
+                    "collection_dispatch_events TO {}"
+                ).format(sql.Identifier(role))
+            )
+            with journal.store._connection() as db:
+                db.execute(
+                    "UPDATE job_leases SET status='queued',token=NULL,attempt_count=0 "
+                    "WHERE run_id=%s",
+                    (run_id,),
+                )
+            conninfo = conninfo_to_dict(admin_dsn)
+            conninfo["user"] = role
+            conninfo["password"] = password
+            worker_store = Store(make_conninfo("", **conninfo))
+            internal = TestClient(
+                c.app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 50000)
+            )
+
+            def handle(req):
+                response = internal.request(
+                    req.method,
+                    str(req.url),
+                    headers=dict(req.headers),
+                    content=req.content,
+                )
+                return httpx.Response(response.status_code, content=response.content)
+
+            with BrokerClient(
+                "http://127.0.0.1:8000",
+                SecretStr("s" * 43),
+                transport=httpx.MockTransport(handle),
+            ) as client:
+                result = dispatch_once(worker_store, uuid4(), client, ("README.md",))
+            assert result.stage.value == "TRIAGING" and len(fetched) == 1
+            events = store.events(result.run_id, session.user_id)
+            assert any(e.event_type == "LEASE_CLAIMED" for e in events)
+            assert any(e.stage.value == "TRIAGING" for e in events)
+            with psycopg.connect(make_conninfo("", **conninfo)) as restricted:
+                assert restricted.execute(
+                    "SELECT has_table_privilege(current_user,"
+                    "'auth_credentials','SELECT')"
+                ).fetchone() == (False,)
+        finally:
+            admin.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
+            admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role)))
+
+
+def test_expired_claim_is_not_redispatched_after_restart(store):
+    import httpx
+
+    from services.orchestrator.source_broker import BrokerClient, dispatch_once
+
+    _c, journal, _session, _broker, payload, fetched = prepared(store)
+    with journal.store._connection() as db:
+        db.execute(
+            "UPDATE job_leases SET leased_until=clock_timestamp()-interval '1 second' "
+            "WHERE run_id=%s",
+            (payload["lease"]["run_id"],),
+        )
+    calls = []
+
+    def handle(request):
+        calls.append(request.method)
+        return httpx.Response(200, json={"enabled": True})
+
+    with BrokerClient(
+        "http://127.0.0.1:8000",
+        SecretStr("s" * 43),
+        transport=httpx.MockTransport(handle),
+    ) as client:
+        assert dispatch_once(store, uuid4(), client, ("README.md",)).status == "IDLE"
+        assert dispatch_once(store, uuid4(), client, ("README.md",)).status == "IDLE"
+    assert calls == ["GET", "GET"] and not fetched
 
 
 def test_cancelled_collection_never_fetches_source(store):
@@ -285,3 +413,83 @@ def test_materialization_source_is_fetched_by_manifest_after_fresh_access(store)
     )
     assert denied.status_code == 403
     assert len(fetched) == 2
+
+
+def lister_returning(tree, calls):
+    def lister(_token, _run, _grant):
+        calls.append(1)
+        return tree
+
+    return lister
+
+
+TREE = ("README.md", "src/checkout.py", "src/ledger.py", "src/web.py")
+
+
+def post_collection(c, payload):
+    return c.post(
+        "/internal/v1/collection",
+        json=payload,
+        headers={"authorization": "Bearer " + "s" * 43},
+    )
+
+
+def test_incident_without_file_names_ranks_the_verified_tree(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        "Customer retried the checkout and got a duplicate payment",
+        path_lister=lister_returning(TREE, calls),
+    )
+    r = post_collection(c, payload)
+    assert r.status_code == 200 and r.json()["stage"] == "TRIAGING", r.json()
+    assert calls == [1] and fetched == [("src/checkout.py",)]
+
+
+def test_ranking_is_skipped_when_the_incident_names_a_file(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        'AssertionError in File "src/ledger.py", line 4',
+        path_lister=lister_returning(TREE, calls),
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert calls == [] and fetched == [("src/ledger.py",)]
+
+
+def test_unmatched_incident_keeps_the_explicit_fallback(store):
+    calls = []
+    c, j, session, broker, payload, fetched = prepared(
+        store, "zzz qqq", path_lister=lister_returning(TREE, calls)
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert calls == [1] and fetched == [("README.md",)]
+
+
+def test_ranked_paths_outside_the_grant_are_never_fetched(store):
+    calls = []
+    outside = ("README.md", "secrets/checkout.py")
+    c, j, session, broker, payload, fetched = prepared(
+        store,
+        "checkout duplicate payment",
+        path_lister=lister_returning(outside, calls),
+    )
+    assert post_collection(c, payload).status_code == 200
+    assert fetched == [("README.md",)]
+
+
+def test_listing_failure_collects_nothing_and_leaves_the_claim(store):
+    from services.orchestrator.collection import SourceInputError
+
+    def failing(_token, _run, _grant):
+        raise SourceInputError("SOURCE_UNAVAILABLE")
+
+    c, j, session, broker, payload, fetched = prepared(
+        store, "checkout duplicate payment", path_lister=failing
+    )
+    post_collection(c, payload)
+    assert not fetched
+    from uuid import UUID
+
+    state = store.get(UUID(payload["lease"]["run_id"]), session.user_id)
+    assert state.current_stage.value != "TRIAGING"

@@ -16,6 +16,7 @@ from packages.contracts.source import SealedSnapshot, SourceManifest
 from packages.policies.repository import admit, allowed_entry
 from packages.policies.transitions import TERMINAL
 from services.context.collector import ContextError, collect
+from services.context.index import RepositoryIndex, build_index
 from services.persistence.store import Lease, Store, StoreError
 from services.repository.snapshot import Snapshot
 
@@ -72,6 +73,7 @@ class CollectionDelta(BaseModel):
     context: ContextBundle | None = Field(default=None, repr=False)
     source_manifest: SourceManifest | None = Field(default=None, repr=False)
     sealed_snapshot: SealedSnapshot | None = Field(default=None, repr=False)
+    repository_index: RepositoryIndex | None = Field(default=None, repr=False)
     failure_reason: FailureReason | None = None
 
     @model_validator(mode="after")
@@ -209,12 +211,14 @@ def run_collection(
                         target=Stage.INCONCLUSIVE, failure_reason="CONTEXT_REJECTED"
                     )
                 }
+            repository_index = build_index(inputs.snapshot)
             return {
                 "delta": CollectionDelta(
                     target=Stage.TRIAGING,
                     context=bundle,
                     source_manifest=inputs.source_manifest,
                     sealed_snapshot=inputs.sealed_snapshot,
+                    repository_index=repository_index,
                 )
             }
         return {"delta": plan(run)}
@@ -230,6 +234,7 @@ def run_collection(
                 expected_version=state.run.version,
                 source_manifest=delta.source_manifest,
                 sealed_snapshot=delta.sealed_snapshot,
+                repository_index=delta.repository_index,
                 queue_triage=queue_triage,
             )
         else:

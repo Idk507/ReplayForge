@@ -98,3 +98,31 @@ def github_inputs(
         )
 
     return load
+
+
+def github_listing(
+    token: SecretStr,
+    run: RunState,
+    grant: RepositoryGrant,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> tuple[str, ...]:
+    """Admitted paths of the pinned tree; tree objects only, no blob downloads."""
+    if not admit(grant, grant.owner_id, run.repository_id, run.source_commit).allowed:
+        raise SourceInputError("SOURCE_REJECTED")
+    try:
+        with GitHubReader(token, transport=transport) as reader:
+            return reader.list_paths(grant, grant.owner_id, run.source_commit)
+    except RepositoryReadError as error:
+        unavailable = str(error) in {
+            "AUTH_DENIED",
+            "RATE_LIMITED",
+            "UNAVAILABLE",
+            "TIMEOUT",
+            "TOKEN_INVALID",
+        }
+        raise SourceInputError(
+            "SOURCE_UNAVAILABLE" if unavailable else "SOURCE_REJECTED"
+        ) from None
+    except SnapshotError:
+        raise SourceInputError("SOURCE_REJECTED") from None

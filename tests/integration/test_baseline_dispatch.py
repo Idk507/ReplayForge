@@ -288,5 +288,6 @@ def test_claim_binding_tampering_and_runtime_mutation_are_denied(store):
             expected_version=1,
         )
     assert len(backend.calls) == 1
+    test_postgres.release_gate_envelopes()
     with pytest.raises(RuntimeError, match="ARCHIVE_BASELINE"):
         command.downgrade(Config("alembic.ini"), "0027")

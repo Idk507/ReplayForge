@@ -9,5 +9,5 @@ export default [
   {files: ["**/*.tsx", "**/*.ts"], plugins: {"react-hooks": hooks, "jsx-a11y": a11y},
     rules: {...hooks.configs.recommended.rules, ...a11y.configs.recommended.rules},
   },
-  {files: ["**/*.mjs"], languageOptions: {globals: {process: "readonly"}}},
+  {files: ["**/*.mjs"], languageOptions: {globals: {process: "readonly", URL: "readonly", Request: "readonly", Response: "readonly", Headers: "readonly"}}},
 ];

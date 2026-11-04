@@ -1,0 +1,5 @@
+FROM nginx:1.28.3@sha256:146adea4768b83c607d0bdfa4188464e3da6e0a3ad4475db1d1d8f64f27c29cc
+COPY deploy/nginx.conf.template deploy/proxy-api.conf deploy/start-proxy.sh /app/deploy/
+RUN mkdir -p /var/cache/nginx /var/log/nginx && chown -R nginx:nginx /var/cache/nginx /var/log/nginx
+USER nginx
+ENTRYPOINT ["/bin/sh", "/app/deploy/start-proxy.sh"]

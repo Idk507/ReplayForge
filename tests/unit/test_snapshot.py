@@ -211,3 +211,29 @@ def test_selected_paths_narrow_reads_without_changing_registered_grant():
             objects, grant, grant.owner_id, commit, root, selected_paths=("README.md",)
         )
     assert objects.calls == 0
+
+
+def test_tree_listing_returns_admitted_paths_without_reading_blobs() -> None:
+    from services.repository.snapshot import list_attested_tree
+
+    objects, grant, commit = fixture()
+    root = objects.values[commit][1].split(b"\n", 1)[0][5:].decode()
+    listing = list_attested_tree(objects, grant, grant.owner_id, commit, root)
+    assert [path for path, _blob in listing] == ["src/a.py"]
+    blob_id = listing[0][1]
+    assert objects.values[blob_id][0] == "blob"
+    assert objects.calls == 2  # root and src trees only; the blob was never fetched
+
+
+def test_tree_listing_denies_unauthorized_caller_and_unsafe_names() -> None:
+    from services.repository.snapshot import list_attested_tree
+
+    objects, grant, commit = fixture()
+    root = objects.values[commit][1].split(b"\n", 1)[0][5:].decode()
+    with pytest.raises(SnapshotError, match="SCOPE_DENIED"):
+        list_attested_tree(objects, grant, uuid4(), commit, root)
+    assert objects.calls == 0
+    bad, bad_grant, bad_commit = fixture(name=b"..")
+    bad_root = bad.values[bad_commit][1].split(b"\n", 1)[0][5:].decode()
+    with pytest.raises(SnapshotError, match="PATH_DENIED"):
+        list_attested_tree(bad, bad_grant, bad_grant.owner_id, bad_commit, bad_root)

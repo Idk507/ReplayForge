@@ -2614,7 +2614,7 @@ No cloud execution, inference, credential access or remote writes occurred.
 M3 remains open: this primitive is not yet wired to a trusted receipt producer.
 
 
-## 2026-10-22 — independently measured execution receipt producer
+## 2026-10-22 ï¿½ independently measured execution receipt producer
 
 Implementation commit: 40e2c40, based on 69651b4. Implemented the opt-in
 MeasuredPreparedBackend using the existing admitted prepared REST backend.
@@ -2664,7 +2664,7 @@ before live VERIFIED/UI acceptance. No manufactured PASS assessment/key was
 installed. See docs/receipt-producer.md for the exact contract and limits.
 
 
-## 2026-10-22 — durable producer-to-evidence and human review workflow
+## 2026-10-22 ï¿½ durable producer-to-evidence and human review workflow
 
 Implementation commit 9df1ac9 (base dc245ca). Migrations 0022/0023 add append-only
 producer preparation/receipt and human decision/publication intent records.
@@ -3456,3 +3456,142 @@ diff checks; decompressed bytes verified identical. No application change.
 - Fixed clean replay materialization to package the pristine pinned source plus unchanged reproduction test, independently from the patched candidate archive.
 - Evidence: `uv run pytest tests/unit/test_candidate_workspace.py -q` (10 passed); `uv run pytest tests/unit -q` (812 passed); `uv run pytest tests/contract -q` (227 passed, one upstream deprecation warning); disposable PostgreSQL focused collection/materialization run (14 passed, exit 0, `docs/evidence/authorized-source-materialization-focused.xml`); Ruff, format and Mypy passed.
 - This is synthetic/local transport evidence. No real repository download, Nebius replay, trusted signed receipt, seven-gate verdict or complete M3 journey was produced. Pinned image import remains blocked by retained HTTP 404; see `docs/authorized-materialization.md` and `docs/confined-runner.md`.
+
+## Public session bridge increment - 2026-10-29
+
+In the separate ReplayForge-public-release-candidate worktree, added an opt-in PUBLIC_DEPLOYMENT path requiring an exact HTTPS origin and __Host-rf_session cookie. The default local path remains in place. The upstream host and protocol headers are set locally. This uncommitted increment is not a complete public deployment: API startup, OAuth ingress, proxy and cloud database integration remain open.
+
+From apps/web, node --experimental-strip-types --test tests/public-session-bridge.test.mjs exited 0: one focused fake-fetch test passed, covering public origin, secure cookie, forwarded headers, POST origin, invalid mode and local behavior. Node reported a module-type warning. This is not public browser acceptance. An earlier attempt to read tracking files relative to apps/web failed because the paths were wrong; that test run passed.
+
+After Azure authentication renewal, Microsoft.App and Microsoft.DBforPostgreSQL were registered. A resource listing without an explicit group failed due to a stale CLI default. Explicit listings of replayforge-demo-rg returned no PostgreSQL servers or Container Apps environments. No cloud resources were modified. Next: integrate secure public API startup and OAuth ingress with isolated TLS PostgreSQL, validate the network path and prepare the separately authorized provisioning operation.
+## Public API configuration increment - 2026-10-29
+
+Added explicit create_public_from_env using the existing session app composition and role checks. Public configuration requires PUBLIC_DEPLOYMENT, a configured matching database hostname, sslmode=verify-full, separate auth and API database roles, matching HTTPS origins and GitHub enablement; collection and publication remain disabled. The local factory retains its loopback rules. A hostname setting alone does not prove private network access. The API still needs an independently configured trusted loopback proxy and OAuth ingress.
+
+The first focused pytest run failed because an existing conditional import shadowed the new hostname validator; fixed it. The original run of Ruff reported formatting issues before formatting. Final commands: python -m pytest tests/unit/test_auth_local.py tests/unit/test_auth_public_config.py -q -> 26 passed; ruff check on both modified Python files -> passed; mypy services/auth/local.py --follow-imports=silent -> success. These are configuration tests only, not a live database connection or public application test. Changes remain uncommitted in the separate release-candidate worktree.
+## Public deployment packaging follow-up - 2026-10-29
+
+Using the Docker Linux engine, built deploy/Dockerfile.proxy, deploy/Dockerfile.api and deploy/Dockerfile.web successfully (exit 0). The first web build stalled after compilation on recursive chown; the first non-root build failed because /app/apps/web was root-owned (EACCES). Narrowed ownership to the app directory and copied inputs with --chown, then rebuilt successfully as node. Built images are recorded by ID in docs/evidence/fullstack-deployment-local-20261029.md.
+
+Ran REPLAYFORGE_TEST_DOCKER_CONTEXT=true pytest tests/integration/test_docker_build_context.py -q --junitxml=docs/evidence/public-build-context-20261029.xml: 1 passed, exit 0. Ran REPLAYFORGE_TEST_PROXY_IMAGE=replayforge-local-proxy:dev pytest tests/integration/test_public_proxy_container.py -q --junitxml=docs/evidence/public-proxy-container-20261029.xml: 1 passed, exit 0. The isolated proxy ran with --network none; exact host/protocol policy, non-root identity, graceful stop (exit 0) and restart were checked. JUnit SHA256 values and limitations are recorded in the evidence report.
+
+ruff check and ruff format --check on the two container tests and two touched public-configuration test modules passed. git diff --check passed before the evidence append. Missing-public-configuration image checks exited 1 with sanitized PUBLIC_WEB_CONFIG_INVALID and AUTH_PUBLIC_CONFIG_INVALID. No Next.js/API/PostgreSQL integrated service launch was attempted; the earlier Next.js launch rejection remains. No Azure resources, intended database, provider APIs, public deployment or repository publication were changed.
+## Public health and Azure preflight follow-up - 2026-10-29
+
+TDD reproduced `/health/live` returning 404 because the proxy route targeted an API endpoint that did not exist. Added a public-mode FastAPI liveness endpoint that is independent of PostgreSQL; readiness still checks both database roles. `C:\Users\dhanu\Downloads\ReplayForge\.venv\Scripts\python.exe -m pytest tests/unit/test_auth_public_config.py -q --junitxml=docs/evidence/public-health-probes-20261029.xml` passed 12 tests with one existing Starlette deprecation warning, exit 0. Ruff check, Ruff format check, and mypy `services/auth/local.py --follow-imports=silent` passed. Rebuilt API image successfully; image ID `sha256:6776320f431b4aaf194cad3042ff7761f0ceffaf2a151100ba7fb2cfa9d132b2`.
+
+Azure CLI read-only preflight: Visual Studio Enterprise Subscription Enabled, current identity Owner, Microsoft.App and Microsoft.DBforPostgreSQL registered, no ACA/PostgreSQL/ACR resources in `replayforge-demo-rg`; proposed isolated `replayforge-fullstack-rg` does not exist. `az acr check-name` reports proposed registry name available. PostgreSQL CLI name availability command is unsupported by installed CLI; did not install an extension. Microsoft Retail Prices API Central India snapshot and the estimated monthly range are recorded in `docs/evidence/fullstack-deployment-local-20261029.md`. No cloud resources or deployments were created.
+2026-10-29: Extended `.dockerignore` with explicit database/dump and local PostgreSQL data-directory exclusions, while preserving migration SQL sources. TDD reproduced leakage with `REPLAYFORGE_TEST_DOCKER_CONTEXT=true C:\Users\dhanu\Downloads\ReplayForge\.venv\Scripts\python.exe -m pytest tests/integration/test_docker_build_context.py -q` (1 failed, expected new `services/local.sqlite3` assertion, exit 1); after the ignore-rule fix, reran with `--junitxml=docs/evidence/public-build-context-20261029.xml`: 1 passed, exit 0. JUnit SHA256 `2962E5150A16268C724DD9D4462F7997F45C2753A04F84B56A36A68CA399BAF7`. Test uses synthetic sentinel files; no actual DB/secret content.
+Final rerun after test cleanup: `REPLAYFORGE_TEST_DOCKER_CONTEXT=true C:\Users\dhanu\Downloads\ReplayForge\.venv\Scripts\python.exe -m pytest tests/integration/test_docker_build_context.py -q --junitxml=docs/evidence/public-build-context-20261029.xml` passed 1 test in 1.80 seconds (exit 0). Current JUnit SHA256: `2962E5150A16268C724DD9D4462F7997F45C2753A04F84B56A36A68CA399BAF7`.
+2026-10-29: Operator requested limited resource sizing. Recorded a scale-to-zero Container Apps profile (0 minimum/1 maximum), smallest viable sidecars, PostgreSQL Burstable B1ms with 32 GiB, and ACR Basic. At the recorded Central India Retail API snapshot, always-provisioned PostgreSQL compute/storage plus ACR is about $27.08/month before private DNS, logs, traffic, taxes, and ACA usage above subscription-wide free grants. Cold starts/low throughput are expected; no spending cap is configured. No resources were created.
+2026-10-29 Azure provisioning: after the user's scoped approval for the limited Central India profile, confirmed subscription Owner, resource and SKU preflight, and name availability. Created `replayforge-fullstack-rg`, VNet/subnets, private DNS zone/link, ACR Basic with admin user disabled, 30-day PerGB2018 workspace, and Consumption Container Apps environment. ACA initial create failed on missing `Microsoft.App/environments` subnet delegation; applied the required delegation and create succeeded. Verified environment state Succeeded and no app. PostgreSQL 18 B1ms create returned `SkuNotAvailable`; GET-only reconciliation observed Dropping then ResourceNotFound. No retry. Live Azure Retail API: B1MS $0.0245/hour, B2S $0.098/hour, 32-GiB storage $0.131/GiB-month, ACR Basic $0.1666/day. B2s baseline would be ~$80.73/month before additional charges; no server created at this tier pending revised authorization. See `docs/evidence/fullstack-deployment-local-20261029.md`.
+2026-10-29: Searched the supported India PostgreSQL regions read-only. `centralindia` lists PG18/B1ms/B2s (`OfferRestricted=Disabled`) but recorded B1ms/B2s attempts returned `SkuNotAvailable`; `southindia` is `OfferRestricted=Enabled`; `westindia` is unsupported; `indiasouthcentral` lists PG18/B1ms and is not offer-restricted. Added a second VNet in India South Central, delegated its PostgreSQL subnet, linked the existing private DNS zone, and created reciprocal private peering with the Central India ACA VNet. Both peering states are `Connected`; DNS link `Succeeded`. A single private PG18/B1ms create request in India South Central returned terminal `RegionalAllocationFailed`; GET-only reconciliation and resource inventory show no server. Did not retry, move data outside India, or select a higher SKU. No app, database, migration, ACR image, or public URL is present. Exact sanitized command/results are in `docs/evidence/fullstack-deployment-local-20261029.md`.
+2026-10-29: Continued full-stack deployment preflight without repeating failed PostgreSQL creates. Read-only checks compared SEA/East Asia/Japan West/Japan East/Australia East/West Central US: all list PG18/B1ms, unrestricted offers and nonzero available quota; these are not capacity reservations. Selected Southeast Asia as the lowest-cost candidate and recorded estimated private PG18 B1ms+32GiB+existing ACR Basic baseline at about $28.40/month before network, DNS, backup overage, ACA, logs and tax. Re-read existing Container Apps environment and ACR with explicit subscription/resource-group scoping after one unscoped ACR query hit the stale local default group `rg-frontier-embedder-dev` (left unchanged). No SEA resource or public write was made. Local Next image started in an isolated network and returned HTTP 200; API image without secrets failed closed; image CA bundle has certificate and hostname verification enabled. Added a public Azure-only Playwright smoke config (five tests enumerated, insecure URL rejected; no endpoint run). `npm run lint`, `npm run typecheck`, focused Ruff and mypy passed; `python -m alembic heads` returned `0036 (head)`. Evidence and the exact remaining Azure authorization checkpoint are in `docs/evidence/fullstack-deployment-local-20261029.md`. No database, migration, ACR push, OAuth callback change or public app is live.
+
+2026-10-29 actual approved Azure deployment continuation: created the approved
+Southeast Asia private PostgreSQL network path and PG18 `Standard_B1ms` server
+(`replayforge-pg-20261029-sea`, 32 GiB Premium_LRS, seven-day retention,
+public access Disabled); GET verified state `Ready`. The new DB VNet's
+PostgreSQL delegation, private DNS link and both SEA/Central India peerings are
+confirmed. Reused `rf-fullstack-env`, the Central India ACA VNet, private DNS
+zone and existing ACR. Created `rf-fullstack-acr-pull` and verified exact-scope
+AcrPull (identity) and AcrPush (operator) assignments. Secret-free image scan
+and context test passed; pushed the approved API/web/proxy images once each and
+GET-verified each remote digest against its local image ID. No intended Windows
+database was accessed.
+
+Database bootstrap remains blocked by the user's explicit no-retry rule. Added
+`deploy/postgres-bootstrap.py` for one private manual ACA Job with retry limit
+zero, TLS verify-full, a fresh isolated `replayforge_demo`, separate
+`rf_migrator`/`rf_runtime_api`/`rf_runtime_auth` roles, migration through 0036,
+and startup-equivalent role/TLS assertions. The implementation was syntax
+checked and passed `ruff check`, `ruff format --check`, and `git diff --check`.
+First, the local PowerShell `Invoke-WebRequest` call failed parameter binding
+before HTTP; a direct GET showed no Job. One later ARM PUT returned HTTP 400
+`ContainerAppInvalidName`; GET returned 404 and resource inventory confirms no
+Job. The proposed name had 34 characters; Azure documents Job names as fewer
+than 32 characters. No start POST or database SQL ran. This failed resource
+create is preserved in
+`docs/evidence/azure-deployment-operation-journal-20261029.jsonl`; renewed
+authorization is required before a corrected Job create/start. The rejected
+request carried the administrator and runtime-role secret values over HTTPS,
+but no Job/secret resource was persisted and no values were logged or returned.
+No ACA app, application secret store, OAuth callback change, or public endpoint
+exists.
+The live application, real GitHub OAuth, browser/API acceptance, and DB-backed
+restart/persistence checks remain incomplete; M3/M4 are not complete. Full
+resource inventory, cost estimate, sanitized command results, and cleanup
+requirements are in `docs/evidence/fullstack-deployment-local-20261029.md`.
+
+2026-10-30: The user authorized one bounded recovery Job and attachment of the existing Log Analytics workspace. Workspace operation `4cc105db88a04b76b2e815e08c88bd09` returned HTTP 202 and GET later reported `Succeeded`; schema discovery confirmed `ContainerAppConsoleLogs` with `JobName`/`Log`. Source review found `deploy/postgres-bootstrap.py` granted `CREATE` on schema `public` to `rf_migrator` only after invoking Alembic; PostgreSQL 18 does not imply that privilege. The grant now precedes migration. Added fail-closed `deploy/postgres_recovery.py` and `deploy/run-postgres-recovery.ps1`: read-only identity/schema/revision/ownership/session/ACL preflight, partial 0032-0036 schema checks, one Alembic target per transaction, least-privilege grants, and no resets/password changes. Recovery tests: 11 passed; Ruff, format, mypy and PowerShell parser passed.
+
+The one recovery Job `rf-db-recovery-20261030` was created HTTP 201 (operation `5e6abb8f9bc041f1b009e9668c0e411f`) and started once HTTP 200 (operation `389575803cda42a1a61b4367f7905768`). Execution `rf-db-recovery-20261030-nybaja8` failed with exit code 31 / `ProcessExited`. Log Analytics returned no rows; Azure CLI log retrieval returned `ExecutionReplicaNotFound`; the local host cannot resolve or reach the private server on TCP/5432. Exit 31 is the script's generic unexpected exception and does not establish the phase or current DB revision. A post-failure code review found and locally corrected a reserved `table` alias in sequence grants; unavailable logs prevent claiming it caused the failure. No second Job, start, or DB write occurred. DB revision and role ACLs remain unknown, so public deployment is blocked. Full evidence and IDs are in `docs/evidence/fullstack-deployment-local-20261029.md` and the append-only local operation journal. Further database activity requires a new, explicitly scoped authorization.
+
+## 2026-10-30 delayed retained-log reconciliation (supersedes unknown revision)
+Read-only workspace search found the execution markers in `ContainerAppConsoleLogs_CL` after ingestion delay. The earlier queries used `ContainerAppConsoleLogs`, so the earlier no-logs conclusion was premature. Retained evidence: `docs/evidence/postgres-recovery-retained-markers-20261030.json`.
+
+The preflight confirmed an EMPTY database, zero application tables, certificate-verified TLS, valid role flags, and `migrator_create=false`. Every migration from 0001 through 0036 emitted MIGRATION_OK, including 0036 at 2026-10-29T18:37:06.3417297Z. At 18:37:10.237709Z the script emitted `RECOVERY_FAILED error_class=SyntaxError`. Thus forward migration to 0036 succeeded; failure occurred afterward during runtime grants. The submitted sequence query's reserved `table` alias is consistent with this SQL syntax error and is corrected locally. Runtime table grants may have been applied; sequence grants and final role validation remain incomplete. No further Job start or database write was submitted. A separately scoped grant-completion/validation execution is required because the prior authorization expressly allowed only one recovery start. Public deployment remains pending role/TLS validation.
+
+## 2026-10-30 real public application deployed
+The separately authorized grant-completion Job `rf-db-grants-20261030-vlhnnn4` succeeded. Create operation ba00bf32a86d4bee8781376594065fad; start operation 7ad15b9e4a274614a5c8abe32cdfe06e. Retained markers confirm revision 0036, TLS verify-full, and validated separate API/auth role contracts.
+
+The actual three-container application was created with HTTP 201 (operation 6d01fcb7a41149328daa1905808989fe). URL: https://replayforge-web.blacksky-3aa3a460.centralindia.azurecontainerapps.io . Initial proxy startup failed because the long hostname exceeded NGINX's server_names_hash_bucket_size default. Applied bucket size 128 using existing image command override (PATCH 202, operation 7c6f0fae15714abc9f80ad0fb66f5ba5); local template also fixed. Revision replayforge-web--0000001.
+
+Public Playwright: 5 passed in 8.1 seconds. Actual HTTPS tests covered workbench sign-in boundary, evaluation disclosure, anonymous API 401, readiness using both actual database connections, and mobile no-overflow. Evidence: docs/evidence/public-workbench-passing-20261030.xml. Initial failed tests retained separately in public-first-start-failed-20261030.xml.
+
+GitHub App callback configuration is currently blocked at GitHub sudo-mode human MFA. An operator prompt is open. Real login, authenticated run persistence/history, restart acceptance and Devpost primary URL update are not yet accepted. No live M3 execution or M4 benchmark acceptance is claimed. No Git push or PR occurred.
+
+## 2026-10-30 post-restart public recheck
+
+Read-only revision check: `replayforge-web--0000002`, active and Healthy. Public Playwright command from `apps/web`: `$env:REPLAYFORGE_PUBLIC_TEST_URL='https://replayforge-web.blacksky-3aa3a460.centralindia.azurecontainerapps.io'; npx playwright test --config playwright.public.config.ts` â€” exit 0, 5 passed, 0 failed/skipped, 37.1s. New evidence: `docs/evidence/public-workbench-post-restart-20261030-035217.xml`.
+
+The fresh browser context displayed sign-in, so it does not establish authenticated session survival across the prior revision restart. Public smoke tests are anonymous and do not establish private run persistence. Repository listing remains empty with cause unconfirmed. No permission changes, run creation, repo code execution, inference, or sandbox operation occurred. The existing fresh-create script still does not reproduce the live proxy command/template override; no new image or deployment was made. Full details and exact next checks are in `docs/evidence/fullstack-deployment-local-20261029.md`.
+
+2026-10-30 deployment packaging: added a reviewed template injection/validation command to the create-only ACA script to reproduce the live NGINX proxy configuration. Updated renderer's placeholder contract from three to four after first focused test failed. Rerun `uv run pytest -q tests/unit/test_public_proxy_config.py tests/unit/test_auth_public_config.py`: 23 passed. PowerShell parser and targeted diff checks passed. No app update or image push. Authenticated session and persistent run acceptance still pending due unavailable browser session; repository-listing root cause unknown.
+
+2026-10-30 authenticated acceptance: live OAuth callback completed; UI showed Idk507. Authenticated integrations page preserved identity after refresh. Installation discovery selected Idk507 and consistently returned an empty page-1 repository list; the UI instructs operator to approve Contents read and select a repository. Previous/Next were disabled. GitHub App permissions page requires sudo-mode MFA; no security permission or installation scope was changed. No repository grant/run exists, so persistence acceptance is blocked. Exact operator action and limits are recorded in the deployment evidence report.
+
+
+## 2026-11-01 - local collection hardening (b3149b9)
+
+Commands (PowerShell/Git Bash, Windows, disposable PostgreSQL 18 via scripts.test_postgres):
+- Full backend, no targets: first run 3 failed/1773 passed (0036 downgrade guard, order-dependent
+  downgrade tests); after 0037 added 24 failed/1773 passed (worker schema pin, fake store, tests);
+  after fixes `...20261101c` 1797 passed/3 skipped exit 0; tree ranking `...d` 1815 passed exit 0;
+  repository map `...e` 1821 passed exit 0; diagnostics `...f` **1825 passed, 3 skipped, exit 0**.
+- `uv run pytest tests/unit`: 1011 passed before diagnostics. `npx playwright test` in apps/web:
+  19 passed, 1 skipped. `uv run ruff check .`, `ruff format --check .`, `uv run mypy`: clean.
+Changes: migration 0037 collection_dispatches/_events/collection_reconciliations;
+services/persistence/collection_journal.py; dispatch_once intent->SENT->outcome; scripts/reconcile_collection.py;
+services/context/index.py; snapshot list_attested_tree and GitHubReader.list_paths; ContextBundle
+index_digest/frameworks/repository_map; GET /api/v1/runs/{id}/diagnostics.
+No live provider call, remote write or cloud charge occurred. Nothing is VERIFIED.
+
+
+## 2026-11-02 - retained repository index (54967d4)
+
+- Full backend (no targets, disposable PostgreSQL 18): run `a` 2 failed/1829 passed (0038 downgrade guard vs
+  shared-DB test isolation); after fix run `b` **1831 passed, 3 skipped, exit 0, 955.74 s**.
+- `scripts.test_postgres --web`: 23 Playwright passed (real local API case included). `npx playwright test`
+  in apps/web: 22 passed, 1 skipped. Unit 1011 passed. ruff, ruff format, mypy (167 files): clean.
+- Changes: migration 0038 repository_indexes; Store.store_context(repository_index=...), Store.repository_index();
+  GET /api/v1/runs/{id}/repository-index; workbench Analysis tab; verification worker default schema 0038.
+  deploy/ tooling remains pinned to 0036 (refuses 0038). No live provider call, remote write or charge.
+
+
+## 2026-11-02 - lease heartbeat (34a88d1)
+
+- Added services/orchestrator/lease_keeper.py (LeaseKeeper) and wrapped collection dispatch, direct collection,
+  triage (both paths) and patch ticks. Full backend (disposable PostgreSQL 18, no targets):
+  **1845 passed, 3 skipped, exit 0, 929.68 s** (evidence full-backend-local-20261102c). Unit 1020 expected
+  (9 new); ruff, ruff format, mypy (168 files) clean. No live provider call, remote write or charge.
+
+
+## 2026-11-04 - structured logging and CI (308d82f)
+
+- Added packages/observability/logs.py (closed field set, credential-safe), instrumented collection, lease,
+  reconciliation, triage/patch and worker start/stop; .github/workflows/ci.yml; scripts/fetch_pytest_wheelhouse.py
+  (real download verified all 5 wheel hashes); scripts/check_secrets.py (CLEAN, 1000 files); test_postgres accepts
+  REPLAYFORGE_TEST_ADMIN_PASSWORD. First full run was interrupted (no result); rerun:
+  **1867 passed, 3 skipped, exit 0, 910.39 s** (full-backend-local-20261104a). actionlint exit 0.
+  The workflow has not yet executed on GitHub. No live provider call, remote write or charge.

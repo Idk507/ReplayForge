@@ -18,6 +18,7 @@ from packages.contracts.source import (
 from packages.policies.repository import allowed_entry, safe_tree_path
 from services.auth.access import AuthAccess
 from services.auth.github import AuthDenied
+from services.context.index import rank_listing
 from services.context.selection import select_paths
 from services.orchestrator.collection import (
     CollectionInputs,
@@ -25,13 +26,14 @@ from services.orchestrator.collection import (
     SourceInputError,
     run_collection,
 )
-from services.orchestrator.source import github_inputs
+from services.orchestrator.source import github_inputs, github_listing
 from services.orchestrator.worker import WorkerResult, bind_incident
 from services.persistence.store import Lease, Store, StoreError
 from services.repository.github import RepositoryReadError
 from services.repository.snapshot import SnapshotError
 
 LoaderFactory = Callable[[SecretStr, tuple[str, ...]], InputLoader]
+PathLister = Callable[[SecretStr, RunState, RepositoryGrant], tuple[str, ...]]
 
 
 class StageRequest(BaseModel):
@@ -71,6 +73,7 @@ class CollectionBroker:
         *,
         allow_live: bool = False,
         source_loader_factory: LoaderFactory | None = None,
+        path_lister: PathLister | None = None,
     ) -> None:
         if not re.fullmatch(r"[A-Za-z0-9_-]{43}", worker_key.get_secret_value()):
             raise ValueError("COLLECTION_WORKER_KEY_INVALID")
@@ -80,6 +83,13 @@ class CollectionBroker:
         self._live = allow_live is True
         self._factory = source_loader_factory or github_inputs
         self._test = source_loader_factory is not None
+        # Live collection ranks the verified tree when the incident names no file;
+        # test factories rank only through an explicitly injected lister.
+        self._lister: PathLister | None = (
+            path_lister
+            if path_lister is not None
+            else (None if self._test else github_listing)
+        )
 
     def authenticate(self, request: Request) -> None:
         provided = request.headers.get("authorization", "")
@@ -111,6 +121,7 @@ class CollectionBroker:
             raise HTTPException(403, "COLLECTION_PATH_DENIED")
         report = self.store.incident(state.run_id, owner)
         paths = select_paths(grant, report.text, payload.paths)
+        explicit = paths != payload.paths
         token = self.access.journal.credential(owner)
 
         # The source adapter narrows file reads without rewriting the registered grant.
@@ -120,7 +131,17 @@ class CollectionBroker:
             _, current = self.store.claimed_run(payload.lease)
             if current.version != run.version or current.cancellation_requested:
                 raise StoreError("STALE_VERSION")
-            return self._factory(token, paths)(run, admitted_grant)
+            chosen = paths
+            if not explicit and self._lister is not None:
+                # No file named in the incident: rank verified tree paths by name.
+                ranked = rank_listing(
+                    self._lister(token, run, admitted_grant), report.text
+                )
+                if ranked and all(
+                    allowed_entry(admitted_grant, p, "100644") for p in ranked
+                ):
+                    chosen = ranked
+            return self._factory(token, chosen)(run, admitted_grant)
 
         result = run_collection(
             self.store,

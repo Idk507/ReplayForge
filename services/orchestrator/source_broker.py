@@ -6,7 +6,7 @@ import hashlib
 import re
 import time
 from types import TracebackType
-from typing import Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 import httpx
@@ -15,10 +15,13 @@ from pydantic import BaseModel, ConfigDict, SecretStr
 from packages.contracts.inference import ModelCostPolicy
 from packages.contracts.run import Stage
 from packages.contracts.source import MaterializationSourceResult, SourceManifest
+from packages.observability.logs import log_event, timed
 from packages.providers.nebius import NebiusConfig
+from services.orchestrator.lease_keeper import LeaseKeeper
 from services.orchestrator.patch_worker import tick_patch
 from services.orchestrator.repair_flow import run_triage
 from services.orchestrator.worker import WorkerResult
+from services.persistence.collection_journal import CollectionJournal
 from services.persistence.store import Lease, Store
 from services.runner.receipts import canonical
 
@@ -253,18 +256,55 @@ class BrokerClient:
 
 
 def dispatch_once(
-    store: Store, worker_id: UUID, client: BrokerClient, paths: tuple[str, ...]
+    store: Store,
+    worker_id: UUID,
+    client: BrokerClient,
+    paths: tuple[str, ...],
+    *,
+    journal: CollectionJournal | None = None,
+    heartbeat_seconds: float = 10.0,
 ) -> WorkerResult:
     """Probe readiness before claim. One POST only; never replay an unknown result."""
     client.ready()
     lease = store.claim(
         worker_id,
         stages=(Stage.CREATED, Stage.VALIDATING, Stage.QUEUED, Stage.COLLECTING),
+        first_attempt_only=True,
     )
     if lease is None:
         return WorkerResult(status="IDLE")
+    if not store.collection_first_claim(lease):
+        raise BrokerError("COLLECTION_RECONCILIATION_REQUIRED")
     state_owner, state = store.claimed_run(lease)
-    result = client.dispatch(lease, state.version, paths)
+    ids: dict[str, Any] = {
+        "run_id": lease.run_id,
+        "worker_id": lease.worker_id,
+        "repository_id": state.repository_id,
+        "source_commit": state.source_commit,
+        "stage": state.current_stage,
+        "trace_id": state.trace_id,
+    }
+    # Durable intent first; SENT is committed before the request is initiated so a
+    # missing marker proves nothing was sent. Unknown outcomes stay SENT_UNCERTAIN.
+    journal = journal or CollectionJournal(store)
+    operation_id = journal.record_intent(lease, state.version)
+    ids["operation_id"] = operation_id
+    log_event("collection.intent", status="INTENT_RECORDED", **ids)
+    journal.mark_sent(lease, operation_id)
+    log_event("collection.sent", status="SENT", **ids)
+    try:
+        # The request may outlast the 30 s lease; renew our own live claim meanwhile.
+        with timed("collection.dispatch", **ids):
+            with LeaseKeeper(store, lease, interval_seconds=heartbeat_seconds):
+                result = client.dispatch(lease, state.version, paths)
+    except BrokerError as error:
+        if str(error) == "COLLECTION_DENIED":
+            # A definite broker refusal returned before any collection effect.
+            journal.mark_outcome(operation_id, "REJECTED")
+            log_event("collection.outcome", status="REJECTED", **ids)
+        else:
+            log_event("collection.outcome", status="UNCERTAIN", **ids)
+        raise
     persisted = store.get(lease.run_id, state_owner)
     if (
         persisted.current_stage != result.stage
@@ -272,6 +312,10 @@ def dispatch_once(
         or persisted.repository_id != state.repository_id
     ):
         raise BrokerError("COLLECTION_UNCONFIRMED")
+    journal.mark_outcome(operation_id, "COMPLETED")
+    log_event(
+        "collection.outcome", status="COMPLETED", **{**ids, "stage": result.stage}
+    )
     return result
 
 
@@ -296,16 +340,18 @@ def dispatch_triage_once(
         return WorkerResult(status="IDLE")
     owner, state = store.claimed_run(lease)
     client.authorize_triage(lease, state.version)
-    result = run_triage(
-        store,
-        lease,
-        owner,
-        config,
-        cost_policy=cost_policy,
-        transport=transport,
-        finish_job=True,
-        queue_baseline=True,
-    )
+    ids = {"run_id": lease.run_id, "worker_id": lease.worker_id}
+    with timed("triage.dispatch", **ids), LeaseKeeper(store, lease):
+        result = run_triage(
+            store,
+            lease,
+            owner,
+            config,
+            cost_policy=cost_policy,
+            transport=transport,
+            finish_job=True,
+            queue_baseline=True,
+        )
     return WorkerResult(
         status="PROCESSED", run_id=result.run_id, stage=result.current_stage
     )

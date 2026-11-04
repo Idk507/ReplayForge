@@ -55,7 +55,11 @@ def main() -> int:
         targets.append(target)
     if args.web and targets:
         parser.error("--pytest-target cannot be combined with --web")
-    password = getpass.getpass("Local postgres administrator password: ")
+    # Non-interactive runs (CI service container) pass the throwaway administrator
+    # password through the environment; interactive use still prompts securely.
+    password = os.environ.get("REPLAYFORGE_TEST_ADMIN_PASSWORD") or getpass.getpass(
+        "Local postgres administrator password: "
+    )
     suffix = uuid4().hex
     role, database = f"rf_test_{suffix}", f"rf_test_{suffix}"
     secret = secrets.token_urlsafe(32)
@@ -73,8 +77,9 @@ def main() -> int:
         with psycopg.connect(admin_dsn, autocommit=True) as admin:
             admin.execute(
                 sql.SQL(
-                    "CREATE ROLE {} LOGIN PASSWORD {} "
-                    "NOSUPERUSER NOCREATEDB NOCREATEROLE"
+                    # CREATEROLE lets restricted-role tests create their own
+                    # short-lived worker identity; the role is task-owned and dropped.
+                    "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB CREATEROLE"
                 ).format(sql.Identifier(role), sql.Literal(secret))
             )
             try:

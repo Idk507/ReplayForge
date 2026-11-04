@@ -6,6 +6,7 @@ import os
 import re
 import signal
 from collections.abc import Mapping
+from pathlib import Path
 from threading import Event
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 from packages.contracts.inference import ModelCostPolicy
+from packages.observability.logs import configure, log_event
 from packages.policies.repository import safe_tree_path
 from packages.providers.nebius import NebiusConfig, ProbeError
 from services.orchestrator.source_broker import (
@@ -36,6 +38,7 @@ class BrokerWorkerConfig(BaseModel):
     key: SecretStr
     url: str
     paths: tuple[str, ...]
+    expected_role: str | None = None
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "BrokerWorkerConfig":
@@ -52,31 +55,56 @@ class BrokerWorkerConfig(BaseModel):
         }
         if any(v.get(k) for k in forbidden):
             raise ConfigError("WORKER_SECRET_ISOLATION_REQUIRED")
+        if any(k.upper().startswith("PG") and value for k, value in v.items()):
+            raise ConfigError("WORKER_LIBPQ_ENV_DENIED")
         try:
             raw = v.get("REPLAYFORGE_DATABASE_URL", "")
             if not 1 <= len(raw) <= 4096:
                 raise ValueError
             info = conninfo_to_dict(raw)
-            if (
-                info.get("host") != "127.0.0.1"
-                or not all(info.get(k) for k in ["dbname", "user", "password"])
-                or set(info)
-                - {
-                    "host",
-                    "port",
-                    "dbname",
-                    "user",
-                    "password",
-                    "sslmode",
-                    "connect_timeout",
-                }
-            ):
+            mode = v.get("REPLAYFORGE_COLLECTION_WORKER_MODE", "local")
+            expected_role = None
+            if mode == "azure":
+                host = v.get("REPLAYFORGE_COLLECTION_DB_HOST", "")
+                expected_role = v.get("REPLAYFORGE_COLLECTION_DB_ROLE", "")
+                root = info.get("sslrootcert", "")
+                if (
+                    not re.fullmatch(
+                        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.postgres\.database\.azure\.com",
+                        host,
+                    )
+                    or info.get("host") != host
+                    or not re.fullmatch(r"rf_[a-z0-9_]{1,55}", expected_role)
+                    or info.get("user") != expected_role
+                    or info.get("sslmode") != "verify-full"
+                    or not isinstance(root, str)
+                    or not Path(root).is_absolute()
+                    or not Path(root).is_file()
+                ):
+                    raise ValueError
+            elif mode != "local" or info.get("host") != "127.0.0.1":
+                raise ValueError
+            if not all(info.get(k) for k in ["dbname", "user", "password"]) or set(
+                info
+            ) - {
+                "host",
+                "port",
+                "dbname",
+                "user",
+                "password",
+                "sslmode",
+                "sslrootcert",
+                "connect_timeout",
+            }:
                 raise ValueError
             info.update(
-                hostaddr="127.0.0.1",
                 connect_timeout="5",
                 options="-c statement_timeout=5000 -c lock_timeout=3000",
             )
+            if mode == "local":
+                info["hostaddr"] = "127.0.0.1"
+            else:
+                info["gssencmode"] = "disable"
             key = v.get("REPLAYFORGE_COLLECTION_WORKER_KEY", "")
             url = v.get("REPLAYFORGE_COLLECTION_BROKER_URL", "http://127.0.0.1:8000")
             paths = json.loads(v.get("REPLAYFORGE_WORKER_PATHS", '["README.md"]'))
@@ -96,6 +124,7 @@ class BrokerWorkerConfig(BaseModel):
                 key=SecretStr(key),
                 url=url,
                 paths=tuple(paths),
+                expected_role=expected_role,
             )
         except (ValueError, TypeError, psycopg.Error):
             raise ConfigError("COLLECTION_WORKER_CONFIG_INVALID") from None
@@ -130,6 +159,7 @@ def main() -> int:
         parser.error(
             "choose triage or patch; inference requires opt-in and estimate 1..2000000"
         )
+    configure()  # JSON lines on stderr; stdout keeps the per-tick result objects
     stop = Event()
     previous = {}
     try:
@@ -148,17 +178,24 @@ def main() -> int:
         c = BrokerWorkerConfig.from_env(values)
         with psycopg.connect(c.dsn.get_secret_value()) as db:
             role = db.execute(
-                "SELECT rolsuper,rolcreatedb,rolcreaterole,"
+                "SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,"
                 "has_table_privilege(current_user,'repository_grants','INSERT'),"
-                "has_table_privilege(current_user,'auth_credentials','SELECT') "
+                "has_table_privilege(current_user,'auth_credentials','SELECT'),"
+                "EXISTS (SELECT 1 FROM pg_auth_members WHERE member = pg_roles.oid) "
                 "FROM pg_roles WHERE rolname=current_user"
             ).fetchone()
             if role is None or any(role):
                 raise ConfigError("COLLECTION_WORKER_ROLE_DENIED")
+            if c.expected_role is not None:
+                identity = db.execute("SELECT current_user, session_user").fetchone()
+                if identity != (c.expected_role, c.expected_role):
+                    raise ConfigError("COLLECTION_WORKER_ROLE_DENIED")
         for sig in [signal.SIGINT, signal.SIGTERM]:
             previous[sig] = signal.signal(sig, lambda signum, frame: stop.set())
         store = Store(c.dsn.get_secret_value())
         worker = uuid4()
+        mode = "triage" if args.triage else "patch" if args.patch else "collect"
+        log_event("worker.start", worker_id=worker, action=mode, attempt=args.max_ticks)
         with BrokerClient(c.url, c.key) as client:
             for _ in range(args.max_ticks):
                 if stop.is_set():
@@ -173,8 +210,15 @@ def main() -> int:
                 print(result.model_dump_json())
                 if result.status == "IDLE" and stop.wait(1):
                     break
+        log_event("worker.stop", worker_id=worker, action=mode, status="CLEAN")
         return 0
     except (ConfigError, BrokerError, StoreError, ProbeError, psycopg.Error) as error:
+        log_event(
+            "worker.stop",
+            level=40,
+            status="STOPPED",
+            error_class=type(error).__name__,
+        )
         print(
             json.dumps(
                 {
